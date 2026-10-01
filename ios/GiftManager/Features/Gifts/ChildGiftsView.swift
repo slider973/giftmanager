@@ -8,8 +8,12 @@ struct ChildGiftsView: View {
     @State private var adding: AddMode?
     @State private var isReordering = false
 
-    init(child: Child, eventId: UUID?) {
+    /// Événement passé : aucune modification ni réservation.
+    let readOnly: Bool
+
+    init(child: Child, eventId: UUID?, readOnly: Bool = false) {
         _model = State(initialValue: GiftListModel(child: child, eventId: eventId))
+        self.readOnly = readOnly
     }
 
     private var child: Child { model.child }
@@ -56,7 +60,7 @@ struct ChildGiftsView: View {
                     // Lien invisible sous la carte : évite le chevron système qui déborde de la carte.
                     ZStack {
                         NavigationLink {
-                            GiftDetailView(item: item, model: model)
+                            GiftDetailView(item: item, model: model, readOnly: readOnly)
                         } label: {
                             EmptyView()
                         }
@@ -66,10 +70,10 @@ struct ChildGiftsView: View {
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .listRowInsets(EdgeInsets(top: Spacing.xs, leading: Spacing.xl, bottom: Spacing.xs, trailing: Spacing.xl))
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) { trailingActions(item) }
-                    .swipeActions(edge: .leading) { leadingActions(item) }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) { if !readOnly { trailingActions(item) } }
+                    .swipeActions(edge: .leading) { if !readOnly { leadingActions(item) } }
                 }
-                .onMove(perform: isParent && tab == 0 ? move : nil)
+                .onMove(perform: isParent && tab == 0 && !readOnly ? move : nil)
             }
         }
         .listStyle(.plain)
@@ -122,20 +126,20 @@ struct ChildGiftsView: View {
             EmptyStateView(imageName: "empty_box", title: "Liste vide",
                            message: isParent ? "Ajoute ses envies avec \(child.firstName) en collant des liens de boutiques."
                                              : "\(child.firstName) n'a pas encore fait sa liste.",
-                           actionTitle: isParent ? "Ajouter un cadeau" : nil) {
+                           actionTitle: isParent && !readOnly ? "Ajouter un cadeau" : nil) {
                 adding = AddMode(kind: .wish, owned: false)
             }
         case 1:
             EmptyStateView(imageName: "mascot_gift", title: "Rien pour l'instant",
                            message: isParent ? "Note ce que \(child.firstName) a déjà pour éviter les doublons."
                                              : "Les parents n'ont rien indiqué.",
-                           actionTitle: isParent ? "Ajouter" : nil) {
+                           actionTitle: isParent && !readOnly ? "Ajouter" : nil) {
                 adding = AddMode(kind: .wish, owned: true)
             }
         default:
             EmptyStateView(imageName: "mascot_thinking", title: "Aucune idée",
                            message: "Propose une idée de cadeau : ses parents ne la verront pas.",
-                           actionTitle: "Proposer une idée") {
+                           actionTitle: readOnly ? nil : "Proposer une idée") {
                 adding = AddMode(kind: .idea, owned: false)
             }
         }
@@ -146,10 +150,14 @@ struct ChildGiftsView: View {
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
-            if isParent && tab == 0 && model.wishes.count > 1 {
+            if readOnly {
+                Label("Archivé", systemImage: "archivebox").labelStyle(.titleAndIcon).font(Font.Theme.caption)
+            } else if isParent && tab == 0 && model.wishes.count > 1 {
                 Button(isReordering ? "OK" : "Ordonner") { withAnimation { isReordering.toggle() } }
             }
-            if isParent && tab < 2 {
+            if readOnly {
+                EmptyView()
+            } else if isParent && tab < 2 {
                 Button {
                     adding = AddMode(kind: .wish, owned: tab == 1)
                 } label: {

@@ -25,7 +25,7 @@ struct FamilyHomeView: View {
             .fcScreenBackground()
             .navigationTitle(appState.currentGroup?.name ?? "Notre famille")
             .navigationDestination(for: GiftEvent.self) { EventDetailView(event: $0) }
-            .navigationDestination(for: ChildDestination.self) { ChildGiftsView(child: $0.child, eventId: $0.eventId) }
+            .navigationDestination(for: ChildDestination.self) { ChildGiftsView(child: $0.child, eventId: $0.eventId, readOnly: $0.readOnly) }
             .sheet(item: $editingEvent) { EventEditorView(mode: $0) }
         }
     }
@@ -69,8 +69,8 @@ struct FamilyHomeView: View {
     private func eventRow(_ event: GiftEvent) -> some View {
         let children = appState.children(for: event)
         var subtitle: String? = event.isPast ? nil : Formatting.countdownText(days: event.daysRemaining)
-        if event.kind == .birthday, let child = appState.child(event.childId), let age = child.age {
-            subtitle = [subtitle, Formatting.ageText(age + (event.isPast ? 0 : 1))].compactMap { $0 }.joined(separator: " · ")
+        if event.kind == .birthday, let child = appState.child(event.childId), let age = child.age(on: event.eventDate.localDate) {
+            subtitle = [subtitle, Formatting.ageText(age)].compactMap { $0 }.joined(separator: " · ")
         }
         return EventRow(title: event.title, dateText: Formatting.dateText(event.eventDate), subtitle: subtitle,
                         kind: event.kind.designKind, avatarNames: children.map(\.firstName))
@@ -80,6 +80,8 @@ struct FamilyHomeView: View {
 struct ChildDestination: Hashable {
     let child: Child
     let eventId: UUID?
+    /// Événement passé : liste en lecture seule.
+    var readOnly = false
 }
 
 extension GiftEventKind {

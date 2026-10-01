@@ -57,7 +57,7 @@ final class AppState {
             guard let self else { return }
             for await (event, session) in repository.client.auth.authStateChanges {
                 switch event {
-                case .initialSession, .signedIn, .userUpdated:
+                case .initialSession, .signedIn, .userUpdated, .tokenRefreshed:
                     if let session, !session.isExpired {
                         await self.didSignIn(userId: session.user.id)
                     } else if event == .initialSession {
@@ -173,13 +173,8 @@ final class AppState {
         let code = url.pathComponents.dropFirst().first ?? URLComponents(url: url, resolvingAgainstBaseURL: false)?
             .queryItems?.first { $0.name == "code" }?.value
         guard let code, !code.isEmpty else { return }
+        // En phase .ready, MainTabView demande confirmation avant de rejoindre.
         pendingInviteCode = code.uppercased()
-        if phase == .ready {
-            Task {
-                if await joinGroup(code: code) != nil { await refreshAll() }
-                pendingInviteCode = nil
-            }
-        }
     }
 
     static func inviteMessage(for group: FamilyGroup) -> String {

@@ -101,7 +101,7 @@ struct GiftRepository: Sendable {
     // MARK: - Événements
 
     func events(groupId: UUID) async throws -> [GiftEvent] {
-        try await db.from("events").select("id, group_id, kind, title, event_date, child_id")
+        try await db.from("events").select("id, group_id, kind, title, event_date, child_id, created_by")
             .eq("group_id", value: groupId).order("event_date").execute().value
     }
 

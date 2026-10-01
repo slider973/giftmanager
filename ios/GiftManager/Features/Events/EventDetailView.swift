@@ -28,6 +28,11 @@ struct EventDetailView: View {
                     SectionHeader(title: "Les listes de la famille")
                     ForEach(others) { childLink($0) }
                 }
+                if event.isPast {
+                    Label("Événement passé : les listes sont archivées en lecture seule.", systemImage: "archivebox")
+                        .font(Font.Theme.caption)
+                        .foregroundStyle(Color.Theme.textSecondary)
+                }
                 if !mine.isEmpty {
                     SectionHeader(title: "Mes enfants")
                     ForEach(mine) { childLink($0) }
@@ -55,7 +60,7 @@ struct EventDetailView: View {
     }
 
     private func childLink(_ child: Child) -> some View {
-        NavigationLink(value: ChildDestination(child: child, eventId: event.id)) {
+        NavigationLink(value: ChildDestination(child: child, eventId: event.id, readOnly: event.isPast)) {
             HStack {
                 ChildRow(child: child)
                 Spacer()

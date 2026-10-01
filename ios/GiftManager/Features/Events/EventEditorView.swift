@@ -60,7 +60,7 @@ struct EventEditorView: View {
                         .environment(\.locale, Locale(identifier: "fr_FR"))
                 }
 
-                if existing != nil {
+                if let event = existing, canDelete(event) {
                     Section {
                         Button("Supprimer l'événement", role: .destructive) { confirmDelete = true }
                     } footer: {
@@ -86,6 +86,11 @@ struct EventEditorView: View {
             }
         }
         .onAppear(perform: load)
+    }
+
+    /// Même règle que la RLS : l'auteur, ou un parent de l'enfant pour un anniversaire.
+    private func canDelete(_ event: GiftEvent) -> Bool {
+        event.createdBy == appState.userId || (appState.child(event.childId).map(appState.isParent(of:)) ?? false)
     }
 
     private var isValid: Bool {
@@ -134,7 +139,8 @@ struct EventEditorView: View {
         isSaving = true
         defer { isSaving = false }
         let event = GiftEvent(id: existing?.id ?? UUID(), groupId: group.id, kind: kind, title: title.trimmed,
-                              eventDate: DayDate(date), childId: kind == .birthday ? childId : nil)
+                              eventDate: DayDate(date), childId: kind == .birthday ? childId : nil,
+                              createdBy: existing?.createdBy)
         do {
             try await appState.repository.saveEvent(event)
             await appState.reloadGroup()

@@ -8,6 +8,7 @@ struct GiftDetailView: View {
 
     @State var item: WishItem
     let model: GiftListModel
+    var readOnly = false
     @State private var isWorking = false
     @State private var editing = false
     @State private var confirmDelete = false
@@ -16,7 +17,9 @@ struct GiftDetailView: View {
     private var child: Child { model.child }
     private var isParent: Bool { appState.isParent(of: child) }
     private var links: [ItemLink] { model.links(for: item, preferredCountry: appState.profile?.country) }
-    private var canEdit: Bool { item.kind == .wish ? isParent : item.createdBy == appState.userId }
+    private var canEdit: Bool { !readOnly && (item.kind == .wish ? isParent : item.createdBy == appState.userId) }
+    /// Un parent peut offrir lui-même un cadeau de la liste de son enfant (action discrète, dans le menu).
+    private var canParentReserve: Bool { !readOnly && isParent && item.kind == .wish && !item.owned && item.myReservation == nil }
 
     var body: some View {
         ScrollView {
@@ -28,7 +31,7 @@ struct GiftDetailView: View {
                         .background(Color.Theme.surface)
                         .clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
                     if item.kind == .wish {
-                        PriorityHeart(isOn: item.isFavorite, action: isParent && !item.owned ? toggleFavorite : nil)
+                        PriorityHeart(isOn: item.isFavorite, action: isParent && !item.owned && !readOnly ? toggleFavorite : nil)
                             .padding(Spacing.s)
                     }
                 }
@@ -64,7 +67,13 @@ struct GiftDetailView: View {
                     }
                 }
 
-                actions
+                if readOnly {
+                    Label("Événement passé : fiche archivée.", systemImage: "archivebox")
+                        .font(Font.Theme.caption)
+                        .foregroundStyle(Color.Theme.textSecondary)
+                } else {
+                    actions
+                }
             }
             .padding(Spacing.xl)
         }
@@ -74,6 +83,9 @@ struct GiftDetailView: View {
             if canEdit {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        if canParentReserve {
+                            Button("Je l'offre moi-même", systemImage: "gift") { Task { await reserve() } }
+                        }
                         Button("Modifier", systemImage: "pencil") { editing = true }
                         if isParent && item.kind == .wish {
                             Button(item.owned ? "Remettre dans la liste" : "Il l'a déjà", systemImage: "checkmark.seal") {
@@ -168,8 +180,6 @@ struct GiftDetailView: View {
                         TextLinkButton(title: "Marquer comme acheté") { Task { await setPurchased(true) } }
                     }
                     TextLinkButton(title: "Annuler ma réservation") { Task { await cancel() } }
-                } else {
-                    TextLinkButton(title: "Je l'offre moi-même") { Task { await reserve() } }
                 }
             }
         }

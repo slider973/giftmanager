@@ -23,14 +23,12 @@ final class GiftListModel {
 
     func load(_ repository: GiftRepository) async throws {
         isLoading = true
-        defer {
-            isLoading = false
-            hasLoaded = true
-        }
+        defer { isLoading = false }
         let fetched = try await repository.childItems(childId: child.id, eventId: eventId)
         let fetchedLinks = try await repository.links(itemIds: fetched.map(\.id))
         items = fetched
         links = Dictionary(grouping: fetchedLinks, by: \.itemId)
+        hasLoaded = true
     }
 
     func links(for item: WishItem, preferredCountry: String?) -> [ItemLink] {

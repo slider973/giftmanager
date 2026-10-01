@@ -70,7 +70,14 @@ struct ProfileFields: View {
                 Label("Pays", systemImage: "globe.europe.africa")
                     .foregroundStyle(Color.Theme.textSecondary)
                 Spacer()
-                Picker("Pays", selection: $country) {
+                Picker("Pays", selection: Binding(
+                    get: { country },
+                    set: { newValue in
+                        country = newValue
+                        // Devise suggérée uniquement quand l'utilisateur change de pays.
+                        if let suggested = StoreCatalog.currency(for: newValue) { currency = suggested }
+                    }
+                )) {
                     ForEach(Countries.all) { country in
                         Text("\(country.flag) \(country.name)").tag(country.code)
                     }
@@ -79,9 +86,6 @@ struct ProfileFields: View {
             }
             .font(Font.Theme.body)
             .fcCard()
-            .onChange(of: country) { _, newValue in
-                if let suggested = StoreCatalog.currency(for: newValue) { currency = suggested }
-            }
 
             HStack {
                 Label("Devise", systemImage: "banknote")

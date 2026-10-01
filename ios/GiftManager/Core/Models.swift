@@ -129,9 +129,23 @@ struct Child: Codable, Identifiable, Equatable, Hashable, Sendable {
         case avatarUrl = "avatar_url"
     }
 
-    var age: Int? {
+    var age: Int? { age(on: .now) }
+
+    func age(on date: Date) -> Int? {
         guard let birth = birthdate?.localDate else { return nil }
-        return Calendar.current.dateComponents([.year], from: birth, to: .now).year
+        return Calendar.current.dateComponents([.year], from: birth, to: date).year
+    }
+
+    /// Encode les champs optionnels à `null` (et non absents) pour pouvoir les effacer via upsert.
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(householdId, forKey: .householdId)
+        try c.encode(firstName, forKey: .firstName)
+        try c.encode(birthdate, forKey: .birthdate)
+        try c.encode(avatarEmoji, forKey: .avatarEmoji)
+        try c.encode(avatarColor, forKey: .avatarColor)
+        try c.encode(avatarUrl, forKey: .avatarUrl)
     }
 }
 
@@ -146,12 +160,36 @@ struct GiftEvent: Codable, Identifiable, Equatable, Hashable, Sendable {
     var title: String
     var eventDate: DayDate
     var childId: UUID?
+    /// Lu seulement : défini par la base à la création.
+    var createdBy: UUID?
 
     enum CodingKeys: String, CodingKey {
         case id, kind, title
         case groupId = "group_id"
         case eventDate = "event_date"
         case childId = "child_id"
+        case createdBy = "created_by"
+    }
+
+    init(id: UUID, groupId: UUID, kind: GiftEventKind, title: String, eventDate: DayDate, childId: UUID?, createdBy: UUID? = nil) {
+        self.id = id
+        self.groupId = groupId
+        self.kind = kind
+        self.title = title
+        self.eventDate = eventDate
+        self.childId = childId
+        self.createdBy = createdBy
+    }
+
+    /// `child_id` encodé à `null` pour pouvoir l'effacer ; `created_by` jamais envoyé.
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(groupId, forKey: .groupId)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(title, forKey: .title)
+        try c.encode(eventDate, forKey: .eventDate)
+        try c.encode(childId, forKey: .childId)
     }
 
     var isPast: Bool { eventDate.localDate < Calendar.current.startOfDay(for: .now) }

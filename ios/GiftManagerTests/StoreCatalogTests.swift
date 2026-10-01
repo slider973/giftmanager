@@ -27,13 +27,35 @@ final class StoreCatalogTests: XCTestCase {
     func testPriceParsing() {
         XCTAssertEqual(LinkPreviewService.parsePrice("199,99"), Decimal(string: "199.99"))
         XCTAssertEqual(LinkPreviewService.parsePrice("1'299.00"), Decimal(string: "1299.00"))
-        XCTAssertEqual(LinkPreviewService.parsePrice("CHF 49.–"), Decimal(string: "49."))
+        XCTAssertEqual(LinkPreviewService.parsePrice("CHF 49.–"), Decimal(49))
+        XCTAssertEqual(LinkPreviewService.parsePrice("1.299,00"), Decimal(string: "1299.00"))
+        XCTAssertEqual(LinkPreviewService.parsePrice("1'299.90"), Decimal(string: "1299.90"))
+        XCTAssertEqual(LinkPreviewService.parsePrice("19,99"), Decimal(string: "19.99"))
+        XCTAssertEqual(LinkPreviewService.parsePrice("1.299"), Decimal(1299))
+        XCTAssertNil(LinkPreviewService.parsePrice("999999999"))
+        XCTAssertNil(LinkPreviewService.parsePrice("gratuit"))
     }
 
     func testSharedTextExtractsFirstLink() {
         let url = LinkPreviewService.normalizedURL("Regarde ça 👉 https://www.galaxus.ch/fr/s1/product/123 trop bien")
         XCTAssertEqual(url?.host(), "www.galaxus.ch")
         XCTAssertEqual(LinkPreviewService.normalizedURL("amazon.fr/dp/X")?.scheme, "https")
+    }
+
+    func testChildEncodesClearedFieldsAsNull() throws {
+        let child = Child(id: UUID(), householdId: UUID(), firstName: "Léo", birthdate: nil,
+                          avatarEmoji: nil, avatarColor: nil, avatarUrl: nil)
+        let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(child)) as? [String: Any]
+        XCTAssertTrue(json?["birthdate"] is NSNull, "une date effacée doit être envoyée à null")
+        XCTAssertTrue(json?["avatar_emoji"] is NSNull)
+    }
+
+    func testAgeIsComputedAtEventDate() throws {
+        let child = Child(id: UUID(), householdId: UUID(), firstName: "Léo",
+                          birthdate: try JSONDecoder().decode(DayDate.self, from: Data("\"2018-03-12\"".utf8)),
+                          avatarEmoji: nil, avatarColor: nil, avatarUrl: nil)
+        let birthday = try JSONDecoder().decode(DayDate.self, from: Data("\"2027-03-12\"".utf8))
+        XCTAssertEqual(child.age(on: birthday.localDate), 9)
     }
 
     func testDayDateRoundTrip() throws {

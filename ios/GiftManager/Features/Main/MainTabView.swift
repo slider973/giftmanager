@@ -37,6 +37,19 @@ struct MainTabView: View {
         .sheet(isPresented: $showAddGift) {
             QuickAddGiftView()
         }
+        .alert("Rejoindre une famille ?", isPresented: Binding(
+            get: { appState.pendingInviteCode != nil },
+            set: { if !$0 { appState.pendingInviteCode = nil } }
+        )) {
+            Button("Rejoindre") {
+                let code = appState.pendingInviteCode ?? ""
+                appState.pendingInviteCode = nil
+                Task { if await appState.joinGroup(code: code) != nil { await appState.refreshAll() } }
+            }
+            Button("Annuler", role: .cancel) { appState.pendingInviteCode = nil }
+        } message: {
+            Text("Tu as ouvert une invitation avec le code \(appState.pendingInviteCode ?? ""). Tu pourras basculer entre tes familles dans Paramètres.")
+        }
     }
 }
 

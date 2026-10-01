@@ -95,7 +95,7 @@ struct MyPurchasesView: View {
                 Text("\(remainingCount)")
                     .font(Font.Theme.title)
                     .foregroundStyle(Color.Theme.textPrimary)
-                Text(remainingCount > 1 ? "à acheter" : "à acheter")
+                Text(remainingCount > 1 ? "cadeaux à acheter" : "cadeau à acheter")
                     .font(Font.Theme.caption)
                     .foregroundStyle(Color.Theme.textSecondary)
             }

@@ -108,12 +108,21 @@ enum LinkPreviewService {
         return String(text[range])
     }
 
+    /// Lit un prix saisi ou extrait d'une page : « 199,99 », « 1.299,00 », « 1'299.90 », « CHF 49.– ».
+    /// Le dernier séparateur (point ou virgule) suivi d'au plus 2 chiffres est le séparateur décimal.
     static func parsePrice(_ text: String) -> Decimal? {
-        let cleaned = text.replacingOccurrences(of: "'", with: "")
-            .replacingOccurrences(of: " ", with: "")
-            .replacingOccurrences(of: ",", with: ".")
-            .filter { $0.isNumber || $0 == "." }
-        return Decimal(string: cleaned)
+        var digits = text.filter { $0.isNumber || $0 == "." || $0 == "," }
+        guard !digits.isEmpty else { return nil }
+        if let last = digits.lastIndex(where: { $0 == "." || $0 == "," }),
+           digits.distance(from: last, to: digits.endIndex) - 1 <= 2 {
+            let integer = digits[..<last].filter(\.isNumber)
+            let fraction = digits[digits.index(after: last)...]
+            digits = integer + "." + fraction
+        } else {
+            digits = digits.filter(\.isNumber)
+        }
+        guard let value = Decimal(string: digits), value < 100_000_000 else { return nil }
+        return value
     }
 
     private static func cleanTitle(_ title: String) -> String {
