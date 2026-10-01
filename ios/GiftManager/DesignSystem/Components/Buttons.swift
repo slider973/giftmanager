@@ -109,6 +109,35 @@ struct TextLinkButton: View {
     }
 }
 
+// MARK: - Libellé pilule (ShareLink, Menu)
+
+/// Apparence d'un `PrimaryButton` / `SecondaryButton` pour les contrôles qui ne
+/// sont pas des `Button` (ex. `ShareLink`). Ajouter `.buttonStyle(FCPressableStyle())`
+/// sur le contrôle hôte pour le retour tactile.
+struct FCPillLabel: View {
+    enum Style { case primary, secondary }
+
+    let title: String
+    var systemImage: String? = nil
+    var style: Style = .primary
+
+    var body: some View {
+        HStack(spacing: Spacing.s) {
+            if let systemImage {
+                Image(systemName: systemImage).accessibilityHidden(true)
+            }
+            Text(title)
+                .multilineTextAlignment(.center)
+        }
+        .font(Font.Theme.headline)
+        .foregroundStyle(Color.Theme.onPrimary)
+        .frame(maxWidth: .infinity, minHeight: HitTarget.button)
+        .padding(.horizontal, Spacing.xl)
+        .background(style == .primary ? Color.Theme.primary : Color.Theme.secondary, in: Capsule())
+        .contentShape(Capsule())
+    }
+}
+
 // MARK: - Previews
 
 private struct ButtonsPreview: View {
@@ -121,6 +150,10 @@ private struct ButtonsPreview: View {
             SecondaryButton(title: "Ajouter à la liste", systemImage: "gift") {}
             SecondaryButton(title: "Ajouter à la liste", systemImage: "gift", isLoading: true) {}
             TextLinkButton(title: "Modifier les informations") {}
+            ShareLink(item: "Code : DEMO26") {
+                FCPillLabel(title: "Partager l'invitation", systemImage: "square.and.arrow.up")
+            }
+            .buttonStyle(FCPressableStyle())
         }
         .padding(Spacing.xl)
         .fcScreenBackground()

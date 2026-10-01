@@ -76,7 +76,9 @@ Prix : toujours `.monospacedDigit()`.
 | 4 | **Ajouter un cadeau** | Champ URL, aperçu (image, titre, boutique + drapeau, prix), « Ajouter à la liste », « Modifier les informations », « Autres liens pour ce cadeau » (boutique, drapeau, prix, copier) | #9 |
 | 5 | **Détail du cadeau** | Grande image, cœur, titre, boutique, « Liens par pays » (drapeau, boutique, prix, lien externe), CTA vert | #11 |
 
-**Barre d'onglets** : Accueil · Recherche · **+** (central) · Notifications · Profil.
+**Barre d'onglets** : Accueil · Recherche · **+** (central) · Notifications · Profil. Le « + » est un disque `primary` plein dessiné (la barre ignore les palettes de SF Symbols et afficherait la variante multicolore verte), une image par apparence.
+
+**Pagination de l'onboarding** : points SwiftUI (actif allongé 20 × 8 en `primary`, autres 8 × 8 en `textSecondary` à 40 %), à la place d'`UIPageControl` qui ne suivait pas le mode sombre. Bouton « Continuer avec Apple » noir en clair, blanc en sombre.
 
 
 ## API SwiftUI
@@ -99,7 +101,9 @@ Spacing.xs / s / m / l / xl / xxl        Radius.card / thumb / field        HitT
 
 View.fcCard(padding: CGFloat = Spacing.l)   // fond surface, rayon card, ombre légère
 View.fcScreenBackground()                    // fond background plein écran, sous les safe areas
+View.fcListRow()                             // ligne de List/Form groupée : fond surface, filets separator
 FCPressableStyle(pressedScale: CGFloat = 0.97)
+FCSystemAppearance.apply()                   // au lancement : titres de navigation en SF Pro Rounded, textPrimary
 ```
 
 ### Composants
@@ -110,7 +114,7 @@ FCPressableStyle(pressedScale: CGFloat = 0.97)
 | `StatusBadge` | `StatusBadge(status: GiftStatus)` | « Disponible », « Déjà pris », « Je l'offre », « Possède déjà » |
 | `PriorityHeart` | `PriorityHeart(isOn: Bool, action: (() -> Void)? = nil)` | Bouton bascule 44 pt + haptique si `action`, indicateur sinon |
 | `CountryFlag` | `CountryFlag(code: String)` | Émoji depuis ISO2 (`UK` → `GB`), repli globe ; nom du pays en français pour VoiceOver. Hérite de la police |
-| `RemoteImage` | `RemoteImage(url: URL?, contentMode: ContentMode = .fill)` | Remplit le cadre de l'appelant. États : chargement (cadeau qui respire), absent, échec (cadeau + pastille « ! ») |
+| `RemoteImage` | `RemoteImage(url: URL?, contentMode: ContentMode = .fill, placeholderSeed: String? = nil)` | Remplit le cadre de l'appelant. États : chargement (cadeau qui respire), absent, échec (cadeau + pastille « ! »). Placeholder : pastel stable dérivé de `placeholderSeed` (titre du cadeau ; pêche sans graine), symbole `textPrimary` à 28 %, plafonné à 48 pt |
 | `GiftCard` | `GiftCard(title:imageURL:priceText:storeText:countryCode:isFavorite:status:)` | `status == nil` → **aucun badge** (mode surprise). Passe en pile verticale aux tailles d'accessibilité. Envelopper dans un `NavigationLink` |
 | `StoreLinkRow` | `StoreLinkRow(store: String, countryCode: String?, priceText: String?, action: () -> Void)` | Ligne entière cliquable, trait `.isLink` |
 | `ChildAvatar` | `ChildAvatar(name: String, emoji: String?, colorName: String?, size: CGFloat = 44)` | `colorName` : `pastelPink`… ; inconnu → pastel dérivé du prénom |
@@ -121,6 +125,8 @@ FCPressableStyle(pressedScale: CGFloat = 0.97)
 | `PrimaryButton` | `PrimaryButton(title: String, systemImage: String? = nil, isLoading: Bool = false, action: () -> Void)` | Pilule bleu nuit pleine largeur. `chevron.*` / `arrow.*` se calent à droite, les autres icônes à gauche. `.disabled(true)` → 45 % d'opacité |
 | `SecondaryButton` | même signature | Pilule verte `secondary` |
 | `TextLinkButton` | `TextLinkButton(title: String, action: () -> Void)` | Lien texte `primary`, cible 44 pt |
+| `FCPillLabel` | `FCPillLabel(title: String, systemImage: String? = nil, style: .primary \| .secondary = .primary)` | Apparence pilule pour les contrôles qui ne sont pas des `Button` (`ShareLink`) ; poser `.buttonStyle(FCPressableStyle())` sur l'hôte |
+| `FCNotice` | `FCNotice(systemImage: String, text: String, tone: .surprise \| .neutral \| .warning = .neutral)` | Encart icône + phrase. `.surprise` lavande (`ownedBg`/`ownedFg`) pour le mode surprise, `.neutral` carte bordée (archive, précisions), `.warning` rose (`takenBg`/`takenFg`) |
 | `SegmentedTabs` | `SegmentedTabs(selection: Binding<Int>, titles: [String])` | Soulignement animé ; défilement horizontal si les libellés ne tiennent pas |
 | `EmptyStateView` | `EmptyStateView(imageName: String, title: String, message: String, actionTitle: String? = nil, action: (() -> Void)? = nil)` | Mascotte d'`Illustrations.xcassets` |
 | `FeaturePill` | `FeaturePill(systemImage: String, color: Color, title: String, subtitle: String, background: Color? = nil)` | `color` teinte l'icône ; `background` = pastel du disque (sinon teinte de `color` à 16 %) |
@@ -131,6 +137,14 @@ FCPressableStyle(pressedScale: CGFloat = 0.97)
 ### Règles d'usage
 
 - Un seul `PrimaryButton` par écran ; `SecondaryButton` pour le CTA vert de la fiche cadeau.
+- Pas de pilule grisée en permanence : un bouton « Enregistrer / Renommer » qui n'a de sens qu'après modification apparaît quand le champ change (Profil, nom de la famille). Les formulaires longs (ajout de cadeau) gardent leur CTA en bas d'écran, désactivé tant que le nom manque.
+- Tout champ a un libellé visible (`FCTextField`, ou libellé `captionBold` au-dessus) ; les invites (`prompt`) sont en `textSecondary`, jamais le gris tertiaire système (contraste insuffisant).
+- Rappels de mode surprise, d'archive ou d'alerte : `FCNotice`, pas une ligne de légende grise isolée.
+- Listes `List` / `Form` : `.scrollContentBackground(.hidden)` + `.fcScreenBackground()`, lignes `.fcListRow()` en groupé ; en `.plain`, cartes posées sur `listRowBackground(.clear)`, séparateurs masqués, encarts `Spacing.xl` horizontaux et `Spacing.xs` verticaux.
+- Rouge destructif en texte : `takenFg` (le rouge système fait 3,5:1 sur blanc).
+- États de chargement : `ProgressView` titré (« Chargement de … ») teinté `primary`, jamais d'écran blanc avant le premier chargement.
+- Éléments archivés (événements passés) : vignette désaturée (`grayscale`), jamais d'opacité sur le texte.
+- Avatar à côté du prénom écrit : `accessibilityHidden(true)` sur l'avatar, sinon VoiceOver lit le prénom deux fois.
 - Les icônes sont des SF Symbols ; les seuls émojis sont les drapeaux, les vignettes d'événement et les avatars choisis par la famille.
 - Toute icône seule porte un `accessibilityLabel` ; les cartes regroupent leur contenu en un seul élément VoiceOver.
 - Mode surprise : ne jamais calculer un `GiftStatus` pour un parent qui regarde la liste de son enfant ; passer `nil`.

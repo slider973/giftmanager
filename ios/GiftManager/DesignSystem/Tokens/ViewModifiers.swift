@@ -52,4 +52,12 @@ extension View {
     func fcScreenBackground() -> some View {
         modifier(FCScreenBackgroundModifier())
     }
+
+    /// Ligne de `List` / `Form` groupée aux couleurs du thème : fond `surface`
+    /// (au lieu du gris système, qui jure avec le bleu nuit en sombre) et filets `separator`.
+    /// À combiner avec `.scrollContentBackground(.hidden)` + `.fcScreenBackground()` sur la liste.
+    func fcListRow() -> some View {
+        listRowBackground(Color.Theme.surface)
+            .listRowSeparatorTint(Color.Theme.separator)
+    }
 }

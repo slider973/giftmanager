@@ -5,6 +5,10 @@ struct GiftManagerApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var appState = AppState()
 
+    init() {
+        FCSystemAppearance.apply()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
