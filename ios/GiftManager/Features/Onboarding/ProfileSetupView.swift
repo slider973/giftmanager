@@ -70,14 +70,7 @@ struct ProfileFields: View {
                 Label("Pays", systemImage: "globe.europe.africa")
                     .foregroundStyle(Color.Theme.textSecondary)
                 Spacer()
-                Picker("Pays", selection: Binding(
-                    get: { country },
-                    set: { newValue in
-                        country = newValue
-                        // Devise suggérée uniquement quand l'utilisateur change de pays.
-                        if let suggested = StoreCatalog.currency(for: newValue) { currency = suggested }
-                    }
-                )) {
+                Picker("Pays", selection: Self.countryBinding(country: $country, currency: $currency)) {
                     ForEach(Countries.all) { country in
                         Text("\(country.flag) \(country.name)").tag(country.code)
                     }
@@ -87,18 +80,44 @@ struct ProfileFields: View {
             .font(Font.Theme.body)
             .fcCard()
 
-            HStack {
-                Label("Devise", systemImage: "banknote")
-                    .foregroundStyle(Color.Theme.textSecondary)
-                Spacer()
-                Picker("Devise", selection: $currency) {
-                    ForEach(Countries.currencies, id: \.self) { Text($0).tag($0) }
+            // Segmenté tant qu'il tient ; menu aux grandes tailles de texte (pas de troncature).
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    currencyLabel
+                    Spacer(minLength: Spacing.s)
+                    currencyPicker.pickerStyle(.segmented).fixedSize()
                 }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 220)
+                HStack {
+                    currencyLabel
+                    Spacer(minLength: Spacing.s)
+                    currencyPicker.pickerStyle(.menu)
+                }
             }
             .font(Font.Theme.body)
             .fcCard()
         }
+    }
+
+    /// Pays choisi ; la devise suggérée suit uniquement quand l'utilisateur change de pays.
+    static func countryBinding(country: Binding<String>, currency: Binding<String>) -> Binding<String> {
+        Binding(
+            get: { country.wrappedValue },
+            set: { newValue in
+                country.wrappedValue = newValue
+                if let suggested = StoreCatalog.currency(for: newValue) { currency.wrappedValue = suggested }
+            }
+        )
+    }
+
+    private var currencyLabel: some View {
+        Label("Devise", systemImage: "banknote")
+            .foregroundStyle(Color.Theme.textSecondary)
+    }
+
+    private var currencyPicker: some View {
+        Picker("Devise", selection: $currency) {
+            ForEach(Countries.currencies, id: \.self) { Text($0).tag($0) }
+        }
+        .labelsHidden()
     }
 }

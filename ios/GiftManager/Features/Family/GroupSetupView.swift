@@ -46,6 +46,7 @@ struct GroupSetupView: View {
                     Text("Ta famille")
                         .font(Font.Theme.largeTitle)
                         .foregroundStyle(Color.Theme.textPrimary)
+                        .accessibilityAddTraits(.isHeader)
                     Text("Crée la famille et invite les autres foyers, ou rejoins-la avec le code reçu.")
                         .font(Font.Theme.body)
                         .foregroundStyle(Color.Theme.textSecondary)
@@ -74,11 +75,11 @@ private struct CreateGroupForm: View {
                 Text("Créer la famille")
                     .font(Font.Theme.largeTitle)
                     .foregroundStyle(Color.Theme.textPrimary)
+                    .accessibilityAddTraits(.isHeader)
                 FCTextField(title: "Nom de la famille", text: $groupName, systemImage: "person.3", prompt: "Ex. Famille Lemaine")
                 FCTextField(title: "Nom de ton foyer", text: $householdName, systemImage: "house", prompt: "Ex. Jonathan & Marie")
-                Text("Le Noël de cette année est créé automatiquement. Tu pourras ensuite inviter les autres foyers.")
-                    .font(Font.Theme.caption)
-                    .foregroundStyle(Color.Theme.textSecondary)
+                FCNotice(systemImage: "sparkles",
+                         text: "Le Noël de cette année est créé automatiquement. Tu pourras ensuite inviter les autres foyers.")
                 PrimaryButton(title: "Créer", systemImage: "checkmark", isLoading: isSaving) {
                     Task {
                         isSaving = true
@@ -110,6 +111,7 @@ private struct JoinGroupForm: View {
                 Text("Rejoindre une famille")
                     .font(Font.Theme.largeTitle)
                     .foregroundStyle(Color.Theme.textPrimary)
+                    .accessibilityAddTraits(.isHeader)
                 Text("Saisis le code à 6 caractères reçu d'un membre de ta famille.")
                     .font(Font.Theme.body)
                     .foregroundStyle(Color.Theme.textSecondary)
@@ -147,12 +149,16 @@ private struct HouseholdSetupView: View {
                 Text("Bienvenue dans « \(appState.currentGroup?.name ?? "") »")
                     .font(Font.Theme.title)
                     .foregroundStyle(Color.Theme.textPrimary)
+                    .accessibilityAddTraits(.isHeader)
                 Text("Un foyer regroupe un ou deux parents et leurs enfants.")
                     .font(Font.Theme.body)
                     .foregroundStyle(Color.Theme.textSecondary)
 
                 VStack(alignment: .leading, spacing: Spacing.m) {
-                    Text("Créer mon foyer").font(Font.Theme.headline)
+                    Text("Créer mon foyer")
+                        .font(Font.Theme.headline)
+                        .foregroundStyle(Color.Theme.textPrimary)
+                        .accessibilityAddTraits(.isHeader)
                     FCTextField(title: "Nom du foyer", text: $householdName, systemImage: "house", prompt: "Ex. Foyer de Marie")
                     PrimaryButton(title: "Créer mon foyer", systemImage: "plus", isLoading: isSaving) {
                         Task {
@@ -166,7 +172,10 @@ private struct HouseholdSetupView: View {
                 .fcCard()
 
                 VStack(alignment: .leading, spacing: Spacing.m) {
-                    Text("Rejoindre le foyer de mon conjoint").font(Font.Theme.headline)
+                    Text("Rejoindre le foyer de mon conjoint")
+                        .font(Font.Theme.headline)
+                        .foregroundStyle(Color.Theme.textPrimary)
+                        .accessibilityAddTraits(.isHeader)
                     Text("Demande-lui le code du foyer (Famille › Membres).")
                         .font(Font.Theme.caption)
                         .foregroundStyle(Color.Theme.textSecondary)
@@ -184,9 +193,8 @@ private struct HouseholdSetupView: View {
                 }
                 .fcCard()
 
-                Text("Grands-parents, oncles, tantes sans enfant : créez simplement votre foyer.")
-                    .font(Font.Theme.caption)
-                    .foregroundStyle(Color.Theme.textSecondary)
+                FCNotice(systemImage: "info.circle",
+                         text: "Grands-parents, oncles, tantes sans enfant : créez simplement votre foyer.")
             }
             .padding(Spacing.xl)
         }
