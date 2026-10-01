@@ -1,0 +1,26 @@
+# Filet de sécurité : synchronise le board même quand une PR est ouverte à la main
+# (hors agents). Une PR ouverte qui contient "Closes #N" passe le ticket #N en Done.
+#
+# Prérequis : secret PROJECT_TOKEN = PAT classique avec les scopes "repo" et "project".
+name: Project sync
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+jobs:
+  move-to-done:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Passer les tickets liés en Done
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          chmod +x scripts/ticket-status.sh
+          issues=$(grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?) #[0-9]+' <<<"$PR_BODY" | grep -oE '[0-9]+' | sort -u || true)
+          if [ -z "$issues" ]; then echo "Aucun ticket lié"; exit 0; fi
+          for n in $issues; do scripts/ticket-status.sh "$n" "Done"; done
