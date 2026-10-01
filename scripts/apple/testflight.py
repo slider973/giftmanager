@@ -31,6 +31,7 @@ DESCRIPTION = (
     "listes par enfant et par événement (Noël, anniversaires), liens de n'importe quelle boutique, "
     "réservation anonyme pour éviter les doublons."
 )
+PRIVACY_URL = "https://slider973.github.io/giftmanager/privacy/"
 REVIEW_NOTES = (
     "Connexion uniquement avec Sign in with Apple (aucun compte de démo nécessaire). "
     "Après connexion : créer une famille, ajouter un enfant (Famille › Membres), puis ajouter un cadeau "
@@ -106,7 +107,8 @@ def add_internal_testers(group_id: str) -> None:
 def ensure_beta_texts(app_id: str, build_id: str) -> None:
     locs = call("GET", f"/v1/apps/{app_id}/betaAppLocalizations")["data"]
     fr = next((l for l in locs if l["attributes"]["locale"] == "fr-FR"), None)
-    body = {"description": DESCRIPTION, "feedbackEmail": os.environ.get("FEEDBACK_EMAIL") or None}
+    body = {"description": DESCRIPTION, "privacyPolicyUrl": PRIVACY_URL,
+            "feedbackEmail": os.environ.get("FEEDBACK_EMAIL") or feedback_email_from_other_apps(app_id)}
     body = {k: v for k, v in body.items() if v}
     if fr:
         call("PATCH", f"/v1/betaAppLocalizations/{fr['id']}", {"data": {"type": "betaAppLocalizations", "id": fr["id"], "attributes": body}})
@@ -124,6 +126,17 @@ def ensure_beta_texts(app_id: str, build_id: str) -> None:
         call("POST", "/v1/betaBuildLocalizations", {"data": {"type": "betaBuildLocalizations",
                                                             "attributes": {"locale": "fr-FR", "whatsNew": WHATS_NEW},
                                                             "relationships": {"build": {"data": {"type": "builds", "id": build_id}}}}})
+
+
+def feedback_email_from_other_apps(app_id: str) -> str | None:
+    """E-mail de retour bêta déjà utilisé par le compte sur une autre app (visible des seuls testeurs)."""
+    for other in call("GET", "/v1/apps?limit=50")["data"]:
+        if other["id"] == app_id:
+            continue
+        for loc in call("GET", f"/v1/apps/{other['id']}/betaAppLocalizations")["data"]:
+            if loc["attributes"].get("feedbackEmail"):
+                return loc["attributes"]["feedbackEmail"]
+    return None
 
 
 def ensure_review_details(app_id: str) -> bool:
