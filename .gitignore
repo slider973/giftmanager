@@ -17,3 +17,4 @@ supabase/.env
 .build/
 ios/GiftManager.xcodeproj/xcuserdata/
 ios/GiftManager.xcodeproj/
+.claude/worktrees/

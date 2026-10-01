@@ -20,8 +20,8 @@ REPO="${REPO:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}"
 STATUS_FIELD="${STATUS_FIELD:-Status}"
 
 DATA=$(gh api graphql \
-  -F owner="$PROJECT_OWNER" -F number="$PROJECT_NUMBER" -F field="$STATUS_FIELD" \
-  -F repoOwner="${REPO%%/*}" -F repoName="${REPO##*/}" -F issue="$ISSUE" \
+  -f owner="$PROJECT_OWNER" -F number="$PROJECT_NUMBER" -f field="$STATUS_FIELD" \
+  -f repoOwner="${REPO%%/*}" -f repoName="${REPO##*/}" -F issue="$ISSUE" \
   -f query='
 query($owner: String!, $number: Int!, $field: String!, $repoOwner: String!, $repoName: String!, $issue: Int!) {
   repositoryOwner(login: $owner) {
@@ -51,13 +51,13 @@ ITEM_ID=$(jq -r --arg p "$PROJECT_ID" '.data.repository.issue.projectItems.nodes
 
 # L'issue n'est pas encore sur le board : on l'ajoute.
 if [ -z "$ITEM_ID" ]; then
-  ITEM_ID=$(gh api graphql -F project="$PROJECT_ID" -F content="$ISSUE_ID" -f query='
+  ITEM_ID=$(gh api graphql -f project="$PROJECT_ID" -f content="$ISSUE_ID" -f query='
 mutation($project: ID!, $content: ID!) {
   addProjectV2ItemById(input: {projectId: $project, contentId: $content}) { item { id } }
 }' --jq '.data.addProjectV2ItemById.item.id')
 fi
 
-gh api graphql -F project="$PROJECT_ID" -F item="$ITEM_ID" -F field="$FIELD_ID" -F option="$OPTION_ID" -f query='
+gh api graphql -f project="$PROJECT_ID" -f item="$ITEM_ID" -f field="$FIELD_ID" -f option="$OPTION_ID" -f query='
 mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
   updateProjectV2ItemFieldValue(input: {projectId: $project, itemId: $item, fieldId: $field,
     value: {singleSelectOptionId: $option}}) { projectV2Item { id } }
