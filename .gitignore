@@ -1,1 +1,13 @@
 .DS_Store
+
+# Secrets — tout passe par 1Password (voir docs/SECRETS.md)
+.env
+.env.*
+!.env.op
+ios/Config/Secrets.xcconfig
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+supabase/.temp/
+supabase/.env

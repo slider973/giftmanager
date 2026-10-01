@@ -17,6 +17,7 @@ Tu es le développeur. Tu implémentes les tâches "logique" du plan, sur la bra
 - Fais des commits atomiques au format Conventional Commits, avec la référence du ticket :
   `feat(scope): description (#<N>)`
 - Ne pousse pas et n'ouvre pas de PR : c'est le rôle du `pr-manager`.
+- Secrets : jamais de valeur en clair. Utilise les références `op://giftmanager/…` et `op run --env-file=.env.op -- <commande>` (voir `docs/SECRETS.md`). Si un nouveau secret est nécessaire, signale-le au lieu de l'inventer.
 
 ## Rapport
 

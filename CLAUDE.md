@@ -21,6 +21,14 @@ Lancer `/ship-ticket <numéro-issue>`. L'orchestrateur enchaîne :
 - Les changements de statut passent **uniquement** par `scripts/ticket-status.sh <N> "<Statut>"`.
 - Le design UI passe par l'agent `ui-designer`, qui utilise les skills `impeccable` et `ui-ux-pro-max`.
 
+## Secrets
+
+- Tous les identifiants sont dans 1Password, coffre `giftmanager` (voir `docs/SECRETS.md`).
+- Ne jamais écrire une valeur secrète dans un fichier suivi, un commit, une PR, un commentaire d'issue ou une sortie de commande.
+- Nouveau secret : l'ajouter dans 1Password, puis référencer `op://giftmanager/<item>/<champ>` dans `.env.op` ou `ios/Config/Secrets.xcconfig.tpl`.
+- Commandes qui ont besoin de secrets : `op run --env-file=.env.op -- <commande>`.
+- La `secret_key` Supabase n'entre jamais dans l'app iOS.
+
 ## Configuration
 
 `.claude/workflow.env` : propriétaire et numéro du board GitHub Projects, repo, nom du champ de statut, branche de base.
