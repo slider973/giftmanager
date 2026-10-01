@@ -52,19 +52,23 @@ struct MyPurchasesView: View {
                     summary
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
+                        .listRowInsets(rowInsets(top: Spacing.s, bottom: Spacing.s))
                 }
                 ForEach(groups) { group in
                     Section {
                         ForEach(group.children, id: \.name) { child in
-                            Text(child.name)
+                            Text("Pour \(child.name)")
                                 .font(Font.Theme.captionBold)
                                 .foregroundStyle(Color.Theme.textSecondary)
+                                .accessibilityAddTraits(.isHeader)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
+                                .listRowInsets(rowInsets(top: Spacing.m, bottom: Spacing.xs))
                             ForEach(child.items) { reservation in
                                 row(reservation)
                                     .listRowBackground(Color.clear)
                                     .listRowSeparator(.hidden)
+                                    .listRowInsets(rowInsets(top: Spacing.xs, bottom: Spacing.xs))
                                     .swipeActions(edge: .trailing) {
                                         Button("Annuler", role: .destructive) {
                                             Task { await cancel(reservation) }
@@ -73,20 +77,43 @@ struct MyPurchasesView: View {
                             }
                         }
                     } header: {
-                        Text(group.title)
-                            .font(Font.Theme.headline)
-                            .foregroundStyle(Color.Theme.textPrimary)
-                            .textCase(nil)
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(group.title)
+                                .font(Font.Theme.headline)
+                                .foregroundStyle(Color.Theme.textPrimary)
+                            Spacer(minLength: Spacing.s)
+                            if let date = group.date {
+                                Text(Formatting.dateText(date))
+                                    .font(Font.Theme.caption)
+                                    .foregroundStyle(Color.Theme.textSecondary)
+                            }
+                        }
+                        .textCase(nil)
+                        .padding(.vertical, Spacing.s)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityAddTraits(.isHeader)
                     }
                 }
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .fcScreenBackground()
+            .overlay {
+                if !hasLoaded {
+                    ProgressView("Chargement de tes achats…")
+                        .font(Font.Theme.caption)
+                        .foregroundStyle(Color.Theme.textSecondary)
+                        .tint(Color.Theme.primary)
+                }
+            }
             .navigationTitle("Mes achats")
             .refreshable { await load() }
             .task(id: appState.itemsRevision) { await load() }
         }
+    }
+
+    private func rowInsets(top: CGFloat, bottom: CGFloat) -> EdgeInsets {
+        EdgeInsets(top: top, leading: Spacing.xl, bottom: bottom, trailing: Spacing.xl)
     }
 
     private var summary: some View {
@@ -94,15 +121,20 @@ struct MyPurchasesView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(remainingCount)")
                     .font(Font.Theme.title)
+                    .monospacedDigit()
                     .foregroundStyle(Color.Theme.textPrimary)
                 Text(remainingCount > 1 ? "cadeaux à acheter" : "cadeau à acheter")
                     .font(Font.Theme.caption)
                     .foregroundStyle(Color.Theme.textSecondary)
             }
-            Divider().frame(height: 36)
+            Rectangle()
+                .fill(Color.Theme.separator)
+                .frame(width: 1, height: 36)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(totals.isEmpty ? "—" : totals.compactMap { Money.format($0.amount, currency: $0.currency) }.joined(separator: " + "))
                     .font(Font.Theme.headline)
+                    .monospacedDigit()
                     .foregroundStyle(Color.Theme.textPrimary)
                 Text("Budget estimé")
                     .font(Font.Theme.caption)
@@ -117,10 +149,11 @@ struct MyPurchasesView: View {
     private func row(_ reservation: MyReservation) -> some View {
         let link = bestLink(reservation.itemId)
         return HStack(spacing: Spacing.m) {
-            RemoteImage(url: reservation.imageUrl.flatMap(URL.init(string:)))
+            RemoteImage(url: reservation.imageUrl.flatMap(URL.init(string:)), placeholderSeed: reservation.title)
                 .frame(width: 56, height: 56)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.thumb, style: .continuous))
-            VStack(alignment: .leading, spacing: 4) {
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(reservation.title)
                     .font(Font.Theme.headline)
                     .foregroundStyle(Color.Theme.textPrimary)
@@ -129,38 +162,54 @@ struct MyPurchasesView: View {
                     if let country = link?.country { CountryFlag(code: country) }
                     Text([link?.priceText, link?.store].compactMap { $0 }.joined(separator: " · "))
                         .font(Font.Theme.caption)
+                        .monospacedDigit()
                         .foregroundStyle(Color.Theme.textSecondary)
                 }
+                if reservation.status == .purchased {
+                    Label("Acheté", systemImage: "checkmark")
+                        .font(Font.Theme.captionBold)
+                        .foregroundStyle(Color.Theme.availableFg)
+                }
                 if reservation.owned {
-                    Label("Les parents l'ont noté comme déjà possédé", systemImage: "exclamationmark.triangle")
-                        .font(Font.Theme.caption)
-                        .foregroundStyle(Color.Theme.takenFg)
+                    FCNotice(systemImage: "exclamationmark.triangle",
+                             text: "Les parents l'ont noté comme déjà possédé", tone: .warning)
+                        .padding(.top, Spacing.xs)
                 }
             }
-            Spacer(minLength: 0)
-            VStack(spacing: Spacing.xs) {
+            .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(spacing: 0) {
                 Button {
                     Task { await toggle(reservation) }
                 } label: {
                     Image(systemName: reservation.status == .purchased ? "checkmark.circle.fill" : "circle")
                         .font(.title2)
                         .foregroundStyle(reservation.status == .purchased ? Color.Theme.availableFg : Color.Theme.textSecondary)
-                        .frame(width: 44, height: 44)
+                        .contentTransition(.symbolEffect(.replace))
+                        .frame(width: HitTarget.minimum, height: HitTarget.minimum)
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(reservation.status == .purchased ? "Acheté" : "Marquer comme acheté")
+                .buttonStyle(FCPressableStyle(pressedScale: 0.85))
+                .sensoryFeedback(.success, trigger: reservation.status == .purchased)
+                .accessibilityLabel("Acheté")
+                .accessibilityValue(reservation.status == .purchased ? "Oui" : "Non")
+                .accessibilityAddTraits(reservation.status == .purchased ? .isSelected : [])
+                .accessibilityHint("Coche quand le cadeau est acheté")
                 if let url = link.flatMap({ URL(string: $0.url) }) {
                     Button {
                         openURL(url)
                     } label: {
                         Image(systemName: "arrow.up.right.square")
-                            .frame(width: 44, height: 32)
+                            .font(Font.Theme.callout)
+                            .frame(width: HitTarget.minimum, height: HitTarget.minimum)
+                            .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(FCPressableStyle(pressedScale: 0.9))
                     .foregroundStyle(Color.Theme.primary)
                     .accessibilityLabel("Ouvrir la boutique")
                 }
             }
+            .padding(.vertical, -Spacing.s)
+            .padding(.trailing, -Spacing.xs)
         }
         .fcCard(padding: Spacing.m)
     }
