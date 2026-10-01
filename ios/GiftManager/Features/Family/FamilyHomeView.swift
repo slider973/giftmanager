@@ -32,7 +32,7 @@ struct FamilyHomeView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
-            AvatarStack(names: appState.members.map(\.displayName))
+            AvatarStack(names: appState.members.map(\.displayName), size: 40)
             Text("\(appState.members.count) membre\(appState.members.count > 1 ? "s" : "") · \(appState.households.count) foyer\(appState.households.count > 1 ? "s" : "")")
                 .font(Font.Theme.caption)
                 .foregroundStyle(Color.Theme.textSecondary)
@@ -42,7 +42,8 @@ struct FamilyHomeView: View {
 
     @ViewBuilder
     private var eventsSection: some View {
-        SectionHeader(title: "Événements à venir", actionSystemImage: "plus") { editingEvent = .create }
+        SectionHeader(title: "Événements à venir", actionSystemImage: "plus", action: { editingEvent = .create },
+                      actionLabel: "Ajouter un événement")
         if appState.upcomingEvents.isEmpty {
             EmptyStateView(imageName: "mascot_sleeping", title: "Aucun événement",
                            message: "Ajoute un anniversaire ou une fête.", actionTitle: "Ajouter un événement") {
@@ -51,17 +52,18 @@ struct FamilyHomeView: View {
         }
         ForEach(appState.upcomingEvents) { event in
             NavigationLink(value: event) { eventRow(event) }
-                .buttonStyle(.plain)
+                .buttonStyle(FCPressableStyle())
                 .contextMenu {
                     Button("Modifier", systemImage: "pencil") { editingEvent = .edit(event) }
                 }
         }
         if !appState.pastEvents.isEmpty {
             SectionHeader(title: "Événements passés")
+                .padding(.top, Spacing.s)
             ForEach(appState.pastEvents) { event in
-                NavigationLink(value: event) { eventRow(event) }
-                    .buttonStyle(.plain)
-                    .opacity(0.7)
+                // Archive : vignette désaturée, texte intact (une opacité casserait le contraste AA).
+                NavigationLink(value: event) { eventRow(event).grayscale(0.7) }
+                    .buttonStyle(FCPressableStyle())
             }
         }
     }
@@ -114,16 +116,20 @@ private struct MembersSection: View {
 
     private func householdCard(_ household: Household, isMine: Bool) -> some View {
         VStack(alignment: .leading, spacing: Spacing.m) {
-            HStack {
+            HStack(spacing: Spacing.s) {
                 CountryFlag(code: household.country)
                 Text(household.name)
                     .font(Font.Theme.headline)
                     .foregroundStyle(Color.Theme.textPrimary)
-                Spacer()
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: Spacing.s)
                 if isMine {
                     Text("Mon foyer")
                         .font(Font.Theme.captionBold)
-                        .foregroundStyle(Color.Theme.secondary)
+                        .foregroundStyle(Color.Theme.availableFg)
+                        .padding(.horizontal, Spacing.s)
+                        .padding(.vertical, Spacing.xs)
+                        .background(Color.Theme.availableBg, in: Capsule())
                 }
             }
             let parents = appState.parents(of: household)
@@ -133,34 +139,65 @@ private struct MembersSection: View {
                     .foregroundStyle(Color.Theme.textSecondary)
             }
             ForEach(appState.children(of: household)) { child in
-                HStack {
+                HStack(spacing: Spacing.s) {
                     NavigationLink(value: ChildDestination(child: child, eventId: appState.currentEvent?.id)) {
-                        ChildRow(child: child)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(Color.Theme.textSecondary)
+                        HStack {
+                            ChildRow(child: child)
+                            Spacer(minLength: Spacing.s)
+                            Image(systemName: "chevron.right")
+                                .font(Font.Theme.callout.weight(.semibold))
+                                .foregroundStyle(Color.Theme.textSecondary)
+                                .accessibilityHidden(true)
+                        }
+                        .frame(minHeight: HitTarget.minimum)
+                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(FCPressableStyle(pressedScale: 0.98))
                     if isMine {
                         Button {
                             editingChild = .edit(child)
                         } label: {
-                            Image(systemName: "pencil.circle")
-                                .font(.title3)
-                                .frame(width: 44, height: 44)
+                            Image(systemName: "pencil")
+                                .font(Font.Theme.callout.weight(.semibold))
+                                .foregroundStyle(Color.Theme.primary)
+                                .frame(width: 34, height: 34)
+                                .background(Color.Theme.background, in: Circle())
+                                .frame(width: HitTarget.minimum, height: HitTarget.minimum)
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(FCPressableStyle(pressedScale: 0.9))
+                        .padding(.trailing, -Spacing.s)
                         .accessibilityLabel("Modifier \(child.firstName)")
                     }
                 }
             }
             if isMine {
-                TextLinkButton(title: "+ Ajouter un enfant") { editingChild = .create }
+                Divider().overlay(Color.Theme.separator)
+                Button { editingChild = .create } label: {
+                    Label("Ajouter un enfant", systemImage: "plus.circle.fill")
+                        .font(Font.Theme.callout.weight(.medium))
+                        .foregroundStyle(Color.Theme.primary)
+                        .frame(minHeight: HitTarget.minimum)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(FCPressableStyle(pressedScale: 1))
                 if let code = household.inviteCode {
                     ShareLink(item: "Rejoins notre foyer « \(household.name) » sur Famille Cadeaux avec le code : \(code)") {
-                        Label("Code du foyer pour mon conjoint : \(code)", systemImage: "person.badge.plus")
-                            .font(Font.Theme.caption)
+                        HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
+                            Image(systemName: "person.badge.plus")
+                                .accessibilityHidden(true)
+                            (Text("Code du foyer pour mon conjoint : ") + Text(code).monospaced().bold())
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Image(systemName: "square.and.arrow.up")
+                                .accessibilityHidden(true)
+                        }
+                        .font(Font.Theme.caption)
+                        .foregroundStyle(Color.Theme.textSecondary)
+                        .frame(minHeight: HitTarget.minimum)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(FCPressableStyle(pressedScale: 1))
+                    .accessibilityHint("Partage le code du foyer")
                 }
             }
         }
@@ -180,48 +217,57 @@ private struct GroupSettingsSection: View {
         VStack(alignment: .leading, spacing: Spacing.l) {
             if let group = appState.currentGroup {
                 VStack(alignment: .leading, spacing: Spacing.m) {
-                    Text("Inviter la famille").font(Font.Theme.headline)
+                    Text("Inviter la famille")
+                        .font(Font.Theme.headline)
+                        .foregroundStyle(Color.Theme.textPrimary)
+                        .accessibilityAddTraits(.isHeader)
                     Text("Envoie ce code aux autres foyers (WhatsApp, iMessage…).")
                         .font(Font.Theme.caption)
                         .foregroundStyle(Color.Theme.textSecondary)
                     Text(group.inviteCode)
                         .font(.system(.largeTitle, design: .monospaced).weight(.bold))
+                        .tracking(4)
                         .foregroundStyle(Color.Theme.primary)
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, Spacing.m)
+                        .background(Color.Theme.background, in: RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
                         .textSelection(.enabled)
                         .accessibilityLabel("Code d'invitation \(group.inviteCode.map(String.init).joined(separator: " "))")
                     ShareLink(item: AppState.inviteMessage(for: group)) {
-                        Label("Partager l'invitation", systemImage: "square.and.arrow.up")
-                            .font(Font.Theme.headline)
-                            .frame(maxWidth: .infinity, minHeight: 50)
-                            .background(Color.Theme.primary, in: Capsule())
-                            .foregroundStyle(Color.Theme.onPrimary)
+                        FCPillLabel(title: "Partager l'invitation", systemImage: "square.and.arrow.up")
                     }
+                    .buttonStyle(FCPressableStyle())
                 }
                 .fcCard()
 
                 VStack(alignment: .leading, spacing: Spacing.m) {
-                    Text("Nom de la famille").font(Font.Theme.headline)
-                    FCTextField(title: "Nom", text: $groupName, systemImage: "person.3")
-                    SecondaryButton(title: "Renommer", systemImage: "pencil") {
-                        Task {
-                            do {
-                                try await appState.repository.renameGroup(group.id, name: groupName.trimmed)
-                                await appState.refreshAll()
-                            } catch {
-                                appState.report(error)
+                    FCTextField(title: "Nom de la famille", text: $groupName, systemImage: "person.3")
+                    // Le bouton n'apparaît qu'une fois le nom modifié : pas de pilule grisée en permanence.
+                    if !groupName.trimmed.isEmpty && groupName.trimmed != group.name {
+                        SecondaryButton(title: "Renommer", systemImage: "pencil") {
+                            Task {
+                                do {
+                                    try await appState.repository.renameGroup(group.id, name: groupName.trimmed)
+                                    await appState.refreshAll()
+                                } catch {
+                                    appState.report(error)
+                                }
                             }
                         }
+                        .transition(.opacity)
                     }
-                    .disabled(groupName.trimmed.isEmpty || groupName.trimmed == group.name)
                 }
+                .animation(.easeOut(duration: 0.2), value: groupName)
                 .fcCard()
                 .onAppear { groupName = group.name }
             }
 
             if appState.groups.count > 1 {
                 VStack(alignment: .leading, spacing: Spacing.m) {
-                    Text("Mes familles").font(Font.Theme.headline)
+                    Text("Mes familles")
+                        .font(Font.Theme.headline)
+                        .foregroundStyle(Color.Theme.textPrimary)
+                        .accessibilityAddTraits(.isHeader)
                     ForEach(appState.groups) { group in
                         Button {
                             Task { await appState.selectGroup(group) }
@@ -230,17 +276,24 @@ private struct GroupSettingsSection: View {
                                 Text(group.name).foregroundStyle(Color.Theme.textPrimary)
                                 Spacer()
                                 if group.id == appState.currentGroup?.id {
-                                    Image(systemName: "checkmark").foregroundStyle(Color.Theme.secondary)
+                                    Image(systemName: "checkmark")
+                                        .font(Font.Theme.callout.weight(.semibold))
+                                        .foregroundStyle(Color.Theme.secondary)
                                 }
                             }
-                            .frame(minHeight: 44)
+                            .font(Font.Theme.callout)
+                            .frame(minHeight: HitTarget.minimum)
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(FCPressableStyle(pressedScale: 1))
+                        .accessibilityAddTraits(group.id == appState.currentGroup?.id ? .isSelected : [])
                     }
                 }
                 .fcCard()
             }
 
             TextLinkButton(title: "Rejoindre une autre famille avec un code") { showJoin = true }
+                .frame(maxWidth: .infinity)
         }
         .alert("Rejoindre une famille", isPresented: $showJoin) {
             JoinOtherGroupAlert()
