@@ -23,16 +23,20 @@ struct GiftDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.l) {
+            VStack(alignment: .leading, spacing: Spacing.xl) {
                 ZStack(alignment: .topTrailing) {
-                    RemoteImage(url: item.imageURL, contentMode: .fit)
+                    RemoteImage(url: item.imageURL, contentMode: .fit, placeholderSeed: item.title)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 280)
+                        // Sans photo, un bandeau plus bas : pas de grand aplat vide en tête de fiche.
+                        .frame(height: item.imageURL == nil ? 180 : 280)
                         .background(Color.Theme.surface)
                         .clipShape(RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+                        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
                     if item.kind == .wish {
+                        // Pastille blanche derrière le cœur : lisible sur n'importe quelle photo.
                         PriorityHeart(isOn: item.isFavorite, action: isParent && !item.owned && !readOnly ? toggleFavorite : nil)
-                            .padding(Spacing.s)
+                            .background(Color.Theme.surface, in: Circle())
+                            .padding(Spacing.m)
                     }
                 }
 
@@ -45,6 +49,7 @@ struct GiftDetailView: View {
                     Text(item.title)
                         .font(Font.Theme.title)
                         .foregroundStyle(Color.Theme.textPrimary)
+                        .accessibilityAddTraits(.isHeader)
                     if let status = item.displayStatus(isParent: isParent) {
                         StatusBadge(status: status)
                     }
@@ -52,12 +57,16 @@ struct GiftDetailView: View {
                         Text(notes)
                             .font(Font.Theme.body)
                             .foregroundStyle(Color.Theme.textSecondary)
+                            .padding(.top, Spacing.xs)
                     }
                 }
 
                 if !links.isEmpty {
                     VStack(alignment: .leading, spacing: Spacing.s) {
-                        Text("Liens par pays").font(Font.Theme.headline)
+                        Text("Liens par pays")
+                            .font(Font.Theme.headline)
+                            .foregroundStyle(Color.Theme.textPrimary)
+                            .accessibilityAddTraits(.isHeader)
                         ForEach(links) { link in
                             StoreLinkRow(store: link.store ?? StoreCatalog.store(for: link.url)?.name ?? "Lien",
                                          countryCode: link.country, priceText: link.priceText) {
@@ -68,11 +77,11 @@ struct GiftDetailView: View {
                 }
 
                 if readOnly {
-                    Label("Événement passé : fiche archivée.", systemImage: "archivebox")
-                        .font(Font.Theme.caption)
-                        .foregroundStyle(Color.Theme.textSecondary)
+                    FCNotice(systemImage: "archivebox", text: "Événement passé : fiche archivée.")
                 } else {
-                    actions
+                    VStack(alignment: .leading, spacing: Spacing.m) {
+                        actions
+                    }
                 }
             }
             .padding(Spacing.xl)
@@ -131,19 +140,17 @@ struct GiftDetailView: View {
                 SecondaryButton(title: "Je l'offre", systemImage: "gift.fill", isLoading: isWorking) {
                     Task { await reserve() }
                 }
-                Text("Personne ne saura que c'est toi, et les parents ne verront rien.")
+                Label("Personne ne saura que c'est toi, et les parents ne verront rien.", systemImage: "lock.fill")
                     .font(Font.Theme.caption)
                     .foregroundStyle(Color.Theme.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
             case .mine:
                 mineActions
             case .taken:
-                Label("Quelqu'un de la famille s'en occupe déjà 🤫", systemImage: "hand.raised")
-                    .font(Font.Theme.body)
-                    .foregroundStyle(Color.Theme.textSecondary)
+                FCNotice(systemImage: "hand.raised", text: "Quelqu'un de la famille s'en occupe déjà.")
             case .owned:
-                Label("\(child.firstName) l'a déjà.", systemImage: "checkmark.seal")
-                    .font(Font.Theme.body)
-                    .foregroundStyle(Color.Theme.textSecondary)
+                FCNotice(systemImage: "checkmark.seal", text: "\(child.firstName) l'a déjà.")
             case nil:
                 EmptyView()
             }
@@ -156,21 +163,25 @@ struct GiftDetailView: View {
             Label("Acheté — bravo !", systemImage: "checkmark.circle.fill")
                 .font(Font.Theme.headline)
                 .foregroundStyle(Color.Theme.availableFg)
+                .padding(.horizontal, Spacing.l)
+                .frame(maxWidth: .infinity, minHeight: HitTarget.button)
+                .background(Color.Theme.availableBg, in: Capsule())
             TextLinkButton(title: "Pas encore acheté finalement") { Task { await setPurchased(false) } }
+                .frame(maxWidth: .infinity)
         } else {
             PrimaryButton(title: "C'est acheté", systemImage: "bag.fill", isLoading: isWorking) {
                 Task { await setPurchased(true) }
             }
         }
         TextLinkButton(title: "Annuler ma réservation") { Task { await cancel() } }
+            .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
     private var parentActions: some View {
         VStack(alignment: .leading, spacing: Spacing.m) {
-            Label("Mode surprise : tu ne vois pas si ce cadeau est réservé.", systemImage: "eye.slash")
-                .font(Font.Theme.caption)
-                .foregroundStyle(Color.Theme.textSecondary)
+            FCNotice(systemImage: "eye.slash", text: "Mode surprise : tu ne vois pas si ce cadeau est réservé.",
+                     tone: .surprise)
             if item.kind == .wish && !item.owned {
                 if item.myReservation != nil {
                     Label("Tu l'offres toi-même", systemImage: "gift")

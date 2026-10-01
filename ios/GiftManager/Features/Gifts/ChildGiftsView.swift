@@ -90,7 +90,14 @@ struct ChildGiftsView: View {
                 AddGiftView(child: child, kind: mode.kind, eventId: model.eventId, owned: mode.owned) { adding = nil }
             }
         }
-        .overlay { if model.isLoading && !model.hasLoaded { ProgressView() } }
+        .overlay {
+            if model.isLoading && !model.hasLoaded {
+                ProgressView("Chargement de la liste…")
+                    .font(Font.Theme.caption)
+                    .foregroundStyle(Color.Theme.textSecondary)
+                    .tint(Color.Theme.primary)
+            }
+        }
     }
 
     // MARK: - En-tête
@@ -98,10 +105,12 @@ struct ChildGiftsView: View {
     private var header: some View {
         HStack(spacing: Spacing.m) {
             ChildAvatar(name: child.firstName, emoji: child.avatarEmoji, colorName: child.avatarColor, size: 56)
-            VStack(alignment: .leading, spacing: 2) {
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(child.firstName)
                     .font(Font.Theme.title)
                     .foregroundStyle(Color.Theme.textPrimary)
+                    .accessibilityAddTraits(.isHeader)
                 Text([Formatting.ageText(child.age), isParent ? "Ses envies" : appState.household(of: child)?.name]
                     .compactMap { $0 }.joined(separator: " · "))
                     .font(Font.Theme.caption)
@@ -151,7 +160,10 @@ struct ChildGiftsView: View {
     private var toolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
             if readOnly {
-                Label("Archivé", systemImage: "archivebox").labelStyle(.titleAndIcon).font(Font.Theme.caption)
+                Label("Archivé", systemImage: "archivebox")
+                    .labelStyle(.titleAndIcon)
+                    .font(Font.Theme.captionBold)
+                    .foregroundStyle(Color.Theme.textSecondary)
             } else if isParent && tab == 0 && model.wishes.count > 1 {
                 Button(isReordering ? "OK" : "Ordonner") { withAnimation { isReordering.toggle() } }
             }

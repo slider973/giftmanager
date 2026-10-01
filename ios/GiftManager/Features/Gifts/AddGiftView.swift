@@ -41,13 +41,25 @@ struct AddGiftView: View {
                 previewCard
                 if !isEditing || kind == .wish { optionsCard }
                 otherLinksSection
-                PrimaryButton(title: isEditing ? "Enregistrer" : (kind == .idea ? "Proposer cette idée" : "Ajouter à la liste"),
-                              systemImage: "checkmark", isLoading: isSaving) {
-                    Task { await save() }
-                }
-                .disabled(title.trimmed.isEmpty || isSaving)
+                    .padding(.top, Spacing.s)
             }
             .padding(Spacing.xl)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        // CTA toujours visible (maquette : juste sous l'aperçu), au-dessus du clavier et du défilement.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            PrimaryButton(title: isEditing ? "Enregistrer" : (kind == .idea ? "Proposer cette idée" : "Ajouter à la liste"),
+                          systemImage: "checkmark", isLoading: isSaving) {
+                Task { await save() }
+            }
+            .disabled(title.trimmed.isEmpty || isSaving)
+            .padding(.horizontal, Spacing.xl)
+            .padding(.top, Spacing.m)
+            .padding(.bottom, Spacing.s)
+            .background(Color.Theme.background.ignoresSafeArea(edges: .bottom))
+            .overlay(alignment: .top) {
+                Rectangle().fill(Color.Theme.separator).frame(height: 1)
+            }
         }
         .fcScreenBackground()
         .navigationTitle(isEditing ? "Modifier" : (kind == .idea ? "Proposer une idée" : "Ajouter un cadeau"))
@@ -75,107 +87,196 @@ struct AddGiftView: View {
     // MARK: - Sections
 
     private var urlField: some View {
-        HStack(spacing: Spacing.s) {
-            FCTextField(title: "Lien du cadeau", text: $urlText, systemImage: "magnifyingglass",
-                        prompt: "https://www.galaxus.ch/…", isTitleHidden: true)
-                .keyboardType(.URL)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .onSubmit { fetchPreview() }
-                .onChange(of: urlText) { _, _ in scheduleFetch() }
-            // PasteButton : collage sans alerte d'autorisation iOS.
-            PasteButton(payloadType: String.self) { strings in
-                if let pasted = strings.first { urlText = pasted }
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            HStack(spacing: Spacing.s) {
+                urlInput
             }
-            .labelStyle(.iconOnly)
-            .buttonBorderShape(.capsule)
-            .tint(Color.Theme.primary)
+            if urlText.isEmpty && !isEditing {
+                Label("Colle le lien d'une boutique : nom, photo et prix se remplissent tout seuls.",
+                      systemImage: "sparkles")
+                    .font(Font.Theme.caption)
+                    .foregroundStyle(Color.Theme.textSecondary)
+            }
         }
     }
 
+    @ViewBuilder
+    private var urlInput: some View {
+        FCTextField(title: "Lien du cadeau", text: $urlText, systemImage: "magnifyingglass",
+                    prompt: "https://www.galaxus.ch/…", isTitleHidden: true)
+            .keyboardType(.URL)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .onSubmit { fetchPreview() }
+            .onChange(of: urlText) { _, _ in scheduleFetch() }
+        // PasteButton : collage sans alerte d'autorisation iOS.
+        PasteButton(payloadType: String.self) { strings in
+            if let pasted = strings.first { urlText = pasted }
+        }
+        .labelStyle(.iconOnly)
+        .buttonBorderShape(.capsule)
+        .tint(Color.Theme.primary)
+        .accessibilityLabel("Coller le lien")
+    }
+
+    /// Aperçu : image (ou photo choisie), puis nom, boutique et prix sous des libellés visibles.
     private var previewCard: some View {
-        VStack(alignment: .leading, spacing: Spacing.m) {
+        VStack(alignment: .leading, spacing: 0) {
             ZStack {
                 if let imageData, let image = UIImage(data: imageData) {
                     Image(uiImage: image).resizable().scaledToFit()
                 } else {
                     RemoteImage(url: imageURL, contentMode: .fit)
                 }
-                if isFetching { ProgressView() }
             }
             .frame(maxWidth: .infinity)
             .frame(height: 200)
-            .background(Color.Theme.background.opacity(0.5))
+            .background(Color.Theme.surface)
             .clipShape(RoundedRectangle(cornerRadius: Radius.thumb, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: Radius.thumb, style: .continuous)
+                    .strokeBorder(Color.Theme.separator, lineWidth: 1)
+            }
+            .overlay(alignment: .topLeading) {
+                if isFetching {
+                    HStack(spacing: Spacing.s) {
+                        ProgressView().controlSize(.small).tint(Color.Theme.primary)
+                        Text("Recherche de l'aperçu…")
+                    }
+                    .font(Font.Theme.captionBold)
+                    .foregroundStyle(Color.Theme.textPrimary)
+                    .padding(.horizontal, Spacing.m)
+                    .frame(minHeight: 32)
+                    .background(Color.Theme.surface, in: Capsule())
+                    .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+                    .padding(Spacing.s)
+                    .transition(.opacity)
+                    .accessibilityElement(children: .combine)
+                }
+            }
             .overlay(alignment: .bottomTrailing) {
                 PhotosPicker(selection: $photoItem, matching: .images) {
                     Label("Photo", systemImage: "camera.fill")
                         .font(Font.Theme.captionBold)
+                        .foregroundStyle(Color.Theme.textPrimary)
                         .padding(.horizontal, Spacing.m)
-                        .frame(minHeight: 36)
-                        .background(.ultraThinMaterial, in: Capsule())
+                        .frame(minHeight: 32)
+                        .background(Color.Theme.surface, in: Capsule())
+                        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+                        .frame(minHeight: HitTarget.minimum)
+                        .contentShape(Rectangle())
                 }
-                .padding(Spacing.s)
+                .accessibilityLabel("Choisir une photo")
+                .padding(.trailing, Spacing.s)
+                .padding(.bottom, Spacing.xs)
             }
+            .animation(.easeOut(duration: 0.2), value: isFetching)
 
             if previewFailed {
-                Text("Aperçu indisponible pour ce lien : complète les informations à la main.")
-                    .font(Font.Theme.caption)
-                    .foregroundStyle(Color.Theme.takenFg)
+                FCNotice(systemImage: "exclamationmark.triangle",
+                         text: "Aperçu indisponible pour ce lien : complète les informations à la main.",
+                         tone: .warning)
+                    .padding(.top, Spacing.m)
             }
 
-            TextField("Nom du cadeau", text: $title, axis: .vertical)
-                .font(Font.Theme.headline)
-                .foregroundStyle(Color.Theme.textPrimary)
-
-            HStack(spacing: Spacing.s) {
-                if let store {
-                    if let country = store.country { CountryFlag(code: country) }
-                    Text(store.name)
-                        .font(Font.Theme.caption)
-                        .foregroundStyle(Color.Theme.textSecondary)
-                }
-                Spacer()
-                TextField("Prix", text: $priceText)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: 90)
-                Picker("Devise", selection: $currency) {
-                    ForEach(Countries.currencies, id: \.self) { Text($0).tag($0) }
-                }
-                .labelsHidden()
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                FieldLabel(text: "Nom du cadeau")
+                TextField("Nom du cadeau", text: $title,
+                          prompt: Text("Ex. LEGO Technic McLaren F1").foregroundStyle(Color.Theme.textSecondary),
+                          axis: .vertical)
+                    .font(Font.Theme.headline)
+                    .foregroundStyle(Color.Theme.textPrimary)
+                    .frame(minHeight: HitTarget.minimum)
             }
-            .font(Font.Theme.body)
+            .padding(.top, Spacing.l)
+
+            Divider().overlay(Color.Theme.separator)
+                .padding(.vertical, Spacing.s)
+
+            HStack(alignment: .bottom, spacing: Spacing.m) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    FieldLabel(text: "Boutique")
+                    Group {
+                        if let store, !store.name.isEmpty {
+                            HStack(spacing: Spacing.xs + 2) {
+                                if let country = store.country { CountryFlag(code: country) }
+                                Text(store.name).foregroundStyle(Color.Theme.textPrimary)
+                            }
+                        } else {
+                            Text("Selon le lien").foregroundStyle(Color.Theme.textSecondary)
+                        }
+                    }
+                    .font(Font.Theme.body)
+                    .lineLimit(1)
+                    .frame(minHeight: HitTarget.minimum)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .trailing, spacing: Spacing.xs) {
+                    FieldLabel(text: "Prix")
+                    PriceField(price: $priceText, currency: $currency)
+                }
+            }
         }
         .fcCard()
     }
 
     private var optionsCard: some View {
-        VStack(alignment: .leading, spacing: Spacing.m) {
+        VStack(alignment: .leading, spacing: 0) {
             if kind == .wish && !owned {
                 Toggle(isOn: $isFavorite) {
-                    Label("Très envie", systemImage: "heart.fill")
-                        .foregroundStyle(Color.Theme.heart)
-                }
-            }
-            if !owned {
-                Picker("Pour", selection: $selectedEvent) {
-                    Text("Toute l'année").tag(UUID?.none)
-                    ForEach(appState.upcomingEvents.filter { $0.childId == nil || $0.childId == child.id }) { event in
-                        Text(event.title).tag(Optional(event.id))
+                    Label {
+                        Text("Très envie").foregroundStyle(Color.Theme.textPrimary)
+                    } icon: {
+                        Image(systemName: "heart.fill").foregroundStyle(Color.Theme.heart)
                     }
                 }
+                .tint(Color.Theme.primary)
+                .frame(minHeight: HitTarget.minimum)
+                Divider().overlay(Color.Theme.separator)
             }
-            TextField("Notes (taille, couleur…)", text: $notes, axis: .vertical)
-                .lineLimit(1...4)
+            if !owned {
+                HStack {
+                    Label {
+                        Text("Pour").foregroundStyle(Color.Theme.textPrimary)
+                    } icon: {
+                        Image(systemName: "calendar").foregroundStyle(Color.Theme.textSecondary)
+                    }
+                    Spacer(minLength: Spacing.s)
+                    Picker("Pour", selection: $selectedEvent) {
+                        Text("Toute l'année").tag(UUID?.none)
+                        ForEach(appState.upcomingEvents.filter { $0.childId == nil || $0.childId == child.id }) { event in
+                            Text(event.title).tag(Optional(event.id))
+                        }
+                    }
+                    .labelsHidden()
+                    .tint(Color.Theme.primary)
+                }
+                .frame(minHeight: HitTarget.minimum)
+                Divider().overlay(Color.Theme.separator)
+            }
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                FieldLabel(text: "Notes")
+                TextField("Notes", text: $notes,
+                          prompt: Text("Taille, couleur, modèle…").foregroundStyle(Color.Theme.textSecondary),
+                          axis: .vertical)
+                    .lineLimit(1...4)
+                    .foregroundStyle(Color.Theme.textPrimary)
+                    .frame(minHeight: HitTarget.minimum)
+            }
+            .padding(.top, Spacing.m)
         }
         .font(Font.Theme.body)
+        .padding(.vertical, -Spacing.xs)
         .fcCard()
     }
 
     private var otherLinksSection: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
-            Text("Autres liens pour ce cadeau").font(Font.Theme.headline)
+            Text("Autres liens pour ce cadeau")
+                .font(Font.Theme.headline)
+                .foregroundStyle(Color.Theme.textPrimary)
+                .accessibilityAddTraits(.isHeader)
             Text("Ajoute le même cadeau dans d'autres boutiques ou pays (ex. Amazon.fr et Galaxus.ch).")
                 .font(Font.Theme.caption)
                 .foregroundStyle(Color.Theme.textSecondary)
@@ -191,7 +292,14 @@ struct AddGiftView: View {
                     .accessibilityLabel("Retirer ce lien")
                 }
             }
-            TextLinkButton(title: "+ Ajouter un lien") { showAddLink = true }
+            Button { showAddLink = true } label: {
+                Label("Ajouter un lien", systemImage: "plus.circle.fill")
+                    .font(Font.Theme.callout.weight(.medium))
+                    .foregroundStyle(Color.Theme.primary)
+                    .frame(minHeight: HitTarget.minimum)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(FCPressableStyle(pressedScale: 1))
         }
     }
 
@@ -316,21 +424,31 @@ private struct AddLinkSheet: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .onSubmit(fetch)
-                HStack {
-                    if let store = StoreCatalog.store(for: LinkPreviewService.normalizedURL(url)?.absoluteString ?? "") {
-                        if let country = store.country { CountryFlag(code: country) }
-                        Text(store.name).foregroundStyle(Color.Theme.textSecondary)
+                HStack(alignment: .bottom, spacing: Spacing.m) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        FieldLabel(text: "Boutique")
+                        Group {
+                            if let store = StoreCatalog.store(for: LinkPreviewService.normalizedURL(url)?.absoluteString ?? "") {
+                                HStack(spacing: Spacing.xs + 2) {
+                                    if let country = store.country { CountryFlag(code: country) }
+                                    Text(store.name).foregroundStyle(Color.Theme.textPrimary)
+                                }
+                            } else {
+                                Text("Selon le lien").foregroundStyle(Color.Theme.textSecondary)
+                            }
+                        }
+                        .font(Font.Theme.body)
+                        .lineLimit(1)
+                        .frame(minHeight: HitTarget.minimum)
                     }
-                    Spacer()
-                    if isFetching { ProgressView() }
-                    TextField("Prix", text: $price)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: 90)
-                    Picker("Devise", selection: $currency) {
-                        ForEach(Countries.currencies, id: \.self) { Text($0).tag($0) }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .trailing, spacing: Spacing.xs) {
+                        HStack(spacing: Spacing.xs) {
+                            if isFetching { ProgressView().controlSize(.mini) }
+                            FieldLabel(text: "Prix")
+                        }
+                        PriceField(price: $price, currency: $currency)
                     }
-                    .labelsHidden()
                 }
                 .fcCard()
                 PrimaryButton(title: "Ajouter ce lien", systemImage: "plus") {
@@ -364,6 +482,53 @@ private struct AddLinkSheet: View {
             isFetching = false
             if let value = preview?.price { price = "\(value)" }
             if let value = preview?.currency { currency = value }
+        }
+    }
+}
+
+/// Libellé de champ visible (jamais de placeholder seul), comme `FCTextField`.
+private struct FieldLabel: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(Font.Theme.captionBold)
+            .foregroundStyle(Color.Theme.textSecondary)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Prix + devise dans un même champ bordé : chiffres tabulaires, devise en menu.
+private struct PriceField: View {
+    @Binding var price: String
+    @Binding var currency: String
+
+    var body: some View {
+        HStack(spacing: Spacing.xs) {
+            TextField("Prix", text: $price, prompt: Text("0.00").foregroundStyle(Color.Theme.textSecondary))
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .monospacedDigit()
+                .font(Font.Theme.callout.weight(.semibold))
+                .foregroundStyle(Color.Theme.textPrimary)
+                .frame(minWidth: 56, maxWidth: 96)
+            Rectangle()
+                .fill(Color.Theme.separator)
+                .frame(width: 1, height: 20)
+                .accessibilityHidden(true)
+            Picker("Devise", selection: $currency) {
+                ForEach(Countries.currencies, id: \.self) { Text($0).tag($0) }
+            }
+            .labelsHidden()
+            .tint(Color.Theme.primary)
+            .fixedSize()
+        }
+        .padding(.leading, Spacing.m)
+        .frame(minHeight: HitTarget.minimum)
+        .background(Color.Theme.background, in: RoundedRectangle(cornerRadius: Radius.field, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: Radius.field, style: .continuous)
+                .strokeBorder(Color.Theme.separator, lineWidth: 1)
         }
     }
 }
