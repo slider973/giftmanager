@@ -6,7 +6,7 @@
 #         scripts/ticket-status.sh 42 "Done"
 #
 # Configuration : .claude/workflow.env (PROJECT_OWNER, PROJECT_NUMBER, REPO, STATUS_FIELD)
-# Prérequis     : gh authentifié avec le scope "project" (gh auth refresh -s project), jq.
+# Prérequis     : gh authentifié avec les scopes "repo" et "project" (API GraphQL directe).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -19,29 +19,48 @@ STATUS="${2:?Usage: $0 <issue-number> <status>}"
 REPO="${REPO:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}"
 STATUS_FIELD="${STATUS_FIELD:-Status}"
 
-PROJECT_ID=$(gh project view "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json --jq .id)
+DATA=$(gh api graphql \
+  -F owner="$PROJECT_OWNER" -F number="$PROJECT_NUMBER" -F field="$STATUS_FIELD" \
+  -F repoOwner="${REPO%%/*}" -F repoName="${REPO##*/}" -F issue="$ISSUE" \
+  -f query='
+query($owner: String!, $number: Int!, $field: String!, $repoOwner: String!, $repoName: String!, $issue: Int!) {
+  repositoryOwner(login: $owner) {
+    ... on User { projectV2(number: $number) { ...P } }
+    ... on Organization { projectV2(number: $number) { ...P } }
+  }
+  repository(owner: $repoOwner, name: $repoName) {
+    issue(number: $issue) { id projectItems(first: 50) { nodes { id project { id } } } }
+  }
+}
+fragment P on ProjectV2 {
+  id
+  field(name: $field) { ... on ProjectV2SingleSelectField { id options { id name } } }
+}')
 
-FIELD_JSON=$(gh project field-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json \
-  | jq --arg f "$STATUS_FIELD" '.fields[] | select(.name == $f)')
-FIELD_ID=$(jq -r .id <<<"$FIELD_JSON")
-OPTION_ID=$(jq -r --arg s "$STATUS" '.options[] | select(.name == $s) | .id' <<<"$FIELD_JSON")
+PROJECT_ID=$(jq -r '.data.repositoryOwner.projectV2.id' <<<"$DATA")
+FIELD_ID=$(jq -r '.data.repositoryOwner.projectV2.field.id' <<<"$DATA")
+OPTION_ID=$(jq -r --arg s "$STATUS" '.data.repositoryOwner.projectV2.field.options[] | select(.name == $s) | .id' <<<"$DATA")
+ISSUE_ID=$(jq -r '.data.repository.issue.id' <<<"$DATA")
 
 if [ -z "$OPTION_ID" ]; then
-  echo "Statut \"$STATUS\" introuvable. Disponibles : $(jq -r '[.options[].name] | join(", ")' <<<"$FIELD_JSON")" >&2
+  echo "Statut \"$STATUS\" introuvable. Disponibles : $(jq -r '[.data.repositoryOwner.projectV2.field.options[].name] | join(", ")' <<<"$DATA")" >&2
   exit 1
 fi
 
-ITEM_ID=$(gh project item-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --format json --limit 1000 \
-  | jq -r --argjson n "$ISSUE" --arg r "$REPO" \
-      '.items[] | select(.content.number == $n and .content.repository == $r) | .id' | head -n1)
+ITEM_ID=$(jq -r --arg p "$PROJECT_ID" '.data.repository.issue.projectItems.nodes[] | select(.project.id == $p) | .id' <<<"$DATA" | head -n1)
 
 # L'issue n'est pas encore sur le board : on l'ajoute.
 if [ -z "$ITEM_ID" ]; then
-  ITEM_ID=$(gh project item-add "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" \
-    --url "https://github.com/$REPO/issues/$ISSUE" --format json --jq .id)
+  ITEM_ID=$(gh api graphql -F project="$PROJECT_ID" -F content="$ISSUE_ID" -f query='
+mutation($project: ID!, $content: ID!) {
+  addProjectV2ItemById(input: {projectId: $project, contentId: $content}) { item { id } }
+}' --jq '.data.addProjectV2ItemById.item.id')
 fi
 
-gh project item-edit --id "$ITEM_ID" --project-id "$PROJECT_ID" \
-  --field-id "$FIELD_ID" --single-select-option-id "$OPTION_ID" >/dev/null
+gh api graphql -F project="$PROJECT_ID" -F item="$ITEM_ID" -F field="$FIELD_ID" -F option="$OPTION_ID" -f query='
+mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
+  updateProjectV2ItemFieldValue(input: {projectId: $project, itemId: $item, fieldId: $field,
+    value: {singleSelectOptionId: $option}}) { projectV2Item { id } }
+}' >/dev/null
 
 echo "Ticket #$ISSUE → $STATUS"

@@ -1,0 +1,3 @@
+#include "Base.xcconfig"
+// Debug : Supabase local (supabase start) si Local.xcconfig existe, sinon la prod.
+#include? "Local.xcconfig"

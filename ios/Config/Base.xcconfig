@@ -1,0 +1,5 @@
+// Configuration commune. Les valeurs réelles viennent de Secrets.xcconfig,
+// généré depuis 1Password par scripts/secrets/inject.sh (optionnel : CI et premiers lancements).
+SUPABASE_URL = http:/$()/127.0.0.1:55421
+SUPABASE_PUBLISHABLE_KEY = LOCAL_DEV
+#include? "Secrets.xcconfig"

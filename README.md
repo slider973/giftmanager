@@ -55,3 +55,32 @@ scripts/ticket-status.sh 42 "Done"
 ## Réutiliser dans un autre projet
 
 Copier `.claude/`, `scripts/` et `.github/workflows/project-sync.yml`, puis adapter `.claude/workflow.env`.
+
+## Développement de l'app (Famille Cadeaux)
+
+Prérequis : Xcode, [XcodeGen](https://github.com/yonaskolb/XcodeGen), Supabase CLI, Docker, 1Password CLI (`op`), `uv`.
+
+```bash
+scripts/secrets/inject.sh                 # config iOS depuis 1Password (Supabase prod)
+supabase start                            # Supabase local (ports 554xx), migrations + seed
+cd ios && xcodegen generate && open GiftManager.xcodeproj
+```
+
+Pour viser le Supabase local en Debug, créer `ios/Config/Local.xcconfig` (ignoré par git) :
+
+```
+SUPABASE_URL = http:/$()/127.0.0.1:55421
+SUPABASE_PUBLISHABLE_KEY = <clé publishable affichée par `supabase status`>
+```
+
+Tests : `xcodebuild test` (scheme GiftManager) et `supabase test db` (pgTAP).
+
+## Publication TestFlight
+
+Apple exige le SDK iOS 26 : le build tourne sur GitHub Actions (`ios-release.yml`, macOS 26 / Xcode 26).
+
+```bash
+scripts/apple/release.sh                  # certificat/profil à jour, secrets synchronisés, build + envoi TestFlight
+```
+
+`scripts/apple/setup-distribution.sh` crée si besoin le certificat Apple Distribution (stocké dans 1Password, item `apple-distribution`) et le profil App Store « Famille Cadeaux App Store ».
