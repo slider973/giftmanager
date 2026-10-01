@@ -18,6 +18,9 @@ SECRETS=(
   "ASC_KEY_ID=op://giftmanager/app-store-connect/key_id"
   "ASC_ISSUER_ID=op://giftmanager/app-store-connect/issuer_id"
   "ASC_PRIVATE_KEY=op://giftmanager/app-store-connect/private_key"
+  "SUPABASE_PUBLISHABLE_KEY=op://giftmanager/supabase/publishable_key"
+  "APP_BUNDLE_ID=op://giftmanager/apple-developer/bundle_id"
+  "DIST_P12_PASSWORD=op://giftmanager/apple-distribution/p12_password"
 )
 
 for entry in "${SECRETS[@]}"; do
@@ -31,3 +34,9 @@ for entry in "${SECRETS[@]}"; do
   printf '%s' "$value" | gh secret set "$name" --repo "$REPO"
   echo "✓ $name"
 done
+
+# Fichiers binaires : encodés en base64.
+if op item get apple-distribution --vault giftmanager >/dev/null 2>&1; then
+  op read "op://giftmanager/apple-distribution/p12" | base64 | gh secret set DIST_P12_BASE64 --repo "$REPO"
+  echo "✓ DIST_P12_BASE64"
+fi

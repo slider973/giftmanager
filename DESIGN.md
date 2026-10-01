@@ -74,7 +74,7 @@ Police système **SF Pro** (Dynamic Type obligatoire) :
 4. **Onglets Recherche et Notifications** — Recherche : recherche dans les listes du groupe (v1). Notifications : liées au ticket push (#15, v1.1) ; en v1, l'onglet affiche l'activité récente du groupe (sans jamais révéler qui a réservé).
 ## Illustrations
 
-Catalogue d'assets : [`assets/FamilleCadeaux.xcassets`](assets/FamilleCadeaux.xcassets), à intégrer au projet Xcode. Usage SwiftUI : `Image("mascot_gift")`.
+Catalogue d'assets : [`ios/GiftManager/Resources/Illustrations.xcassets`](ios/GiftManager/Resources/Illustrations.xcassets). Usage SwiftUI : `Image("mascot_gift")`.
 
 ### Validés
 

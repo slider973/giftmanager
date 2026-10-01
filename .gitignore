@@ -5,9 +5,15 @@
 .env.*
 !.env.op
 ios/Config/Secrets.xcconfig
+ios/Config/Local.xcconfig
 *.p8
 *.p12
 *.mobileprovision
 *.cer
 supabase/.temp/
 supabase/.env
+
+# Builds locaux
+.build/
+ios/GiftManager.xcodeproj/xcuserdata/
+ios/GiftManager.xcodeproj/
