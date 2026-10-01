@@ -4,7 +4,7 @@ name: Supabase deploy
 on:
   push:
     branches: [main]
-    paths: [supabase/migrations/**, supabase/config.toml]
+    paths: [supabase/migrations/**, supabase/functions/**, supabase/config.toml]
   workflow_dispatch:
 
 concurrency:
@@ -24,3 +24,4 @@ jobs:
           version: latest
       - run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
       - run: supabase db push --include-all
+      - run: supabase functions deploy notify-new-items --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"

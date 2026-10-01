@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Publie un build sur TestFlight.
-# Apple exige le SDK iOS 26 (Xcode 26) : le build tourne sur GitHub Actions (workflow ios-release.yml).
+# Apple exige le SDK iOS 26 (Xcode 26) : le build tourne sur GitHub Actions (workflow ios-release.yml),
+# qui gère aussi les capacités du bundle ID et le profil App Store.
 #
 # Usage : scripts/apple/release.sh [branche]   (défaut : main)
 set -euo pipefail
@@ -8,9 +9,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 REF="${1:-main}"
 
-# Certificat + profil de distribution à jour, secrets CI synchronisés depuis 1Password.
-"$ROOT/scripts/apple/setup-distribution.sh"
-"$ROOT/scripts/secrets/sync-github.sh" >/dev/null
+# Secrets CI à jour depuis 1Password (facultatif si 1Password est verrouillé : les secrets GitHub existent déjà).
+"$ROOT/scripts/secrets/sync-github.sh" >/dev/null 2>&1 || echo "• 1Password indisponible : secrets GitHub inchangés"
 
 gh workflow run ios-release.yml --ref "$REF"
 sleep 5

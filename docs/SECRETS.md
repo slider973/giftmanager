@@ -11,6 +11,8 @@ Tous les secrets du projet sont stockés dans **1Password**, coffre **`giftmanag
 | `apple-developer` | `team_id`, `bundle_id` | Signature Xcode, provider Apple dans Supabase |
 | `app-store-connect` | `key_id`, `issuer_id`, `private_key` (contenu du `.p8`) | Upload TestFlight (CI / fastlane) |
 | `github` | `project_token` | GitHub Action `project-sync` |
+| `apple-distribution` | `certificate_id`, `p12_password`, fichier `p12` | Signature des builds TestFlight (CI) |
+| `apns` | `key_id`, `private_key` (contenu du `.p8` APNs) | Notifications push (fonction Edge `notify-new-items`), via `scripts/secrets/sync-supabase.sh` |
 
 Les valeurs pas encore connues valent `A_RENSEIGNER`.
 
@@ -30,6 +32,7 @@ op signin                                   # une fois par session
 scripts/secrets/setup-1password.sh          # crée le coffre et les items manquants (idempotent)
 scripts/secrets/inject.sh                   # génère ios/Config/Secrets.xcconfig
 scripts/secrets/sync-github.sh              # pousse les secrets CI vers GitHub Actions
+scripts/secrets/sync-supabase.sh            # pousse la clé APNs vers les secrets de la fonction Edge
 op run --env-file=.env.op -- <commande>     # lance une commande avec les secrets en variables d'env
 ```
 

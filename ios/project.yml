@@ -37,6 +37,7 @@ targets:
       path: GiftManager/GiftManager.entitlements
       properties:
         com.apple.developer.applesignin: [Default]
+        aps-environment: development
     info:
       path: GiftManager/Info.plist
       properties:
@@ -51,6 +52,7 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiresFullScreen: true
         UIApplicationSupportsIndirectInputEvents: true
+        UIBackgroundModes: [remote-notification]
         SupabaseURL: $(SUPABASE_URL)
         SupabasePublishableKey: $(SUPABASE_PUBLISHABLE_KEY)
         NSCameraUsageDescription: Pour prendre en photo un cadeau à ajouter à la liste.
