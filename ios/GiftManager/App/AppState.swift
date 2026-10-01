@@ -125,6 +125,7 @@ final class AppState {
             }
             try await refreshGroupData()
             phase = myHousehold == nil ? .needsGroup : .ready
+            if phase == .ready { await setUpNotifications() }
         } catch {
             report(error)
             if phase == .launching { phase = .signedOut }
@@ -161,6 +162,27 @@ final class AppState {
 
     func itemsChanged() {
         itemsRevision += 1
+    }
+
+    // MARK: - Notifications
+
+    func setUpNotifications() async {
+        let notifications = NotificationService.shared
+        notifications.onDeviceToken = { [repository] token in
+            #if DEBUG
+            let environment = "sandbox"
+            #else
+            let environment = "production"
+            #endif
+            Task { try? await repository.registerDevice(token: token, environment: environment) }
+        }
+        await notifications.registerForRemote()
+        await refreshReminders()
+    }
+
+    func refreshReminders() async {
+        guard let reservations = try? await repository.myReservations() else { return }
+        await NotificationService.shared.scheduleReminders(reservations: reservations, events: events)
     }
 
     // MARK: - Invitations

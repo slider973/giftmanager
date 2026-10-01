@@ -220,6 +220,18 @@ struct GiftRepository: Sendable {
         try await db.rpc("my_reservations").execute().value
     }
 
+    // MARK: - Notifications
+
+    func registerDevice(token: String, environment: String) async throws {
+        try await db.rpc("register_device", params: ["p_token": token, "p_environment": environment]).execute()
+    }
+
+    /// Prévient la famille des nouveaux cadeaux (les parents ne sont jamais notifiés des idées).
+    func notifyNewItems(_ itemIds: [UUID]) async {
+        struct Body: Encodable { let item_ids: [UUID] }
+        try? await client.functions.invoke("notify-new-items", options: FunctionInvokeOptions(body: Body(item_ids: itemIds)))
+    }
+
     // MARK: - Images
 
     /// Envoie une image JPEG dans le bucket `images` (dossier de l'utilisateur) et renvoie son URL publique.

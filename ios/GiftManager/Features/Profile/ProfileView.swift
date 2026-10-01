@@ -8,6 +8,8 @@ struct ProfileView: View {
     @State private var currency = "CHF"
     @State private var isSaving = false
     @State private var confirmDelete = false
+    @State private var purchaseReminders = NotificationService.isEnabled(.purchaseReminders)
+    @State private var familyNews = NotificationService.isEnabled(.familyNews)
 
     private var hasChanges: Bool {
         guard let profile = appState.profile else { return false }
@@ -42,6 +44,32 @@ struct ProfileView: View {
                         }
                     }
                     .disabled(!hasChanges || name.trimmed.isEmpty || isSaving)
+
+                    VStack(alignment: .leading, spacing: Spacing.m) {
+                        Label("Notifications", systemImage: "bell")
+                            .font(Font.Theme.headline)
+                        Toggle("Rappels d'achats (J-30, J-7)", isOn: $purchaseReminders)
+                        Toggle("Nouvelles envies dans la famille", isOn: $familyNews)
+                        Text("Aucune notification ne dit qui a réservé quoi.")
+                            .font(Font.Theme.caption)
+                            .foregroundStyle(Color.Theme.textSecondary)
+                    }
+                    .font(Font.Theme.body)
+                    .fcCard()
+                    .onChange(of: purchaseReminders) { _, value in
+                        NotificationService.set(.purchaseReminders, value)
+                        Task { await appState.refreshReminders() }
+                    }
+                    .onChange(of: familyNews) { _, value in
+                        NotificationService.set(.familyNews, value)
+                        Task {
+                            if value {
+                                await NotificationService.shared.registerForRemote()
+                            } else {
+                                UIApplication.shared.unregisterForRemoteNotifications()
+                            }
+                        }
+                    }
 
                     VStack(alignment: .leading, spacing: Spacing.m) {
                         Label("Mode surprise", systemImage: "eye.slash")

@@ -47,16 +47,15 @@ echo "✓ Certificat importé dans le trousseau"
 
 # --- 2. Profil App Store --------------------------------------------------
 BUNDLE_ID=$("${ASC[@]}" GET "/v1/bundleIds?filter[identifier]=$BUNDLE" | jq -r '.data[0].id')
-PROFILE_JSON=$("${ASC[@]}" GET "/v1/profiles?filter[name]=$(jq -rn --arg n "$PROFILE_NAME" '$n|@uri')&filter[profileState]=ACTIVE&include=certificates")
-HAS_CERT=$(jq --arg c "$CERT_ID" '[.included[]? | select(.id==$c)] | length' <<<"$PROFILE_JSON")
-if [ "$(jq '.data | length' <<<"$PROFILE_JSON")" = 0 ] || [ "$HAS_CERT" = 0 ]; then
-  for old in $(jq -r '.data[].id' <<<"$PROFILE_JSON"); do "${ASC[@]}" DELETE "/v1/profiles/$old" >/dev/null || true; done
-  echo "▶ Création du profil App Store"
-  PROFILE_JSON=$("${ASC[@]}" POST /v1/profiles "{\"data\":{\"type\":\"profiles\",
-    \"attributes\":{\"name\":\"$PROFILE_NAME\",\"profileType\":\"IOS_APP_STORE\"},
-    \"relationships\":{\"bundleId\":{\"data\":{\"type\":\"bundleIds\",\"id\":\"$BUNDLE_ID\"}},
-    \"certificates\":{\"data\":[{\"type\":\"certificates\",\"id\":\"$CERT_ID\"}]}}}}" | jq '{data:[.data]}')
-fi
+# Le profil est recréé à chaque fois : il reprend ainsi les capacités actuelles du bundle ID
+# (Sign in with Apple, Push…) et le certificat de 1Password.
+OLD=$("${ASC[@]}" GET "/v1/profiles?filter[name]=$(jq -rn --arg n "$PROFILE_NAME" '$n|@uri')")
+for old in $(jq -r '.data[].id' <<<"$OLD"); do "${ASC[@]}" DELETE "/v1/profiles/$old" >/dev/null || true; done
+echo "▶ Création du profil App Store"
+PROFILE_JSON=$("${ASC[@]}" POST /v1/profiles "{\"data\":{\"type\":\"profiles\",
+  \"attributes\":{\"name\":\"$PROFILE_NAME\",\"profileType\":\"IOS_APP_STORE\"},
+  \"relationships\":{\"bundleId\":{\"data\":{\"type\":\"bundleIds\",\"id\":\"$BUNDLE_ID\"}},
+  \"certificates\":{\"data\":[{\"type\":\"certificates\",\"id\":\"$CERT_ID\"}]}}}}" | jq '{data:[.data]}')
 UUID=$(jq -r '.data[0].attributes.uuid' <<<"$PROFILE_JSON")
 DEST="$HOME/Library/MobileDevice/Provisioning Profiles"
 mkdir -p "$DEST"

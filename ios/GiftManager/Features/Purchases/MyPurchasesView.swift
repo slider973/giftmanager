@@ -174,6 +174,7 @@ struct MyPurchasesView: View {
             reservations = try await appState.repository.myReservations()
             let fetched = try await appState.repository.links(itemIds: reservations.map(\.itemId))
             links = Dictionary(grouping: fetched, by: \.itemId)
+            await NotificationService.shared.scheduleReminders(reservations: reservations, events: appState.events)
         } catch {
             appState.report(error)
         }

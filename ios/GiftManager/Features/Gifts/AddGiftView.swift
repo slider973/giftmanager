@@ -284,7 +284,11 @@ struct AddGiftView: View {
                                                   kind: kind.rawValue, title: title.trimmed, notes: note,
                                                   image_url: finalImage, priority: isFavorite ? 1 : 0,
                                                   owned: owned, created_by: userId)
-                try await appState.repository.addItem(item, links: links)
+                let newId = try await appState.repository.addItem(item, links: links)
+                if !owned {
+                    let repository = appState.repository
+                    Task.detached { await repository.notifyNewItems([newId]) }
+                }
             }
             appState.itemsChanged()
             onDone()

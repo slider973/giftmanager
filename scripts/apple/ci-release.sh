@@ -33,13 +33,29 @@ security import "$WORK/dist.p12" -k "$KC" -P "$DIST_P12_PASSWORD" -T /usr/bin/co
 security set-key-partition-list -S apple-tool:,apple: -s -k "$KC_PASS" "$KC" >/dev/null
 security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
 
-# Profil App Store
+# Capacités du bundle ID (idempotent : 409 si déjà présente) puis profil App Store recréé,
+# pour qu'il reflète les entitlements actuels (Sign in with Apple, Push).
+ASC=(uv run -q "$ROOT/scripts/apple/asc.py")
+BUNDLE_RES=$("${ASC[@]}" GET "/v1/bundleIds?filter[identifier]=$APP_BUNDLE_ID")
+BUNDLE_RES_ID=$(jq -r '[.data[] | select(.attributes.identifier == env.APP_BUNDLE_ID)][0].id' <<<"$BUNDLE_RES")
+for cap in APPLE_ID_AUTH PUSH_NOTIFICATIONS; do
+  "${ASC[@]}" POST /v1/bundleIdCapabilities "{\"data\":{\"type\":\"bundleIdCapabilities\",\"attributes\":{\"capabilityType\":\"$cap\"},\"relationships\":{\"bundleId\":{\"data\":{\"type\":\"bundleIds\",\"id\":\"$BUNDLE_RES_ID\"}}}}}" >/dev/null 2>&1 || true
+done
+
+# Certificat de distribution : retrouvé par son numéro de série.
+SERIAL=$(openssl pkcs12 -in "$WORK/dist.p12" -nokeys -passin "pass:$DIST_P12_PASSWORD" -legacy 2>/dev/null \
+  | openssl x509 -noout -serial | cut -d= -f2)
+CERT_ID=$("${ASC[@]}" GET "/v1/certificates?filter[certificateType]=DISTRIBUTION&limit=200" \
+  | jq -r --arg s "$SERIAL" '[.data[] | select((.attributes.serialNumber | ascii_upcase) == ($s | ascii_upcase))][0].id')
+[ "$CERT_ID" != null ] || { echo "Certificat de distribution introuvable sur App Store Connect" >&2; exit 1; }
+
 PROFILES="$HOME/Library/MobileDevice/Provisioning Profiles"; mkdir -p "$PROFILES"
-uv run -q "$ROOT/scripts/apple/asc.py" GET \
-  "/v1/profiles?filter[name]=$(jq -rn --arg n "$PROFILE_NAME" '$n|@uri')&filter[profileState]=ACTIVE" > "$WORK/profile.json"
-UUID=$(jq -r '.data[0].attributes.uuid' "$WORK/profile.json")
-[ "$UUID" != null ] || { echo "Profil « $PROFILE_NAME » introuvable : lancer scripts/apple/setup-distribution.sh" >&2; exit 1; }
-jq -r '.data[0].attributes.profileContent' "$WORK/profile.json" | base64 --decode > "$PROFILES/$UUID.mobileprovision"
+OLD=$("${ASC[@]}" GET "/v1/profiles?filter[name]=$(jq -rn --arg n "$PROFILE_NAME" '$n|@uri')")
+for old in $(jq -r '.data[].id' <<<"$OLD"); do "${ASC[@]}" DELETE "/v1/profiles/$old" >/dev/null || true; done
+"${ASC[@]}" POST /v1/profiles "{\"data\":{\"type\":\"profiles\",\"attributes\":{\"name\":\"$PROFILE_NAME\",\"profileType\":\"IOS_APP_STORE\"},\"relationships\":{\"bundleId\":{\"data\":{\"type\":\"bundleIds\",\"id\":\"$BUNDLE_RES_ID\"}},\"certificates\":{\"data\":[{\"type\":\"certificates\",\"id\":\"$CERT_ID\"}]}}}}" > "$WORK/profile.json"
+UUID=$(jq -r '.data.attributes.uuid' "$WORK/profile.json")
+jq -r '.data.attributes.profileContent' "$WORK/profile.json" | base64 --decode > "$PROFILES/$UUID.mobileprovision"
+echo "✓ Profil $UUID (capacités à jour)"
 
 (cd "$IOS" && xcodegen generate --quiet)
 
