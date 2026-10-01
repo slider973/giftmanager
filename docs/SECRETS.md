@@ -7,7 +7,7 @@ Tous les secrets du projet sont stockés dans **1Password**, coffre **`giftmanag
 | Item | Champs | Où c'est utilisé |
 |---|---|---|
 | `supabase` | `project_ref`, `url`, `publishable_key`, `secret_key`, `access_token` | App iOS (url + publishable_key uniquement), CLI Supabase, CI |
-| `supabase-db` | `password` (généré) | Création du projet Supabase, `supabase db push` |
+| `supabase-db` | `password` (généré), `host`, `port`, `username` (pooler session) | Création du projet Supabase, `supabase db push` |
 | `apple-developer` | `team_id`, `bundle_id` | Signature Xcode, provider Apple dans Supabase |
 | `app-store-connect` | `key_id`, `issuer_id`, `private_key` (contenu du `.p8`) | Upload TestFlight (CI / fastlane) |
 | `github` | `project_token` | GitHub Action `project-sync` |
