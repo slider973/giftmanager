@@ -1,0 +1,26 @@
+# Applique les migrations sur le projet Supabase de production à chaque merge sur main.
+name: Supabase deploy
+
+on:
+  push:
+    branches: [main]
+    paths: [supabase/migrations/**, supabase/config.toml]
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-deploy
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+      - run: supabase db push --include-all
