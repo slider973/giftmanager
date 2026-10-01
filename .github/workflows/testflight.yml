@@ -1,0 +1,23 @@
+# Distribue un build déjà envoyé : groupes TestFlight, textes, soumission à la vérification bêta.
+name: TestFlight distribution
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: Numéro de build (CFBundleVersion), ex. 202610020130
+        required: true
+
+jobs:
+  distribute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - env:
+          APP_BUNDLE_ID: ${{ secrets.APP_BUNDLE_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: uv run scripts/apple/testflight.py "${{ inputs.build_number }}"

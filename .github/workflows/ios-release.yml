@@ -12,7 +12,7 @@ concurrency:
 jobs:
   testflight:
     runs-on: macos-26
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -38,6 +38,14 @@ jobs:
           DIST_P12_BASE64: ${{ secrets.DIST_P12_BASE64 }}
           DIST_P12_PASSWORD: ${{ secrets.DIST_P12_PASSWORD }}
         run: scripts/apple/ci-release.sh
+
+      - name: Distribution TestFlight (groupes, textes, vérification bêta)
+        env:
+          APP_BUNDLE_ID: ${{ secrets.APP_BUNDLE_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: uv run scripts/apple/testflight.py "${{ steps.release.outputs.build_number }}"
 
       - name: Résumé
         run: echo "Build ${{ steps.release.outputs.build_number }} envoyé sur TestFlight ($(xcodebuild -version | head -1))" >> "$GITHUB_STEP_SUMMARY"
