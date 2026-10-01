@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from asc import call  # noqa: E402
 
 WHATS_NEW = (
-    "Première version de Famille Cadeaux 🎁\n"
+    "Première version de Famille Cadeaux\n"
     "• Crée ta famille et invite les autres foyers avec le code (Famille › Paramètres).\n"
     "• Ajoute tes enfants et leurs envies en collant des liens Amazon, Galaxus, Fnac…\n"
     "• Réserve un cadeau pour un autre enfant : personne ne sait que c'est toi.\n"
@@ -78,7 +78,8 @@ def ensure_group(app_id: str, name: str, internal: bool) -> dict:
 
 
 def add_internal_testers(group_id: str) -> None:
-    """Ajoute au groupe interne les utilisateurs App Store Connect (le compte développeur inclus)."""
+    """Ajoute au groupe interne le seul titulaire du compte : le compte App Store Connect est partagé
+    avec d'autres projets, on n'invite donc jamais les autres utilisateurs. Pas d'emoji : Apple les refuse."""
     try:
         users = call("GET", "/v1/users?limit=50")["data"]
     except SystemExit:
@@ -86,6 +87,8 @@ def add_internal_testers(group_id: str) -> None:
         return
     for user in users:
         attrs = user["attributes"]
+        if "ACCOUNT_HOLDER" not in (attrs.get("roles") or []):
+            continue
         email = attrs.get("username")
         if not email:
             continue
