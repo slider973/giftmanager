@@ -8,47 +8,63 @@ Nom affiché de l'app : **Famille Cadeaux**. Promesse : *« Des idées. Moins de
 
 Chaleureux, doux et festif sans être enfantin. Fond crème, cartes blanches très arrondies, un bleu nuit profond pour les actions principales, des pastels pour les catégories, des illustrations de mascottes (loutres) pour l'onboarding et les états vides. Lisible pour les grands-parents.
 
-## Tokens (relevés sur la maquette — à affiner)
+## Tokens
 
-### Couleurs
+Source de vérité : color sets de [`Assets.xcassets/Theme/`](ios/GiftManager/Resources/Assets.xcassets/Theme) (namespace `Theme/`) et code de [`ios/GiftManager/DesignSystem/`](ios/GiftManager/DesignSystem). Les valeurs ci-dessous en sont le reflet ; ne jamais écrire d'hexadécimal dans un écran.
 
-| Token | Valeur | Usage |
-|---|---|---|
-| `background` | `#FBF4EC` | Fond d'écran (crème) |
-| `surface` | `#FFFFFF` | Cartes, champs, feuilles |
-| `primary` | `#1E2A47` | Boutons principaux (« Continuer », « Ajouter à la liste »), FAB +, titres |
-| `secondary` | `#2F7D6D` | CTA secondaire vert (« Ajouter à la liste » sur la fiche cadeau) |
-| `textPrimary` | `#1B1F2A` | Titres, noms de cadeaux |
-| `textSecondary` | `#6B6F7B` | Sous-titres, métadonnées (prix, boutique, dates) |
-| `accentHeart` | `#E5484D` | Cœur « très envie » |
-| `statusAvailableBg` / `Fg` | `#DDF3E6` / `#2E8B57` | Badge « Disponible » |
-| `statusTakenBg` / `Fg` | `#FDE3E3` / `#D64545` | Badge « Déjà pris » |
-| `pastelPink` | `#F9D9DC` | Pastille « Groupes » |
-| `pastelMint` | `#D5F0E4` | Pastille « Listes » |
-| `pastelBlue` | `#DCE8FB` | Pastille « Liens / boutiques » |
-| `pastelPeach` | `#FCE3D2` | Pastille « Surprise » |
-| `pastelLavender` | `#E6E1FA` | Pastille « Protection » |
+### Couleurs (`Color.Theme`)
 
-Prévoir une variante sombre (fond bleu nuit, cartes `#262F48`) en conservant les badges lisibles.
+Contrastes mesurés (WCAG 2.x) : toutes les paires texte / fond ≥ 4,5:1 dans les deux apparences.
 
-### Typographie
+| Token | Clair | Sombre | Usage | Contraste clé |
+|---|---|---|---|---|
+| `background` | `#FBF4EC` | `#141A2C` | Fond d'écran (crème / bleu nuit) | — |
+| `surface` | `#FFFFFF` | `#232B43` | Cartes, champs, feuilles | — |
+| `separator` | `#EAE2D6` | `#343D59` | Filets, bordures de champs, rail des onglets | décoratif |
+| `primary` | `#1E2A47` | `#A9BCEE` | CTA principal, FAB +, onglet actif, liens texte | 13,0 / 9,2 sur `background` |
+| `onPrimary` | `#FFFFFF` | `#141A2C` | Texte sur `primary` et `secondary` | 14,2 / 9,2 |
+| `secondary` | `#2A7464` | `#6CC7AE` | CTA vert (fiche cadeau) | `onPrimary` 5,6 / 8,6 |
+| `textPrimary` | `#1B1F2A` | `#F4F1EC` | Titres, noms | 15,1 / 15,4 |
+| `textSecondary` | `#626673` | `#A8AEBF` | Métadonnées (prix, boutique, dates) | 5,3 / 7,8 sur `background` |
+| `heart` | `#E5484D` | `#FF6B70` | Cœur « très envie » (icône) | 3,9 / 5,1 sur `surface` |
+| `accentAmber` | `#B85F0E` | `#F2A65A` | Accent chaud (pastille « Surprise », placeholder d'image) | 4,5 / 6,9 |
+| `availableBg` / `availableFg` | `#DDF3E6` / `#1E6B43` | `#1D3D2E` / `#8EDBB0` | Badge « Disponible » | 5,6 / 7,3 |
+| `takenBg` / `takenFg` | `#FDE3E3` / `#B3302F` | `#45222A` / `#FFA3A3` | Badge « Déjà pris » | 5,1 / 7,3 |
+| `mineBg` / `mineFg` | `#DCE8FB` / `#234E9A` | `#22365A` / `#A9C6FF` | Badge « Je l'offre » | 6,5 / 7,0 |
+| `ownedBg` / `ownedFg` | `#ECE7FA` / `#5A47A6` | `#322B55` / `#CBBEFF` | Badge « Possède déjà » | 6,0 / 7,7 |
+| `pastelPink` | `#F9D9DC` | `#4A2C36` | Groupes, anniversaires, avatars | — |
+| `pastelMint` | `#D5F0E4` | `#1F4237` | Listes, Noël, avatars | — |
+| `pastelBlue` | `#DCE8FB` | `#233A5E` | Liens / boutiques, avatars | — |
+| `pastelPeach` | `#FCE3D2` | `#4A3326` | Surprise, placeholder d'image, avatars | — |
+| `pastelLavender` | `#E6E1FA` | `#352F5C` | Protection, avatars | — |
 
-Police système **SF Pro** (Dynamic Type obligatoire) :
+Écarts assumés par rapport aux relevés de la maquette, pour passer AA : `secondary` `#2F7D6D` → `#2A7464`, `textSecondary` `#6B6F7B` → `#626673`, `availableFg` `#2E8B57` → `#1E6B43` (3,6:1 → 5,6:1), `takenFg` `#D64545` → `#B3302F` (3,6:1 → 5,1:1). La teinte reste celle de la maquette.
 
-| Style | Taille / graisse | Exemple |
-|---|---|---|
-| `largeTitle` | 34 / Bold | « Notre famille », « Famille Cadeaux » |
-| `title` | 22 / Bold | « Bienvenue sur Famille Cadeaux », nom de l'enfant |
-| `headline` | 17 / Semibold | Nom d'un cadeau, nom d'un événement |
-| `body` | 15 / Regular | Textes courants |
-| `caption` | 12 / Regular | Prix, boutique, « 8 ans · Ses envies » |
+En sombre, `primary` devient un bleu pervenche clair avec texte bleu nuit : un bouton bleu nuit disparaîtrait sur le fond. `AccentColor` (teinte système) est aligné sur `primary`, `LaunchBackground` sur `background`.
 
-### Formes et espacements
+### Typographie (`Font.Theme`)
 
-- Rayons : cartes 20, vignettes produit 14, boutons pilule (capsule), badges capsule.
-- Ombres très légères (`y: 2, blur: 8, opacity: 0.06`).
-- Grille d'espacement 4 pt ; marges d'écran 20 ; espacement entre cartes 12.
-- Cibles tactiles ≥ 44 pt.
+Police système, toujours sur un style Dynamic Type (aucune taille fixe). Les deux niveaux de titre sont en **SF Pro Rounded** : la touche chaleureuse, proche du logotype de la maquette ; le reste en SF Pro pour la lisibilité.
+
+| Token | Style système | Taille par défaut / graisse | Exemple |
+|---|---|---|---|
+| `largeTitle` | `.largeTitle`, rounded | 34 / Bold | « Notre famille », « Famille Cadeaux » |
+| `title` | `.title2`, rounded | 22 / Bold | « Bienvenue sur Famille Cadeaux », prénom de l'enfant, titre d'état vide |
+| `headline` | `.headline` | 17 / Semibold | Nom d'un cadeau, d'un événement, boutons |
+| `body` | `.subheadline` | 15 / Regular | Textes courants |
+| `callout` | `.callout` | 16 / Regular | Onglets, liens texte, lignes de boutique |
+| `caption` | `.caption` | 12 / Regular | Prix, boutique, « 8 ans · Ses envies » |
+| `captionBold` | `.caption` | 12 / Semibold | Badges, libellés de champs |
+
+Prix : toujours `.monospacedDigit()`.
+
+### Formes, espacements, profondeur
+
+- `Spacing` : `xs` 4 · `s` 8 · `m` 12 · `l` 16 · `xl` 20 · `xxl` 32. Marge d'écran `xl`, espacement entre cartes `m`.
+- `Radius` : `card` 20 · `thumb` 14 · `field` 14, toujours en `.continuous`. Boutons et badges : `Capsule`.
+- `HitTarget` : `minimum` 44 (toute cible tactile) · `button` 52 (pilules pleine largeur).
+- Ombre unique des cartes : noir 6 %, `y: 2`, flou 8 (`radius: 4` en SwiftUI). Pas d'autre niveau d'élévation.
+- Pression : `FCPressableStyle` (échelle 0,97 + opacité 0,85, ressort 0,25 s ; pas d'échelle si Réduire les animations).
 
 ## Écrans de la maquette
 
@@ -62,9 +78,62 @@ Police système **SF Pro** (Dynamic Type obligatoire) :
 
 **Barre d'onglets** : Accueil · Recherche · **+** (central) · Notifications · Profil.
 
-## Composants à créer
 
-`GiftCard`, `StatusBadge` (disponible / déjà pris / masqué), `PriorityHeart`, `StoreLinkRow` (drapeau + boutique + prix + action), `CountryFlag`, `ChildHeader`, `EventRow`, `AvatarStack`, `PrimaryButton`, `SegmentedTabs`, `FeaturePill`, `EmptyState` (avec mascotte).
+## API SwiftUI
+
+Tout est dans [`ios/GiftManager/DesignSystem/`](ios/GiftManager/DesignSystem) (`Tokens/`, `Components/`). Chaque composant a des `#Preview` clair / sombre couvrant ses états. Galerie de revue (DEBUG uniquement) : `DesignSystemGallery()`.
+
+### Tokens et modificateurs
+
+```swift
+Color.Theme.background / surface / primary / onPrimary / secondary / textPrimary / textSecondary
+Color.Theme.separator / heart / accentAmber
+Color.Theme.availableBg / availableFg / takenBg / takenFg / mineBg / mineFg / ownedBg / ownedFg
+Color.Theme.pastelPink / pastelMint / pastelBlue / pastelPeach / pastelLavender
+Color.Theme.pastel(named: String?) -> Color?   // "pastelMint" ou "mint"
+Color.Theme.pastel(for seed: String) -> Color   // pastel stable dérivé d'un prénom
+
+Font.Theme.largeTitle / title / headline / body / callout / caption / captionBold
+
+Spacing.xs / s / m / l / xl / xxl        Radius.card / thumb / field        HitTarget.minimum / button
+
+View.fcCard(padding: CGFloat = Spacing.l)   // fond surface, rayon card, ombre légère
+View.fcScreenBackground()                    // fond background plein écran, sous les safe areas
+FCPressableStyle(pressedScale: CGFloat = 0.97)
+```
+
+### Composants
+
+| Composant | Signature | Notes |
+|---|---|---|
+| `GiftStatus` | `enum GiftStatus: Equatable, CaseIterable { case available, taken, mine, owned }` | `.label`, `.background`, `.foreground` |
+| `StatusBadge` | `StatusBadge(status: GiftStatus)` | « Disponible », « Déjà pris », « Je l'offre », « Possède déjà » |
+| `PriorityHeart` | `PriorityHeart(isOn: Bool, action: (() -> Void)? = nil)` | Bouton bascule 44 pt + haptique si `action`, indicateur sinon |
+| `CountryFlag` | `CountryFlag(code: String)` | Émoji depuis ISO2 (`UK` → `GB`), repli globe ; nom du pays en français pour VoiceOver. Hérite de la police |
+| `RemoteImage` | `RemoteImage(url: URL?, contentMode: ContentMode = .fill)` | Remplit le cadre de l'appelant. États : chargement (cadeau qui respire), absent, échec (cadeau + pastille « ! ») |
+| `GiftCard` | `GiftCard(title:imageURL:priceText:storeText:countryCode:isFavorite:status:)` | `status == nil` → **aucun badge** (mode surprise). Passe en pile verticale aux tailles d'accessibilité. Envelopper dans un `NavigationLink` |
+| `StoreLinkRow` | `StoreLinkRow(store: String, countryCode: String?, priceText: String?, action: () -> Void)` | Ligne entière cliquable, trait `.isLink` |
+| `ChildAvatar` | `ChildAvatar(name: String, emoji: String?, colorName: String?, size: CGFloat = 44)` | `colorName` : `pastelPink`… ; inconnu → pastel dérivé du prénom |
+| `AvatarStack` | `AvatarStack(names: [String], maxVisible: Int = 5, size: CGFloat = 32)` | Chevauchement + « +N » |
+| `EventKind` | `enum EventKind: Equatable, CaseIterable { case christmas, birthday, other }` | |
+| `EventRow` | `EventRow(title: String, dateText: String, subtitle: String?, kind: EventKind, avatarNames: [String])` | Vignette 🎄 sur menthe, 🎂 sur rose, `gift_red` sur pêche |
+| `EventKindTile` | `EventKindTile(kind: EventKind, size: CGFloat = 56)` | Vignette seule (en-têtes d'événement) |
+| `PrimaryButton` | `PrimaryButton(title: String, systemImage: String? = nil, isLoading: Bool = false, action: () -> Void)` | Pilule bleu nuit pleine largeur. `chevron.*` / `arrow.*` se calent à droite, les autres icônes à gauche. `.disabled(true)` → 45 % d'opacité |
+| `SecondaryButton` | même signature | Pilule verte `secondary` |
+| `TextLinkButton` | `TextLinkButton(title: String, action: () -> Void)` | Lien texte `primary`, cible 44 pt |
+| `SegmentedTabs` | `SegmentedTabs(selection: Binding<Int>, titles: [String])` | Soulignement animé ; défilement horizontal si les libellés ne tiennent pas |
+| `EmptyStateView` | `EmptyStateView(imageName: String, title: String, message: String, actionTitle: String? = nil, action: (() -> Void)? = nil)` | Mascotte d'`Illustrations.xcassets` |
+| `FeaturePill` | `FeaturePill(systemImage: String, color: Color, title: String, subtitle: String, background: Color? = nil)` | `color` teinte l'icône ; `background` = pastel du disque (sinon teinte de `color` à 16 %) |
+| `SectionHeader` | `SectionHeader(title: String, actionSystemImage: String? = nil, action: (() -> Void)? = nil, actionLabel: String? = nil)` | Bouton rond `primary` ; `actionLabel` pour VoiceOver (« Ajouter » par défaut) |
+| `FCTextField` | `FCTextField(title: String, text: Binding<String>, systemImage: String? = nil, prompt: String? = nil, isTitleHidden: Bool = false)` | Libellé visible au-dessus ; `isTitleHidden` le garde pour VoiceOver seulement. Bouton « Effacer » au focus |
+| `DesignSystemGallery` | `DesignSystemGallery()` | `#if DEBUG` |
+
+### Règles d'usage
+
+- Un seul `PrimaryButton` par écran ; `SecondaryButton` pour le CTA vert de la fiche cadeau.
+- Les icônes sont des SF Symbols ; les seuls émojis sont les drapeaux, les vignettes d'événement et les avatars choisis par la famille.
+- Toute icône seule porte un `accessibilityLabel` ; les cartes regroupent leur contenu en un seul élément VoiceOver.
+- Mode surprise : ne jamais calculer un `GiftStatus` pour un parent qui regarde la liste de son enfant ; passer `nil`.
 
 ## Écarts avec les spécifications — décisions
 
@@ -72,6 +141,7 @@ Police système **SF Pro** (Dynamic Type obligatoire) :
 2. **Onglet « Idées »** — Validé : idées de cadeaux suggérées par les adultes de la famille, visibles des autres membres mais **pas des parents de l'enfant** tant qu'elles ne sont pas ajoutées à la liste (ticket dédié).
 3. **Note et avis (★ 4.8, 128 avis)** — Non récupérables de façon fiable depuis un lien (Amazon, Galaxus bloquent). Affichés seulement si l'aperçu les fournit, sinon masqués. Pas de saisie manuelle.
 4. **Onglets Recherche et Notifications** — Recherche : recherche dans les listes du groupe (v1). Notifications : liées au ticket push (#15, v1.1) ; en v1, l'onglet affiche l'activité récente du groupe (sans jamais révéler qui a réservé).
+
 ## Illustrations
 
 Catalogue d'assets : [`ios/GiftManager/Resources/Illustrations.xcassets`](ios/GiftManager/Resources/Illustrations.xcassets). Usage SwiftUI : `Image("mascot_gift")`.
@@ -90,6 +160,8 @@ Catalogue d'assets : [`ios/GiftManager/Resources/Illustrations.xcassets`](ios/Gi
 | `gift_red` | Événement Noël, icône générique de cadeau |
 | `empty_box` | Liste de souhaits vide |
 | `illustration_travel` | Onboarding (plusieurs pays) |
+
+Dans le design system : `gift_red` illustre `EventRow(kind: .other)` ; `EmptyStateView(imageName:)` accepte n'importe lequel de ces assets. Tant que `illustration_birthday` et une illustration de sapin ne sont pas refaites, les vignettes Anniversaire et Noël utilisent 🎂 et 🎄 sur pastel (`EventKindTile`).
 
 ### À refaire (exports défectueux)
 
