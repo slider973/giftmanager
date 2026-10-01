@@ -69,7 +69,51 @@ Police système **SF Pro** (Dynamic Type obligatoire) :
 ## Écarts avec les spécifications — décisions
 
 1. **Badges de statut et mode surprise** — L'écran 3 montre « Disponible » / « Déjà pris ». C'est la vue **d'un autre membre de la famille**. Quand un parent regarde la liste de son propre enfant, `StatusBadge` est masqué (aucun badge). Règle non négociable (cf. `docs/SPEC.md`).
-2. **Onglet « Idées »** — Absent des spécifications. Proposition : idées de cadeaux suggérées par les adultes de la famille, visibles des autres membres mais **pas des parents de l'enfant** tant qu'elles ne sont pas ajoutées à la liste. À valider avant implémentation.
+2. **Onglet « Idées »** — Validé : idées de cadeaux suggérées par les adultes de la famille, visibles des autres membres mais **pas des parents de l'enfant** tant qu'elles ne sont pas ajoutées à la liste (ticket dédié).
 3. **Note et avis (★ 4.8, 128 avis)** — Non récupérables de façon fiable depuis un lien (Amazon, Galaxus bloquent). Affichés seulement si l'aperçu les fournit, sinon masqués. Pas de saisie manuelle.
 4. **Onglets Recherche et Notifications** — Recherche : recherche dans les listes du groupe (v1). Notifications : liées au ticket push (#15, v1.1) ; en v1, l'onglet affiche l'activité récente du groupe (sans jamais révéler qui a réservé).
-5. **Illustrations (loutres, icône 3D cadeau)** — Assets à produire en haute définition (PDF vectoriel ou PNG @3x) pour l'onboarding, les états vides et l'icône d'app.
+## Illustrations
+
+Catalogue d'assets : [`assets/FamilleCadeaux.xcassets`](assets/FamilleCadeaux.xcassets), à intégrer au projet Xcode. Usage SwiftUI : `Image("mascot_gift")`.
+
+### Validés
+
+| Asset | Usage prévu |
+|---|---|
+| `mascot_family` | Onboarding page 1, écran « Notre famille » vide |
+| `mascot_gift` | Onboarding (cadeaux), succès d'ajout |
+| `mascot_surprise` | Onboarding (surprise garantie), écran « mode surprise » |
+| `mascot_celebrate` | Confirmation de réservation, « Acheté » |
+| `mascot_love` | Cadeau « très envie », onboarding |
+| `mascot_thinking` | Onglet Idées vide |
+| `mascot_sleeping` | Aucune notification / activité |
+| `gift_red` | Événement Noël, icône générique de cadeau |
+| `empty_box` | Liste de souhaits vide |
+| `illustration_travel` | Onboarding (plusieurs pays) |
+
+### À refaire (exports défectueux)
+
+Ces fichiers ont été mal découpés depuis la planche d'origine : nom décalé par rapport au contenu et/ou morceaux de l'illustration voisine sur les bords. Ils **ne sont pas** dans le dépôt.
+
+| Fichier livré | Contenu réel | Problème |
+|---|---|---|
+| `empty_calendar` | Carton + morceau flou | Pas de calendrier, fragment voisin |
+| `empty_error` | Loupe + document | Correspond à « recherche » |
+| `empty_lock` | Wi-Fi barré | Correspond à « hors ligne » |
+| `empty_offline` | Bulle de dialogue | Ni hors ligne ni erreur |
+| `empty_search` | Point d'interrogation + phoque gris | Fragment + style différent des loutres |
+| `gift_blue` | Cadeau jaune + fragment bleu | Couleur et fragment |
+| `gift_gold` | Coche verte | Pas un cadeau |
+| `gift_green` / `gift_purple` | Cadeau + fragment voisin | Fragment sur le bord |
+| `illustration_birthday` | Calendrier + gâteau + fragment rose | Fragment en haut |
+| `illustration_gift_ideas` | Jouets + cadeau | Halo flou au centre |
+| `illustration_security` | Checklist | Pas de sécurité |
+| `illustration_shopping` | Bouclier + cadenas + sac + téléphone | Sécurité et shopping fusionnés |
+
+### Résolution
+
+Les PNG sont livrés en **@1x uniquement** (77 à 408 px de large). Sur iPhone (@3x), une illustration affichée à 260 pt demande ~780 px : en l'état elles seront floues sur l'onboarding. À fournir idéalement en **@3x (≥ 900 px de large pour les mascottes)**, ou en PDF vectoriel.
+
+### Manquant
+
+- **Icône d'app** 1024 × 1024 (cadeau 3D de la maquette), sans transparence.

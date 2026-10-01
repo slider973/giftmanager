@@ -24,6 +24,7 @@ Une app iOS pour coordonner les cadeaux des enfants au sein d'une famille élarg
 - **Événement** : Noël (pour tous les enfants du groupe) ou anniversaire (pour un enfant).
 - **Liste de souhaits** : les cadeaux d'un enfant pour un événement.
 - **Cadeau** : titre, image, notes, priorité, et un ou plusieurs **liens d'achat** (URL, boutique, pays, prix, devise).
+- **Idée** : suggestion de cadeau proposée par un adulte pour un enfant d'un autre foyer. Visible des autres membres, **jamais des parents de l'enfant** ; un membre peut la réserver comme un cadeau de la liste.
 - **Possède déjà** : cadeau marqué comme déjà possédé par l'enfant, visible de tous, pour éviter les doublons.
 - **Réservation** : un membre s'engage à offrir un cadeau (`réservé` → `acheté`). Seul l'auteur de la réservation la voit.
 
@@ -68,7 +69,7 @@ households(id, group_id, name, country)
 household_members(household_id, user_id)            -- parents
 children(id, household_id, first_name, birthdate, avatar)
 events(id, group_id, kind: christmas|birthday, title, date, child_id NULL)
-wish_items(id, child_id, event_id, title, notes, image_url, priority, owned bool, created_by)
+wish_items(id, child_id, event_id, kind: wish|idea, title, notes, image_url, priority, owned bool, created_by)
 item_links(id, item_id, url, store, country, price, currency)
 reservations(id, item_id UNIQUE, user_id, status: reserved|purchased, created_at)
 ```
