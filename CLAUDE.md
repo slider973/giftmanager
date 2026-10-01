@@ -1,4 +1,4 @@
-# git-manager — workflow de dev piloté par agents
+# giftmanager — workflow de dev piloté par agents
 
 ## Workflow d'un ticket
 

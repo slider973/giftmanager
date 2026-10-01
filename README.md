@@ -1,4 +1,4 @@
-# git-manager
+# giftmanager
 
 Équipe d'agents Claude Code qui gère le cycle de vie d'un ticket GitHub : de l'issue jusqu'à la Pull Request, en déplaçant automatiquement le ticket sur le board GitHub Projects.
 
