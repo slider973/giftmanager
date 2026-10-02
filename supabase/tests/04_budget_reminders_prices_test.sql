@@ -2,7 +2,7 @@
 --   alice : parente du foyer A (enfant Léo, liste d'adulte « Alice »), eve : sa conjointe (même foyer)
 --   bob   : parent du foyer B ; carol, dave : membres sans foyer ; frank : hors du groupe
 begin;
-select plan(43);
+select plan(48);
 
 create function pg_temp.login(p_user uuid) returns void language sql as $$
   select set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
@@ -74,8 +74,11 @@ select is((select count(*) from private.birthday_reminder_candidates() where chi
 select is((select count(*) from private.birthday_reminder_candidates() where child_name = 'Alice'
            and user_id in ('a2000000-0000-0000-0000-000000000001', 'e2000000-0000-0000-0000-000000000001')), 0::bigint,
   'ni l''adulte concerné, ni son conjoint');
-select is((select count(*) from private.birthday_reminder_candidates(current_date + 1)), 0::bigint,
-  'aucun rappel les autres jours (ni J-29 ni J-6)');
+select is((select count(*) from private.birthday_reminder_candidates(current_date + 40) where event_id in (select id from public.events where group_id = (select v from ids where k = 'group'))), 0::bigint,
+  'événements passés : aucun rappel');
+select is((select count(*) from private.birthday_reminder_candidates(current_date + 25)
+           where child_name = 'Léo' and days_before = 7), 3::bigint,
+  'rattrapage : à J-5 sans rappel envoyé, le rappel J-7 part (pas de J-30 en plus)');
 
 update public.profiles set notify_birthday_reminders = false where id = 'd2000000-0000-0000-0000-000000000001';
 select is((select count(*) from private.birthday_reminder_candidates() where user_id = 'd2000000-0000-0000-0000-000000000001'), 0::bigint,
@@ -136,12 +139,19 @@ select is((select count(*) from public.record_price_check((select v from ids whe
   'rupture déjà notifiée : pas de doublon');
 select is((select count(*) from public.record_price_check((select v from ids where k = 'velo_link'), null, null, null)), 0::bigint,
   'relecture sans information : ignorée');
+select lives_ok($$ select * from public.record_price_check((select v from ids where k = 'velo_link'), 75, 'XYZ1', true) $$,
+  'devise invalide : ignorée sans erreur');
+select lives_ok($$ select * from public.record_price_check((select v from ids where k = 'velo_link'), 1e12, 'CHF', true) $$,
+  'prix hors plage : ignoré sans erreur');
+select is((select count(*) from public.link_checks where link_id = (select v from ids where k = 'velo_link')), 1::bigint,
+  'dernière tentative enregistrée pour la rotation');
 select is((select count(*) from public.record_price_check((select v from ids where k = 'livre_link'), 5, 'CHF', true)), 0::bigint,
   'cadeau non réservé : jamais de notification');
 
 select pg_temp.login('a2000000-0000-0000-0000-000000000001');
 select is((select count(*) from public.price_history), 0::bigint, 'parent : historique de prix illisible');
 select is((select count(*) from public.my_price_history((select v from ids where k = 'velo'))), 0::bigint, 'parent : my_price_history vide');
+select throws_ok($$ select * from public.link_checks $$, '42501', null, 'parent : link_checks illisible');
 select throws_ok($$ select * from public.record_price_check((select v from ids where k = 'velo_link'), 1, 'CHF', true) $$, '42501', null,
   'parent : pas d''accès à la fonction d''enregistrement');
 select pg_temp.login('d2000000-0000-0000-0000-000000000001');
