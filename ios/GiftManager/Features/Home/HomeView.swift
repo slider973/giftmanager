@@ -7,7 +7,7 @@ struct HomeView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(maxWidth: 260)
-            Text("Famille Cadeaux")
+            Text("Gift Manager")
                 .font(.largeTitle.bold())
             Text("Des idées. Moins de doublons. Plus de magie.")
                 .font(.body)

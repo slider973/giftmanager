@@ -35,7 +35,7 @@ struct DesignSystemGallery: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
-            Text("Famille Cadeaux")
+            Text("Gift Manager")
                 .font(Font.Theme.largeTitle)
                 .foregroundStyle(Color.Theme.textPrimary)
             Text("Design system · galerie de revue")
@@ -71,7 +71,7 @@ struct DesignSystemGallery: View {
         GallerySection(title: "Typographie") {
             VStack(alignment: .leading, spacing: Spacing.s) {
                 Text("Notre famille").font(Font.Theme.largeTitle)
-                Text("Bienvenue sur Famille Cadeaux").font(Font.Theme.title)
+                Text("Bienvenue sur Gift Manager").font(Font.Theme.title)
                 Text("LEGO Technic McLaren F1").font(Font.Theme.headline)
                 Text("Organisez les cadeaux de toute la famille en toute simplicité.").font(Font.Theme.body)
                 Text("Liste (8) · Possède déjà (3)").font(Font.Theme.callout)

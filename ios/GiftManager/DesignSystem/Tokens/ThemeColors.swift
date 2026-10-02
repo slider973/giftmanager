@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Palette « Famille Cadeaux ».
+/// Palette « Gift Manager ».
 ///
 /// Chaque couleur est un color set de `Assets.xcassets/Theme/` avec une variante
 /// sombre. Les paires texte / fond sont vérifiées AA (≥ 4,5:1) dans les deux

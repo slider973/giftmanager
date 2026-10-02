@@ -17,7 +17,7 @@ struct OnboardingView: View {
     }
 
     private let pages = [
-        Page(id: 0, image: "mascot_family", title: "Bienvenue sur\nFamille Cadeaux",
+        Page(id: 0, image: "mascot_family", title: "Bienvenue sur\nGift Manager",
              message: "Organisez les cadeaux de toute la famille en toute simplicité."),
         Page(id: 1, image: "illustration_travel", title: "Plusieurs foyers,\nplusieurs pays",
              message: "Suisse, France ou ailleurs : chacun ajoute des liens des boutiques de son pays."),

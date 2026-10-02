@@ -201,7 +201,7 @@ final class AppState {
 
     static func inviteMessage(for group: FamilyGroup) -> String {
         """
-        Rejoins « \(group.name) » sur Famille Cadeaux pour coordonner les cadeaux des enfants 🎁
+        Rejoins « \(group.name) » sur Gift Manager pour coordonner les cadeaux des enfants 🎁
         Code d'invitation : \(group.inviteCode)
         famillecadeaux://join/\(group.inviteCode)
         """

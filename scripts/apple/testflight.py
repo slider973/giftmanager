@@ -20,14 +20,14 @@ sys.path.insert(0, os.path.dirname(__file__))
 from asc import call  # noqa: E402
 
 WHATS_NEW = (
-    "Première version de Famille Cadeaux\n"
+    "Première version de Gift Manager\n"
     "• Crée ta famille et invite les autres foyers avec le code (Famille › Paramètres).\n"
     "• Ajoute tes enfants et leurs envies en collant des liens Amazon, Galaxus, Fnac…\n"
     "• Réserve un cadeau pour un autre enfant : personne ne sait que c'est toi.\n"
     "Merci de signaler tout souci avec une capture d'écran depuis TestFlight."
 )
 DESCRIPTION = (
-    "Famille Cadeaux coordonne les cadeaux des enfants entre plusieurs foyers et plusieurs pays : "
+    "Gift Manager coordonne les cadeaux des enfants entre plusieurs foyers et plusieurs pays : "
     "listes par enfant et par événement (Noël, anniversaires), liens de n'importe quelle boutique, "
     "réservation anonyme pour éviter les doublons."
 )

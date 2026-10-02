@@ -41,7 +41,7 @@ targets:
     info:
       path: GiftManager/Info.plist
       properties:
-        CFBundleDisplayName: Famille Cadeaux
+        CFBundleDisplayName: Gift Manager
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDevelopmentRegion: fr
