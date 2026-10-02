@@ -1,5 +1,6 @@
 import Foundation
 import Supabase
+import WidgetKit
 
 /// Accès aux données Supabase. Toutes les règles d'accès et d'anonymat sont appliquées côté serveur (RLS + RPC).
 struct GiftRepository: Sendable {
@@ -202,10 +203,12 @@ struct GiftRepository: Sendable {
 
     func reserve(itemId: UUID) async throws {
         try await db.rpc("reserve_item", params: ["p_item": itemId.uuidString]).execute()
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     func cancelReservation(itemId: UUID) async throws {
         try await db.rpc("cancel_reservation", params: ["p_item": itemId.uuidString]).execute()
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     func setPurchased(itemId: UUID, purchased: Bool) async throws {
@@ -214,6 +217,7 @@ struct GiftRepository: Sendable {
             let p_purchased: Bool
         }
         try await db.rpc("set_reservation_purchased", params: Params(p_item: itemId, p_purchased: purchased)).execute()
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     func myReservations() async throws -> [MyReservation] {

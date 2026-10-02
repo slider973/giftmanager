@@ -9,7 +9,6 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 IOS="$ROOT/ios"
 WORK="${RUNNER_TEMP:-$(mktemp -d)}/release"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date -u +%Y%m%d%H%M)}"
-PROFILE_NAME="Famille Cadeaux App Store"
 mkdir -p "$WORK"
 
 # Config iOS (valeurs publiques côté client uniquement)
@@ -33,14 +32,7 @@ security import "$WORK/dist.p12" -k "$KC" -P "$DIST_P12_PASSWORD" -T /usr/bin/co
 security set-key-partition-list -S apple-tool:,apple: -s -k "$KC_PASS" "$KC" >/dev/null
 security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
 
-# Capacités du bundle ID (idempotent : 409 si déjà présente) puis profil App Store recréé,
-# pour qu'il reflète les entitlements actuels (Sign in with Apple, Push).
 ASC=(uv run -q "$ROOT/scripts/apple/asc.py")
-BUNDLE_RES=$("${ASC[@]}" GET "/v1/bundleIds?filter[identifier]=$APP_BUNDLE_ID")
-BUNDLE_RES_ID=$(jq -r '[.data[] | select(.attributes.identifier == env.APP_BUNDLE_ID)][0].id' <<<"$BUNDLE_RES")
-for cap in APPLE_ID_AUTH PUSH_NOTIFICATIONS; do
-  "${ASC[@]}" POST /v1/bundleIdCapabilities "{\"data\":{\"type\":\"bundleIdCapabilities\",\"attributes\":{\"capabilityType\":\"$cap\"},\"relationships\":{\"bundleId\":{\"data\":{\"type\":\"bundleIds\",\"id\":\"$BUNDLE_RES_ID\"}}}}}" >/dev/null 2>&1 || true
-done
 
 # Certificat de distribution : retrouvé par son numéro de série.
 SERIAL=$(openssl pkcs12 -in "$WORK/dist.p12" -nokeys -passin "pass:$DIST_P12_PASSWORD" -legacy 2>/dev/null \
@@ -50,12 +42,36 @@ CERT_ID=$("${ASC[@]}" GET "/v1/certificates?filter[certificateType]=DISTRIBUTION
 [ "$CERT_ID" != null ] || { echo "Certificat de distribution introuvable sur App Store Connect" >&2; exit 1; }
 
 PROFILES="$HOME/Library/MobileDevice/Provisioning Profiles"; mkdir -p "$PROFILES"
-OLD=$("${ASC[@]}" GET "/v1/profiles?filter[name]=$(jq -rn --arg n "$PROFILE_NAME" '$n|@uri')")
-for old in $(jq -r '.data[].id' <<<"$OLD"); do "${ASC[@]}" DELETE "/v1/profiles/$old" >/dev/null || true; done
-"${ASC[@]}" POST /v1/profiles "{\"data\":{\"type\":\"profiles\",\"attributes\":{\"name\":\"$PROFILE_NAME\",\"profileType\":\"IOS_APP_STORE\"},\"relationships\":{\"bundleId\":{\"data\":{\"type\":\"bundleIds\",\"id\":\"$BUNDLE_RES_ID\"}},\"certificates\":{\"data\":[{\"type\":\"certificates\",\"id\":\"$CERT_ID\"}]}}}}" > "$WORK/profile.json"
-UUID=$(jq -r '.data.attributes.uuid' "$WORK/profile.json")
-jq -r '.data.attributes.profileContent' "$WORK/profile.json" | base64 --decode > "$PROFILES/$UUID.mobileprovision"
-echo "✓ Profil $UUID (capacités à jour)"
+EXPORT_PROFILES=""
+
+# Pour chaque cible signée : bundle ID créé s'il manque, capacités ajoutées (idempotent : 409 si déjà
+# présente), puis profil App Store recréé pour qu'il reflète les entitlements actuels.
+# Le partage de trousseau (app ↔ extensions) ne demande aucune capacité : il suffit du même Team ID.
+make_profile() {
+  local identifier="$1" profile_name="$2" bundle_name="$3"; shift 3
+  local res id uuid old
+  res=$("${ASC[@]}" GET "/v1/bundleIds?filter[identifier]=$identifier")
+  id=$(jq -r --arg i "$identifier" '[.data[] | select(.attributes.identifier == $i)][0].id' <<<"$res")
+  if [ "$id" = null ]; then
+    id=$("${ASC[@]}" POST /v1/bundleIds "{\"data\":{\"type\":\"bundleIds\",\"attributes\":{\"identifier\":\"$identifier\",\"name\":\"$bundle_name\",\"platform\":\"IOS\"}}}" | jq -r .data.id)
+    echo "✓ Bundle ID $identifier créé"
+  fi
+  for cap in "$@"; do
+    "${ASC[@]}" POST /v1/bundleIdCapabilities "{\"data\":{\"type\":\"bundleIdCapabilities\",\"attributes\":{\"capabilityType\":\"$cap\"},\"relationships\":{\"bundleId\":{\"data\":{\"type\":\"bundleIds\",\"id\":\"$id\"}}}}}" >/dev/null 2>&1 || true
+  done
+  old=$("${ASC[@]}" GET "/v1/profiles?filter[name]=$(jq -rn --arg n "$profile_name" '$n|@uri')")
+  for o in $(jq -r '.data[].id' <<<"$old"); do "${ASC[@]}" DELETE "/v1/profiles/$o" >/dev/null || true; done
+  "${ASC[@]}" POST /v1/profiles "{\"data\":{\"type\":\"profiles\",\"attributes\":{\"name\":\"$profile_name\",\"profileType\":\"IOS_APP_STORE\"},\"relationships\":{\"bundleId\":{\"data\":{\"type\":\"bundleIds\",\"id\":\"$id\"}},\"certificates\":{\"data\":[{\"type\":\"certificates\",\"id\":\"$CERT_ID\"}]}}}}" > "$WORK/profile.json"
+  uuid=$(jq -r '.data.attributes.uuid' "$WORK/profile.json")
+  jq -r '.data.attributes.profileContent' "$WORK/profile.json" | base64 --decode > "$PROFILES/$uuid.mobileprovision"
+  EXPORT_PROFILES+="<key>$identifier</key><string>$uuid</string>"
+  echo "✓ Profil « $profile_name » $uuid"
+}
+
+# Noms de profils = PROVISIONING_PROFILE_SPECIFIER de ios/project.yml
+make_profile "$APP_BUNDLE_ID" "Famille Cadeaux App Store" "Gift Manager" APPLE_ID_AUTH PUSH_NOTIFICATIONS
+make_profile "$APP_BUNDLE_ID.share" "Gift Manager Share App Store" "Gift Manager Share"
+make_profile "$APP_BUNDLE_ID.widget" "Gift Manager Widget App Store" "Gift Manager Widget"
 
 (cd "$IOS" && xcodegen generate --quiet)
 
@@ -77,7 +93,7 @@ cat > "$WORK/ExportOptions.plist" <<EOF
   <key>signingStyle</key><string>manual</string>
   <key>signingCertificate</key><string>Apple Distribution</string>
   <key>provisioningProfiles</key>
-  <dict><key>$APP_BUNDLE_ID</key><string>$UUID</string></dict>
+  <dict>$EXPORT_PROFILES</dict>
   <key>uploadSymbols</key><true/>
   <key>manageAppVersionAndBuildNumber</key><false/>
 </dict>

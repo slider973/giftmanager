@@ -67,3 +67,7 @@ enum AvatarPalette {
     static let colors = ["pastelPink", "pastelMint", "pastelBlue", "pastelPeach", "pastelLavender"]
     static let emojis = ["🦖", "🦄", "⚽️", "🐻", "🐱", "🚀", "🌸", "🦊", "🐼", "🎨", "🏰", "🧸"]
 }
+
+extension String {
+    var trimmed: String { trimmingCharacters(in: .whitespacesAndNewlines) }
+}
