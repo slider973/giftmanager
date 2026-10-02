@@ -51,7 +51,7 @@ struct GiftCard: View {
     }
 
     private func thumbnail(side: CGFloat) -> some View {
-        RemoteImage(url: imageURL)
+        RemoteImage(url: imageURL, placeholderSeed: title)
             .frame(width: side, height: side)
             .clipShape(RoundedRectangle(cornerRadius: Radius.thumb, style: .continuous))
             .accessibilityHidden(true)

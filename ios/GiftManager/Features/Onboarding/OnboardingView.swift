@@ -7,6 +7,7 @@ struct OnboardingView: View {
     @State private var page = 0
     @State private var appleSignIn = AppleSignIn()
     @State private var isSigningIn = false
+    @Environment(\.colorScheme) private var colorScheme
 
     private struct Page: Identifiable {
         let id: Int
@@ -29,49 +30,33 @@ struct OnboardingView: View {
     private var isLastPage: Bool { page == pages.count - 1 }
 
     var body: some View {
-        VStack(spacing: Spacing.xl) {
+        VStack(spacing: Spacing.l) {
             TabView(selection: $page) {
                 ForEach(pages) { page in
-                    VStack(spacing: Spacing.xl) {
-                        Spacer(minLength: Spacing.l)
-                        Image(page.image)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: 280, maxHeight: 280)
-                            .accessibilityHidden(true)
-                        Text(page.title)
-                            .font(Font.Theme.title)
-                            .foregroundStyle(Color.Theme.textPrimary)
-                            .multilineTextAlignment(.center)
-                        Text(page.message)
-                            .font(Font.Theme.body)
-                            .foregroundStyle(Color.Theme.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, Spacing.xl)
-                        Spacer(minLength: Spacing.l)
-                    }
-                    .tag(page.id)
+                    pageView(page).tag(page.id)
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .always))
-            .onAppear {
-                // Points de pagination lisibles sur le fond crème.
-                UIPageControl.appearance().currentPageIndicatorTintColor = UIColor(Color.Theme.primary)
-                UIPageControl.appearance().pageIndicatorTintColor = UIColor(Color.Theme.primary).withAlphaComponent(0.25)
-            }
+            // Points dessinés en SwiftUI : `UIPageControl` ne suit ni les couleurs du thème
+            // en sombre, ni le premier affichage (apparence posée trop tard).
+            .tabViewStyle(.page(indexDisplayMode: .never))
 
-            VStack(spacing: Spacing.m) {
+            PageDots(count: pages.count, current: page)
+
+            VStack(spacing: Spacing.s) {
                 if isLastPage {
                     SignInWithAppleButton(.continue) { request in
                         appleSignIn.prepare(request)
                     } onCompletion: { result in
                         Task { await signIn(result) }
                     }
-                    .signInWithAppleButtonStyle(.black)
-                    .frame(height: 54)
+                    // Noir sur crème, blanc sur bleu nuit (règle Apple de contraste du bouton).
+                    .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                    .frame(height: HitTarget.button)
                     .clipShape(Capsule())
                     .disabled(isSigningIn)
-                    .overlay { if isSigningIn { ProgressView().tint(.white) } }
+                    .opacity(isSigningIn ? 0.6 : 1)
+                    .overlay { if isSigningIn { ProgressView() } }
+                    .id(colorScheme)
 
                     #if DEBUG
                     DemoSignInButton()
@@ -83,9 +68,35 @@ struct OnboardingView: View {
                 }
             }
             .padding(.horizontal, Spacing.xl)
-            .padding(.bottom, Spacing.l)
+            .padding(.bottom, Spacing.s)
         }
+        .padding(.bottom, Spacing.s)
         .fcScreenBackground()
+    }
+
+    private func pageView(_ page: Page) -> some View {
+        VStack(spacing: Spacing.xxl) {
+            Spacer(minLength: Spacing.l)
+            Image(page.image)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 280, maxHeight: 280)
+                .accessibilityHidden(true)
+            VStack(spacing: Spacing.m) {
+                Text(page.title)
+                    .font(Font.Theme.title)
+                    .foregroundStyle(Color.Theme.textPrimary)
+                    .accessibilityAddTraits(.isHeader)
+                Text(page.message)
+                    .font(Font.Theme.body)
+                    .foregroundStyle(Color.Theme.textSecondary)
+                    .lineSpacing(2)
+                    .frame(maxWidth: 320)
+            }
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, Spacing.xl)
+            Spacer(minLength: Spacing.s)
+        }
     }
 
     private func signIn(_ result: Result<ASAuthorization, Error>) async {
@@ -122,9 +133,32 @@ private struct DemoSignInButton: View {
         }
         .font(Font.Theme.caption)
         .foregroundStyle(Color.Theme.textSecondary)
+        .frame(minHeight: HitTarget.minimum)
     }
 }
 #endif
+
+/// Pagination à points de l'onboarding : point actif allongé en `primary`,
+/// autres points en `textSecondary` atténué — lisibles en clair comme en sombre.
+private struct PageDots: View {
+    let count: Int
+    let current: Int
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack(spacing: Spacing.s) {
+            ForEach(0..<count, id: \.self) { index in
+                Capsule()
+                    .fill(index == current ? Color.Theme.primary : Color.Theme.textSecondary.opacity(0.4))
+                    .frame(width: index == current ? 20 : 8, height: 8)
+            }
+        }
+        .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.8), value: current)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Page \(current + 1) sur \(count)")
+    }
+}
 
 #Preview {
     OnboardingView().environment(AppState())

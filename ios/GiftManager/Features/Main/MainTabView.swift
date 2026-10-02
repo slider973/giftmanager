@@ -9,6 +9,7 @@ struct MainTabView: View {
     @State private var selection: Tab = .home
     @State private var lastTab: Tab = .home
     @State private var showAddGift = false
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         TabView(selection: $selection) {
@@ -19,7 +20,13 @@ struct MainTabView: View {
                 .tabItem { Label("Recherche", systemImage: "magnifyingglass") }
                 .tag(Tab.search)
             Color.clear
-                .tabItem { Label("Ajouter", systemImage: "plus.circle.fill") }
+                .tabItem {
+                    Label {
+                        Text("Ajouter")
+                    } icon: {
+                        Image(uiImage: colorScheme == .dark ? Self.addTabImageDark : Self.addTabImageLight)
+                    }
+                }
                 .tag(Tab.add)
             MyPurchasesView()
                 .tabItem { Label("Mes achats", systemImage: "bag.fill") }
@@ -34,6 +41,7 @@ struct MainTabView: View {
                 showAddGift = true
             }
         }
+        .tint(Color.Theme.primary)
         .sheet(isPresented: $showAddGift) {
             QuickAddGiftView()
         }
@@ -51,6 +59,31 @@ struct MainTabView: View {
             Text("Tu as ouvert une invitation avec le code \(appState.pendingInviteCode ?? ""). Tu pourras basculer entre tes familles dans Paramètres.")
         }
     }
+
+    /// « + » central de la maquette : disque `primary` plein, croix `onPrimary`.
+    ///
+    /// La barre d'onglets ignore les palettes de SF Symbols (elle affiche la variante
+    /// multicolore, verte) : on dessine donc le disque soi-même, une image par apparence.
+    private static let addTabImageLight = makeAddTabImage(.light)
+    private static let addTabImageDark = makeAddTabImage(.dark)
+
+    private static func makeAddTabImage(_ style: UIUserInterfaceStyle) -> UIImage {
+        let traits = UITraitCollection(userInterfaceStyle: style)
+        let primary = (UIColor(named: "Theme/primary") ?? .label).resolvedColor(with: traits)
+        let onPrimary = (UIColor(named: "Theme/onPrimary") ?? .systemBackground).resolvedColor(with: traits)
+        let side: CGFloat = 30
+        let image = UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { _ in
+            primary.setFill()
+            UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: side, height: side)).fill()
+            let plus = UIImage(systemName: "plus",
+                               withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .bold))?
+                .withTintColor(onPrimary, renderingMode: .alwaysOriginal)
+            if let plus {
+                plus.draw(at: CGPoint(x: (side - plus.size.width) / 2, y: (side - plus.size.height) / 2))
+            }
+        }
+        return image.withRenderingMode(.alwaysOriginal)
+    }
 }
 
 /// Bouton « + » : choisir l'enfant puis ajouter un souhait (ses enfants) ou une idée (les autres).
@@ -67,6 +100,7 @@ struct QuickAddGiftView: View {
                             NavigationLink(value: AddTarget(child: child, kind: .wish)) {
                                 ChildRow(child: child)
                             }
+                            .fcListRow()
                         }
                     }
                 }
@@ -76,11 +110,12 @@ struct QuickAddGiftView: View {
                             NavigationLink(value: AddTarget(child: child, kind: .idea)) {
                                 ChildRow(child: child)
                             }
+                            .fcListRow()
                         }
                     } header: {
                         Text("Proposer une idée pour…")
                     } footer: {
-                        Text("Les idées restent invisibles pour les parents de l'enfant.")
+                        Label("Les idées restent invisibles pour les parents de l'enfant.", systemImage: "eye.slash")
                     }
                 }
                 if appState.children.isEmpty {
@@ -119,6 +154,7 @@ struct ChildRow: View {
     var body: some View {
         HStack(spacing: Spacing.m) {
             ChildAvatar(name: child.firstName, emoji: child.avatarEmoji, colorName: child.avatarColor, size: 40)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(child.firstName)
                     .font(Font.Theme.headline)
@@ -130,5 +166,6 @@ struct ChildRow: View {
             }
         }
         .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
     }
 }

@@ -134,6 +134,10 @@ struct DesignSystemGallery: View {
                 PrimaryButton(title: "Continuer") {}.disabled(true)
                 SecondaryButton(title: "Ajouter à la liste", systemImage: "gift") {}
                 TextLinkButton(title: "Modifier les informations") {}
+                ShareLink(item: "Code : DEMO26") {
+                    FCPillLabel(title: "Partager l'invitation", systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(FCPressableStyle())
             }
         }
     }
@@ -153,6 +157,9 @@ struct DesignSystemGallery: View {
                     PriorityHeart(isOn: isFavorite) { isFavorite.toggle() }
                     PriorityHeart(isOn: false)
                 }
+                FCNotice(systemImage: "eye.slash", text: "Mode surprise : tu ne vois pas ce qui a été réservé.",
+                         tone: .surprise)
+                FCNotice(systemImage: "archivebox", text: "Événement passé : fiche archivée.")
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: Spacing.m) { flags }
                     VStack(alignment: .leading, spacing: Spacing.s) { flags }

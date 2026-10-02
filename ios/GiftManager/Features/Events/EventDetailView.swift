@@ -8,10 +8,10 @@ struct EventDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.l) {
+            VStack(alignment: .leading, spacing: Spacing.m) {
                 HStack(spacing: Spacing.m) {
                     EventKindTile(kind: event.kind.designKind)
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text(Formatting.dateText(event.eventDate))
                             .font(Font.Theme.headline)
                             .foregroundStyle(Color.Theme.textPrimary)
@@ -19,6 +19,12 @@ struct EventDetailView: View {
                             .font(Font.Theme.caption)
                             .foregroundStyle(Color.Theme.textSecondary)
                     }
+                }
+                .accessibilityElement(children: .combine)
+                .padding(.bottom, Spacing.s)
+
+                if event.isPast {
+                    FCNotice(systemImage: "archivebox", text: "Événement passé : les listes sont archivées en lecture seule.")
                 }
 
                 let mine = appState.children(for: event).filter { appState.isParent(of: $0) }
@@ -28,17 +34,14 @@ struct EventDetailView: View {
                     SectionHeader(title: "Les listes de la famille")
                     ForEach(others) { childLink($0) }
                 }
-                if event.isPast {
-                    Label("Événement passé : les listes sont archivées en lecture seule.", systemImage: "archivebox")
-                        .font(Font.Theme.caption)
-                        .foregroundStyle(Color.Theme.textSecondary)
-                }
                 if !mine.isEmpty {
                     SectionHeader(title: "Mes enfants")
+                        .padding(.top, others.isEmpty ? 0 : Spacing.m)
                     ForEach(mine) { childLink($0) }
-                    Label("Mode surprise : tu ne vois pas ce qui a été réservé pour tes enfants.", systemImage: "eye.slash")
-                        .font(Font.Theme.caption)
-                        .foregroundStyle(Color.Theme.textSecondary)
+                    FCNotice(systemImage: "eye.slash",
+                             text: "Mode surprise : tu ne vois pas ce qui a été réservé pour tes enfants.",
+                             tone: .surprise)
+                        .padding(.top, Spacing.xs)
                 }
                 if appState.children(for: event).isEmpty {
                     EmptyStateView(imageName: "empty_box", title: "Aucun enfant",
@@ -63,12 +66,13 @@ struct EventDetailView: View {
         NavigationLink(value: ChildDestination(child: child, eventId: event.id, readOnly: event.isPast)) {
             HStack {
                 ChildRow(child: child)
-                Spacer()
+                Spacer(minLength: Spacing.s)
                 Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
+                    .font(Font.Theme.callout.weight(.semibold))
                     .foregroundStyle(Color.Theme.textSecondary)
+                    .accessibilityHidden(true)
             }
-            .fcCard()
+            .fcCard(padding: Spacing.m)
         }
         .buttonStyle(FCPressableStyle())
     }

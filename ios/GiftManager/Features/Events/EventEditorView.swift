@@ -41,6 +41,7 @@ struct EventEditorView: View {
                     }
                     .pickerStyle(.segmented)
                     .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
                 }
 
                 if kind == .birthday {
@@ -51,23 +52,39 @@ struct EventEditorView: View {
                                 Text(child.firstName).tag(Optional(child.id))
                             }
                         }
+                        .frame(minHeight: HitTarget.minimum)
+                        .fcListRow()
                     }
                 }
 
                 Section("Détails") {
-                    TextField("Titre", text: $title)
+                    LabeledContent("Titre") {
+                        TextField("Titre", text: $title,
+                                  prompt: Text("Ex. Fête de fin d'année").foregroundStyle(Color.Theme.textSecondary))
+                            .multilineTextAlignment(.trailing)
+                    }
+                    .frame(minHeight: HitTarget.minimum)
+                    .fcListRow()
                     DatePicker("Date", selection: $date, displayedComponents: .date)
                         .environment(\.locale, Locale(identifier: "fr_FR"))
+                        .frame(minHeight: HitTarget.minimum)
+                        .fcListRow()
                 }
 
                 if let event = existing, canDelete(event) {
                     Section {
                         Button("Supprimer l'événement", role: .destructive) { confirmDelete = true }
+                            .foregroundStyle(Color.Theme.takenFg)
+                            .frame(minHeight: HitTarget.minimum)
+                            .fcListRow()
                     } footer: {
                         Text("Les cadeaux restent dans les listes des enfants.")
                     }
                 }
             }
+            .font(Font.Theme.callout)
+            .foregroundStyle(Color.Theme.textPrimary)
+            .tint(Color.Theme.primary)
             .scrollContentBackground(.hidden)
             .fcScreenBackground()
             .navigationTitle(existing == nil ? "Nouvel événement" : "Modifier")
@@ -75,8 +92,13 @@ struct EventEditorView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Annuler") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Enregistrer") { Task { await save() } }
-                        .disabled(!isValid || isSaving)
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Button("Enregistrer") { Task { await save() } }
+                            .fontWeight(.semibold)
+                            .disabled(!isValid)
+                    }
                 }
             }
             .onChange(of: kind) { _, _ in suggest() }

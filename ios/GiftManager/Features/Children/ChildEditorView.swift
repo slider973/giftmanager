@@ -36,23 +36,39 @@ struct ChildEditorView: View {
             ScrollView {
                 VStack(spacing: Spacing.l) {
                     ChildAvatar(name: firstName.isEmpty ? "?" : firstName, emoji: emoji, colorName: colorName, size: 96)
-                        .padding(.top, Spacing.l)
+                        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+                        .padding(.top, Spacing.s)
+                        .accessibilityHidden(true)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: emoji)
 
                     FCTextField(title: "Prénom", text: $firstName, systemImage: "person", prompt: "Ex. Léo")
                         .textContentType(.givenName)
 
-                    VStack(alignment: .leading, spacing: Spacing.m) {
-                        Toggle("Date de naissance", isOn: $hasBirthdate.animation())
-                            .font(Font.Theme.body)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Toggle(isOn: $hasBirthdate.animation()) {
+                            Label("Date de naissance", systemImage: "birthday.cake")
+                                .foregroundStyle(Color.Theme.textPrimary)
+                        }
+                        .tint(Color.Theme.primary)
+                        .frame(minHeight: HitTarget.minimum)
                         if hasBirthdate {
+                            Divider().overlay(Color.Theme.separator)
+                                .padding(.vertical, Spacing.xs)
                             DatePicker("Née / né le", selection: $birthdate, in: ...Date.now, displayedComponents: .date)
                                 .environment(\.locale, Locale(identifier: "fr_FR"))
+                                .foregroundStyle(Color.Theme.textPrimary)
+                                .tint(Color.Theme.primary)
+                                .frame(minHeight: HitTarget.minimum)
                         }
                     }
-                    .fcCard()
+                    .font(Font.Theme.callout)
+                    .fcCard(padding: Spacing.m)
 
                     VStack(alignment: .leading, spacing: Spacing.m) {
-                        Text("Avatar").font(Font.Theme.headline)
+                        Text("Avatar")
+                            .font(Font.Theme.headline)
+                            .foregroundStyle(Color.Theme.textPrimary)
+                            .accessibilityAddTraits(.isHeader)
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Spacing.s), count: 6), spacing: Spacing.s) {
                             ForEach(AvatarPalette.emojis, id: \.self) { item in
                                 Button {
@@ -60,10 +76,14 @@ struct ChildEditorView: View {
                                 } label: {
                                     Text(item)
                                         .font(.title2)
-                                        .frame(width: 44, height: 44)
+                                        .frame(width: HitTarget.minimum, height: HitTarget.minimum)
                                         .background(emoji == item ? Color.Theme.pastel(named: colorName) ?? Color.Theme.pastelMint : .clear,
                                                     in: Circle())
+                                        .overlay {
+                                            Circle().strokeBorder(emoji == item ? Color.Theme.primary : .clear, lineWidth: 2)
+                                        }
                                 }
+                                .buttonStyle(FCPressableStyle(pressedScale: 0.9))
                                 .accessibilityLabel("Avatar \(item)")
                                 .accessibilityAddTraits(emoji == item ? .isSelected : [])
                             }
@@ -74,12 +94,18 @@ struct ChildEditorView: View {
                                     colorName = name
                                 } label: {
                                     Circle()
-                                        .fill(Color.Theme.pastel(named: name) ?? .gray)
+                                        .fill(Color.Theme.pastel(named: name) ?? Color.Theme.pastelMint)
                                         .frame(width: 36, height: 36)
-                                        .overlay(Circle().stroke(Color.Theme.primary, lineWidth: colorName == name ? 3 : 0))
-                                        .frame(width: 44, height: 44)
+                                        .overlay(Circle().strokeBorder(Color.Theme.separator, lineWidth: 1))
+                                        .overlay {
+                                            if colorName == name {
+                                                Circle().strokeBorder(Color.Theme.primary, lineWidth: 2.5).padding(-4)
+                                            }
+                                        }
+                                        .frame(width: HitTarget.minimum, height: HitTarget.minimum)
                                 }
-                                .accessibilityLabel("Couleur \(name)")
+                                .buttonStyle(FCPressableStyle(pressedScale: 0.9))
+                                .accessibilityLabel("Couleur \(Self.colorLabel(name))")
                                 .accessibilityAddTraits(colorName == name ? .isSelected : [])
                             }
                         }
@@ -92,8 +118,15 @@ struct ChildEditorView: View {
                     .disabled(firstName.trimmed.isEmpty || isSaving)
 
                     if existing != nil {
-                        Button("Supprimer", role: .destructive) { confirmDelete = true }
-                            .frame(minHeight: 44)
+                        Button(role: .destructive) { confirmDelete = true } label: {
+                            Label("Supprimer \(existing?.firstName ?? "")", systemImage: "trash")
+                                .font(Font.Theme.callout.weight(.medium))
+                                .foregroundStyle(Color.Theme.takenFg)
+                                .frame(minHeight: HitTarget.minimum)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(FCPressableStyle(pressedScale: 1))
+                        .padding(.top, Spacing.s)
                     }
                 }
                 .padding(Spacing.xl)
@@ -111,6 +144,17 @@ struct ChildEditorView: View {
             }
         }
         .onAppear(perform: load)
+    }
+
+    private static func colorLabel(_ name: String) -> String {
+        switch name {
+        case "pastelPink": "rose"
+        case "pastelMint": "menthe"
+        case "pastelBlue": "bleu"
+        case "pastelPeach": "pêche"
+        case "pastelLavender": "lavande"
+        default: name
+        }
     }
 
     private func load() {
