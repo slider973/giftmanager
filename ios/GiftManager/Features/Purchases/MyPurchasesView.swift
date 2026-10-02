@@ -179,6 +179,7 @@ struct MyPurchasesView: View {
                 Text("Budget estimé")
                     .font(Font.Theme.caption)
                     .foregroundStyle(Color.Theme.textSecondary)
+                ConvertedTotalLine(totals: totals, profileCurrency: appState.profile?.currency)
             }
             Spacer()
         }
@@ -200,7 +201,7 @@ struct MyPurchasesView: View {
                     .lineLimit(2)
                 HStack(spacing: Spacing.xs) {
                     if let country = link?.country { CountryFlag(code: country) }
-                    Text([link?.priceText, link?.store].compactMap { $0 }.joined(separator: " · "))
+                    Text([link?.priceWithApprox(profileCurrency: appState.profile?.currency), link?.store].compactMap { $0 }.joined(separator: " · "))
                         .font(Font.Theme.caption)
                         .monospacedDigit()
                         .foregroundStyle(Color.Theme.textSecondary)

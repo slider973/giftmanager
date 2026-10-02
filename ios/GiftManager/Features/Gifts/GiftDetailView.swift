@@ -86,10 +86,12 @@ struct GiftDetailView: View {
                             .accessibilityAddTraits(.isHeader)
                         ForEach(links) { link in
                             StoreLinkRow(store: link.store ?? StoreCatalog.store(for: link.url)?.name ?? "Lien",
-                                         countryCode: link.country, priceText: link.priceText) {
+                                         countryCode: link.country, priceText: link.priceText,
+                                         approxPriceText: CurrencyService.shared.approxText(link.price, from: link.currency, to: appState.profile?.currency)) {
                                 if let url = URL(string: link.url) { openURL(url) }
                             }
                         }
+                        IndicativeRateFootnote(links: links, profileCurrency: appState.profile?.currency)
                     }
                 }
 

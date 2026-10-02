@@ -131,7 +131,8 @@ struct ChildGiftsView: View {
         let link = model.links(for: item, preferredCountry: appState.profile?.country).first
         return GiftCard(title: item.title, imageURL: item.imageURL, priceText: link?.priceText,
                         storeText: link?.store, countryCode: link?.country, isFavorite: item.isFavorite,
-                        status: item.displayStatus(isParent: isParent))
+                        status: item.displayStatus(isParent: isParent),
+                        approxPriceText: CurrencyService.shared.approxText(link?.price, from: link?.currency, to: appState.profile?.currency))
     }
 
     @ViewBuilder

@@ -16,6 +16,8 @@ struct GiftCard: View {
     let countryCode: String?
     let isFavorite: Bool
     let status: GiftStatus?
+    /// Conversion indicative dans la devise du profil (« ≈ 214 € »), affichée après le prix d'origine.
+    var approxPriceText: String? = nil
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .headline) private var thumbSize: CGFloat = 76
@@ -79,6 +81,7 @@ struct GiftCard: View {
                             .monospacedDigit()
                             .foregroundStyle(Color.Theme.textPrimary)
                     }
+                    if let approxPriceText { ApproxPriceText(text: approxPriceText) }
                 }
                 .font(Font.Theme.caption)
             }
@@ -120,7 +123,8 @@ private struct GiftCardPreviewList: View {
                 GiftCard(title: "PlayStation 5 Pro", imageURL: nil, priceText: "CHF 799.–",
                          storeText: "Digitec", countryCode: "CH", isFavorite: false, status: .taken)
                 GiftCard(title: "Casque Sony WH-1000XM5", imageURL: nil, priceText: "€ 299,00",
-                         storeText: "Amazon.fr", countryCode: "FR", isFavorite: true, status: .mine)
+                         storeText: "Amazon.fr", countryCode: "FR", isFavorite: true, status: .mine,
+                         approxPriceText: "≈ 277 CHF")
                 GiftCard(title: "Nintendo Switch OLED", imageURL: URL(string: "https://invalid.invalid/x.png"),
                          priceText: "CHF 349.–", storeText: "Fnac", countryCode: "CH", isFavorite: false,
                          status: .owned)

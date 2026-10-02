@@ -6,6 +6,8 @@ struct StoreLinkRow: View {
     let store: String
     let countryCode: String?
     let priceText: String?
+    /// Conversion indicative dans la devise du profil, sous le prix d'origine.
+    var approxPriceText: String? = nil
     let action: () -> Void
 
     @ScaledMetric(relativeTo: .body) private var minHeight: CGFloat = 52
@@ -23,10 +25,16 @@ struct StoreLinkRow: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if let priceText {
-                    Text(priceText)
-                        .font(Font.Theme.callout.weight(.semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(Color.Theme.textPrimary)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(priceText)
+                            .font(Font.Theme.callout.weight(.semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(Color.Theme.textPrimary)
+                        if let approxPriceText {
+                            ApproxPriceText(text: approxPriceText)
+                                .font(Font.Theme.caption)
+                        }
+                    }
                 }
 
                 Image(systemName: "arrow.up.right.square")
@@ -57,6 +65,7 @@ struct StoreLinkRow: View {
             parts.append(CountryFlag.countryName(for: countryCode))
         }
         if let priceText { parts.append(priceText) }
+        if let approxPriceText { parts.append(ApproxPriceText.spoken(approxPriceText)) }
         return parts.joined(separator: ", ")
     }
 }
@@ -66,7 +75,7 @@ private struct StoreLinkRowPreview: View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             SectionHeader(title: "Liens par pays")
             StoreLinkRow(store: "Galaxus (CH)", countryCode: "CH", priceText: "CHF 199.–") {}
-            StoreLinkRow(store: "Amazon.fr (FR)", countryCode: "FR", priceText: "€ 199,99") {}
+            StoreLinkRow(store: "Amazon.fr (FR)", countryCode: "FR", priceText: "€ 199,99", approxPriceText: "≈ 185 CHF") {}
             StoreLinkRow(store: "Fnac (FR)", countryCode: "FR", priceText: "€ 199,99") {}
             StoreLinkRow(store: "Boutique en ligne", countryCode: nil, priceText: nil) {}
         }

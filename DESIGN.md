@@ -134,6 +134,8 @@ FCSystemAppearance.apply()                   // au lancement : titres de navigat
 | `FeaturePill` | `FeaturePill(systemImage: String, color: Color, title: String, subtitle: String, background: Color? = nil)` | `color` teinte l'icône ; `background` = pastel du disque (sinon teinte de `color` à 16 %) |
 | `SectionHeader` | `SectionHeader(title: String, actionSystemImage: String? = nil, action: (() -> Void)? = nil, actionLabel: String? = nil)` | Bouton rond `primary` ; `actionLabel` pour VoiceOver (« Ajouter » par défaut) |
 | `FCTextField` | `FCTextField(title: String, text: Binding<String>, systemImage: String? = nil, prompt: String? = nil, isTitleHidden: Bool = false)` | Libellé visible au-dessus ; `isTitleHidden` le garde pour VoiceOver seulement. Bouton « Effacer » au focus |
+| `ApproxPriceText` | `ApproxPriceText(text: String)` | Conversion indicative « ≈ 214 € » posée **après** le prix d'origine, toujours `textSecondary`, chiffres tabulaires ; VoiceOver : « environ 214 €, conversion indicative ». Hérite de la police |
+| `IndicativeRateNote` | `IndicativeRateNote(rateDateText: String?)` | Mention « Conversion indicative, taux BCE du 2 octobre. Le prix de la boutique fait foi. » sous des prix convertis |
 | `DesignSystemGallery` | `DesignSystemGallery()` | `#if DEBUG` |
 
 ### Règles d'usage
@@ -153,6 +155,7 @@ FCSystemAppearance.apply()                   // au lancement : titres de navigat
 - Cagnotte (#35) : progression visible des non-parents ; noms et montants des participants seulement pour un participant (« Moi » pour soi). Toujours rappeler que les autres participants voient le prénom et la part.
 - Équilibre (#41) : une ligne `caption` sous la liste, `textSecondary` ; ambre (`accentAmber`) quand rien n'est prévu. Jamais sur mes propres listes.
 - Remerciements (#42) : un donateur n'est nommé aux parents que s'il s'est dévoilé (« Offert par … ») ; sinon « la personne qui l'a offert ». L'expéditeur d'un merci (un parent) est nommé côté donateur.
+- Conversion de devises (#38) : uniquement à côté d'un prix dans une autre devise que celle du profil, jamais à sa place. Format « prix d'origine ≈ montant converti », arrondi à l'unité (au centime sous 10). Là où plusieurs prix sont convertis (fiche cadeau, total de Mes achats), le mot « indicatif » est écrit en toutes lettres. Taux BCE du jour via `CurrencyService.shared` ; hors ligne, dernier taux connu ; sans aucun taux, rien n'est affiché.
 
 ## Écarts avec les spécifications — décisions
 
