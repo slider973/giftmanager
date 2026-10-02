@@ -36,6 +36,24 @@ final class StoreCatalogTests: XCTestCase {
         XCTAssertNil(LinkPreviewService.parsePrice("gratuit"))
     }
 
+    func testDisplayedPriceText() {
+        XCTAssertEqual(LinkPreviewService.priceFromDisplayedText("157,09 € avec 13 % d'économies"), Decimal(string: "157.09"))
+        XCTAssertEqual(LinkPreviewService.priceFromDisplayedText("149,31CHF"), Decimal(string: "149.31"))
+        XCTAssertEqual(LinkPreviewService.priceFromDisplayedText("CHF 1'299.–"), Decimal(1299))
+        XCTAssertEqual(LinkPreviewService.priceFromDisplayedText("$1,299.99"), Decimal(string: "1299.99"))
+        XCTAssertEqual(LinkPreviewService.priceFromDisplayedText("1.299,00 €"), Decimal(string: "1299.00"))
+        XCTAssertNil(LinkPreviewService.priceFromDisplayedText("Indisponible"))
+    }
+
+    func testCurrencyFromDisplayedText() {
+        XCTAssertEqual(LinkPreviewService.currency(inDisplayedText: "149,31CHF", storeCountry: "DE"), "CHF")
+        XCTAssertEqual(LinkPreviewService.currency(inDisplayedText: "159,99€", storeCountry: "DE"), "EUR")
+        XCTAssertEqual(LinkPreviewService.currency(inDisplayedText: "£20.00", storeCountry: "GB"), "GBP")
+        XCTAssertEqual(LinkPreviewService.currency(inDisplayedText: "$30", storeCountry: "CA"), "CAD")
+        XCTAssertEqual(LinkPreviewService.currency(inDisplayedText: "$30", storeCountry: "US"), "USD")
+        XCTAssertNil(LinkPreviewService.currency(inDisplayedText: "30", storeCountry: "FR"))
+    }
+
     func testSharedTextExtractsFirstLink() {
         let url = LinkPreviewService.normalizedURL("Regarde ça 👉 https://www.galaxus.ch/fr/s1/product/123 trop bien")
         XCTAssertEqual(url?.host(), "www.galaxus.ch")
