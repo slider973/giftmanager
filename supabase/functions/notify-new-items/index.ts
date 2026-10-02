@@ -80,6 +80,11 @@ async function notifyThanks(auth: string, itemId: string): Promise<Response> {
   const { data: parent } = await admin.from("household_members").select("user_id")
     .eq("household_id", (item as any).children.household_id).eq("user_id", caller).maybeSingle();
   if (!parent) return json({ sent: 0 });
+  // Seulement juste après un vrai remerciement de l'appelant pour ce cadeau (anti-spam des donateurs).
+  const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { data: recent } = await admin.from("thanks").select("id")
+    .eq("item_id", itemId).eq("sender_id", caller).gte("created_at", since).limit(1);
+  if (!recent?.length) return json({ ok: true });
   const { data: reservation } = await admin.from("reservations").select("user_id").eq("item_id", itemId);
   const { data: contributions } = await admin.from("contributions").select("user_id").eq("item_id", itemId);
   const donors = [...new Set([...(reservation ?? []), ...(contributions ?? [])].map((d) => d.user_id))];
