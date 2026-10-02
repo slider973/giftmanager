@@ -319,12 +319,17 @@ struct AddGiftView: View {
 
     private func fetchPreview() {
         guard let url = LinkPreviewService.normalizedURL(urlText), url.host()?.contains(".") == true else { return }
+        let requested = urlText
         store = StoreCatalog.store(for: url.absoluteString)
         if let storeCurrency = store?.currency { currency = storeCurrency }
+        // Nouveau lien : on efface le prix précédent pour ne jamais l'afficher avec une autre devise.
+        if !isEditing { priceText = "" }
         isFetching = true
         previewFailed = false
         Task {
             let preview = await LinkPreviewService.preview(for: url.absoluteString)
+            // Un autre lien a été collé entre-temps : on ignore ce résultat.
+            guard requested == urlText else { return }
             isFetching = false
             guard let preview else {
                 previewFailed = true
@@ -337,9 +342,14 @@ struct AddGiftView: View {
             } else if let data = preview.imageData {
                 imageData = UIImage(data: data)?.resizedJPEG(maxDimension: 1200) ?? data
             }
-            if let price = preview.price { priceText = "\(price)" }
+            if let price = preview.price { priceText = Self.priceInputText(price) }
             if let previewCurrency = preview.currency { currency = previewCurrency }
         }
+    }
+
+    /// Prix pré-rempli avec deux décimales : « 108.00 ».
+    static func priceInputText(_ price: Decimal) -> String {
+        String(format: "%.2f", NSDecimalNumber(decimal: price).doubleValue)
     }
 
     // MARK: - Chargement / enregistrement
@@ -356,7 +366,7 @@ struct AddGiftView: View {
         if let main = existingLinks.first {
             urlText = main.url
             store = StoreCatalog.Store(name: main.store ?? "", country: main.country, currency: main.currency)
-            priceText = main.price.map { "\($0)" } ?? ""
+            priceText = main.price.map(Self.priceInputText) ?? ""
             currency = main.currency ?? currency
         }
         otherLinks = existingLinks.dropFirst().map {
@@ -480,7 +490,7 @@ private struct AddLinkSheet: View {
         Task {
             let preview = await LinkPreviewService.preview(for: url)
             isFetching = false
-            if let value = preview?.price { price = "\(value)" }
+            if let value = preview?.price { price = AddGiftView.priceInputText(value) }
             if let value = preview?.currency { currency = value }
         }
     }
