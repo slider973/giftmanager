@@ -7,7 +7,7 @@ import SwiftUI
 /// de la marque. Le reste reste en SF Pro, pour la lisibilité.
 extension Font {
     enum Theme {
-        /// 34 pt Bold arrondi — « Notre famille », « Famille Cadeaux ».
+        /// 34 pt Bold arrondi — « Notre famille », « Gift Manager ».
         static let largeTitle = Font.system(.largeTitle, design: .rounded, weight: .bold)
         /// 22 pt Bold arrondi — titres d'écran secondaires, prénom de l'enfant.
         static let title = Font.system(.title2, design: .rounded, weight: .bold)

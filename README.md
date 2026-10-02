@@ -56,7 +56,7 @@ scripts/ticket-status.sh 42 "Done"
 
 Copier `.claude/`, `scripts/` et `.github/workflows/project-sync.yml`, puis adapter `.claude/workflow.env`.
 
-## Développement de l'app (Famille Cadeaux)
+## Développement de l'app (Gift Manager)
 
 Prérequis : Xcode, [XcodeGen](https://github.com/yonaskolb/XcodeGen), Supabase CLI, Docker, 1Password CLI (`op`), `uv`.
 

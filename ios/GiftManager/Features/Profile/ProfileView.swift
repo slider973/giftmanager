@@ -201,7 +201,7 @@ struct ProfileView: View {
     private var versionText: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
-        return "Famille Cadeaux \(version) (\(build))"
+        return "Gift Manager \(version) (\(build))"
     }
 }
 

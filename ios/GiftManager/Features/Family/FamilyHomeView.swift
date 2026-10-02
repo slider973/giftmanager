@@ -182,7 +182,7 @@ private struct MembersSection: View {
                 }
                 .buttonStyle(FCPressableStyle(pressedScale: 1))
                 if let code = household.inviteCode {
-                    ShareLink(item: "Rejoins notre foyer « \(household.name) » sur Famille Cadeaux avec le code : \(code)") {
+                    ShareLink(item: "Rejoins notre foyer « \(household.name) » sur Gift Manager avec le code : \(code)") {
                         HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
                             Image(systemName: "person.badge.plus")
                                 .accessibilityHidden(true)

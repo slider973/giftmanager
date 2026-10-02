@@ -1,8 +1,8 @@
-# Famille Cadeaux — Design
+# Gift Manager — Design
 
 Référence visuelle : [`docs/design/maquette-v1.png`](docs/design/maquette-v1.png)
 
-Nom affiché de l'app : **Famille Cadeaux**. Promesse : *« Des idées. Moins de doublons. Plus de magie. »*
+Nom affiché de l'app : **Gift Manager**. Promesse : *« Des idées. Moins de doublons. Plus de magie. »*
 
 ## Direction
 
@@ -48,8 +48,8 @@ Police système, toujours sur un style Dynamic Type (aucune taille fixe). Les de
 
 | Token | Style système | Taille par défaut / graisse | Exemple |
 |---|---|---|---|
-| `largeTitle` | `.largeTitle`, rounded | 34 / Bold | « Notre famille », « Famille Cadeaux » |
-| `title` | `.title2`, rounded | 22 / Bold | « Bienvenue sur Famille Cadeaux », prénom de l'enfant, titre d'état vide |
+| `largeTitle` | `.largeTitle`, rounded | 34 / Bold | « Notre famille », « Gift Manager » |
+| `title` | `.title2`, rounded | 22 / Bold | « Bienvenue sur Gift Manager », prénom de l'enfant, titre d'état vide |
 | `headline` | `.headline` | 17 / Semibold | Nom d'un cadeau, d'un événement, boutons |
 | `body` | `.subheadline` | 15 / Regular | Textes courants |
 | `callout` | `.callout` | 16 / Regular | Onglets, liens texte, lignes de boutique |
