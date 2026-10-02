@@ -23,7 +23,9 @@ Deno.serve(async (req) => {
   const auth = req.headers.get("Authorization");
   if (!auth) return json({ error: "unauthorized" }, 401);
 
-  const { item_ids } = await req.json().catch(() => ({ item_ids: [] }));
+  const payload = await req.json().catch(() => ({}));
+  if (payload.type === "thanks") return await notifyThanks(auth, payload.item_id);
+  const { item_ids } = payload;
   if (!Array.isArray(item_ids) || item_ids.length === 0 || item_ids.length > 50) return json({ error: "item_ids" }, 400);
 
   // Client « utilisateur » : la RLS garantit qu'il voit ces cadeaux.
@@ -66,6 +68,27 @@ Deno.serve(async (req) => {
   }
   return json({ sent });
 });
+
+// Remerciement (#42) : seuls les donateurs du cadeau sont notifiés ; l'appelant doit être parent de l'enfant.
+async function notifyThanks(auth: string, itemId: string): Promise<Response> {
+  const asUser = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth } } });
+  const caller = (await asUser.auth.getUser()).data.user?.id;
+  if (!caller || typeof itemId !== "string") return json({ error: "unauthorized" }, 401);
+  const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+  const { data: item } = await admin.from("wish_items").select("id, title, child_id, children!inner(household_id)").eq("id", itemId).single();
+  if (!item) return json({ sent: 0 });
+  const { data: parent } = await admin.from("household_members").select("user_id")
+    .eq("household_id", (item as any).children.household_id).eq("user_id", caller).maybeSingle();
+  if (!parent) return json({ sent: 0 });
+  const { data: reservation } = await admin.from("reservations").select("user_id").eq("item_id", itemId);
+  const { data: contributions } = await admin.from("contributions").select("user_id").eq("item_id", itemId);
+  const donors = [...new Set([...(reservation ?? []), ...(contributions ?? [])].map((d) => d.user_id))];
+  const { data: author } = await admin.from("profiles").select("display_name").eq("id", caller).single();
+  const sent = await push(admin, donors, "Un grand merci 🎁", `${author?.display_name || "Un parent"} te remercie pour « ${item.title} ».`);
+  // Réponse identique qu'il y ait des donateurs ou non : le parent n'apprend rien.
+  void sent;
+  return json({ ok: true });
+}
 
 async function push(admin: ReturnType<typeof createClient>, userIds: string[], title: string, body: string): Promise<number> {
   const keyId = Deno.env.get("APNS_KEY_ID"), teamId = Deno.env.get("APNS_TEAM_ID");
