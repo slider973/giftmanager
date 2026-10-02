@@ -203,7 +203,3 @@ private struct HouseholdSetupView: View {
         }
     }
 }
-
-extension String {
-    var trimmed: String { trimmingCharacters(in: .whitespacesAndNewlines) }
-}

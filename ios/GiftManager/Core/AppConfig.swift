@@ -17,4 +17,12 @@ enum AppConfig {
         }
         return key
     }()
+
+    /// Groupe de trousseau commun à l'app et à ses extensions (« TEAMID.ch.jonathanlemaine.giftmanager.shared »).
+    /// `nil` dans les builds non signés (tests CI) : stockage par défaut.
+    static let sharedKeychainGroup: String? = {
+        guard let prefix = Bundle.main.object(forInfoDictionaryKey: "AppIdentifierPrefix") as? String,
+              prefix.hasSuffix("."), prefix.count > 1 else { return nil }
+        return prefix + "ch.jonathanlemaine.giftmanager.shared"
+    }()
 }
