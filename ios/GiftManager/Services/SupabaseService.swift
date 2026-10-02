@@ -9,7 +9,7 @@ enum SupabaseService {
             return SupabaseClient(supabaseURL: AppConfig.supabaseURL, supabaseKey: AppConfig.supabasePublishableKey)
         }
         let options = SupabaseClientOptions(
-            auth: .init(storage: SharedSessionStorage(accessGroup: group))
+            auth: .init(storage: SharedSessionStorage.live(sharedGroup: group, legacyGroup: AppConfig.legacyKeychainGroup))
         )
         return SupabaseClient(supabaseURL: AppConfig.supabaseURL, supabaseKey: AppConfig.supabasePublishableKey, options: options)
     }()
@@ -17,12 +17,16 @@ enum SupabaseService {
 
 /// Session dans le trousseau partagé, avec reprise de l'ancienne session (trousseau propre à l'app)
 /// pour ne pas déconnecter les utilisateurs existants lors de la mise à jour.
+/// Chaque trousseau est épinglé à son groupe : supprimer l'ancien ne touche jamais la copie partagée.
 struct SharedSessionStorage: AuthLocalStorage {
-    private let shared: KeychainLocalStorage
-    private let legacy = KeychainLocalStorage(service: "supabase.gotrue.swift")
+    let shared: any AuthLocalStorage
+    let legacy: (any AuthLocalStorage)?
 
-    init(accessGroup: String) {
-        shared = KeychainLocalStorage(service: "supabase.gotrue.swift", accessGroup: accessGroup)
+    static func live(sharedGroup: String, legacyGroup: String?) -> SharedSessionStorage {
+        SharedSessionStorage(
+            shared: KeychainLocalStorage(service: "supabase.gotrue.swift", accessGroup: sharedGroup),
+            legacy: legacyGroup.map { KeychainLocalStorage(service: "supabase.gotrue.swift", accessGroup: $0) }
+        )
     }
 
     func store(key: String, value: Data) throws {
@@ -31,14 +35,16 @@ struct SharedSessionStorage: AuthLocalStorage {
 
     func retrieve(key: String) throws -> Data? {
         if let data = try? shared.retrieve(key: key) { return data }
-        guard let data = try? legacy.retrieve(key: key) else { return nil }
+        guard let legacy, let data = try? legacy.retrieve(key: key) else { return nil }
         try shared.store(key: key, value: data)
         try? legacy.remove(key: key)
         return data
     }
 
+    /// Les deux suppressions sont toujours tentées : un reste dans l'ancien trousseau serait re-migré
+    /// au lancement suivant et reconnecterait l'utilisateur.
     func remove(key: String) throws {
-        try shared.remove(key: key)
-        try? legacy.remove(key: key)
+        try? shared.remove(key: key)
+        try? legacy?.remove(key: key)
     }
 }
