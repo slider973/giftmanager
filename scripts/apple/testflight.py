@@ -6,7 +6,7 @@
 
 1. attend la fin du traitement Apple du build ;
 2. groupe interne « Équipe » (accès à tous les builds) avec les utilisateurs App Store Connect ;
-3. groupe externe « Famille » avec lien public ;
+3. groupes externes « Famille » et « Bêta publique », chacun avec son lien public ;
 4. textes « À tester », infos de test, puis soumission du build à la vérification bêta (requise pour l'externe).
 
 Usage (variables ASC_* et APP_BUNDLE_ID dans l'environnement) :
@@ -31,6 +31,8 @@ DESCRIPTION = (
     "listes par enfant et par événement (Noël, anniversaires), liens de n'importe quelle boutique, "
     "réservation anonyme pour éviter les doublons."
 )
+# Groupes externes : nom → nombre maximal de testeurs via le lien public.
+EXTERNAL_GROUPS = {"Famille": 100, "Bêta publique": 1000}
 PRIVACY_URL = "https://slider973.github.io/giftmanager/privacy/"
 REVIEW_NOTES = (
     "Connexion uniquement avec Sign in with Apple (aucun compte de démo nécessaire). "
@@ -63,7 +65,7 @@ def wait_build(app_id: str, version: str, timeout: int = 2400) -> dict:
     sys.exit("Délai dépassé pour le traitement du build")
 
 
-def ensure_group(app_id: str, name: str, internal: bool) -> dict:
+def ensure_group(app_id: str, name: str, internal: bool, link_limit: int = 100) -> dict:
     groups = call("GET", f"/v1/apps/{app_id}/betaGroups?limit=50")["data"]
     for group in groups:
         if group["attributes"]["name"] == name:
@@ -72,7 +74,7 @@ def ensure_group(app_id: str, name: str, internal: bool) -> dict:
     if internal:
         attributes["hasAccessToAllBuilds"] = True
     else:
-        attributes.update({"publicLinkEnabled": True, "publicLinkLimitEnabled": True, "publicLinkLimit": 100,
+        attributes.update({"publicLinkEnabled": True, "publicLinkLimitEnabled": True, "publicLinkLimit": link_limit,
                            "feedbackEnabled": True})
     return call("POST", "/v1/betaGroups", {"data": {"type": "betaGroups", "attributes": attributes,
                                                      "relationships": {"app": {"data": {"type": "apps", "id": app_id}}}}})["data"]
@@ -171,13 +173,16 @@ def main() -> None:
     internal = ensure_group(app_id, "Équipe", internal=True)
     add_internal_testers(internal["id"])
 
-    print("▶ Groupe externe « Famille »")
-    family = ensure_group(app_id, "Famille", internal=False)
     ensure_beta_texts(app_id, build["id"])
-    try:
-        call("POST", f"/v1/betaGroups/{family['id']}/relationships/builds", {"data": [{"type": "builds", "id": build["id"]}]})
-    except SystemExit:
-        print("  build déjà dans le groupe")
+    externals = []
+    for name, limit in EXTERNAL_GROUPS.items():
+        print(f"▶ Groupe externe « {name} »")
+        group = ensure_group(app_id, name, internal=False, link_limit=limit)
+        try:
+            call("POST", f"/v1/betaGroups/{group['id']}/relationships/builds", {"data": [{"type": "builds", "id": build["id"]}]})
+        except SystemExit:
+            print("  build déjà dans le groupe")
+        externals.append(group)
 
     if ensure_review_details(app_id):
         try:
@@ -187,14 +192,16 @@ def main() -> None:
         except SystemExit:
             print("  soumission déjà faite ou refusée (voir TestFlight)")
 
-    family = call("GET", f"/v1/betaGroups/{family['id']}")["data"]
-    link = family["attributes"].get("publicLink")
     print(f"✓ Groupe interne prêt (installation immédiate via l'app TestFlight)")
-    if link:
-        print(f"✓ Lien public pour la famille : {link}")
+    for group in externals:
+        attrs = call("GET", f"/v1/betaGroups/{group['id']}")["data"]["attributes"]
+        link = attrs.get("publicLink")
+        if not link:
+            continue
+        print(f"✓ Lien public « {attrs['name']} » : {link}")
         if os.environ.get("GITHUB_STEP_SUMMARY"):
             with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
-                summary.write(f"\n**Lien TestFlight famille** : {link}\n")
+                summary.write(f"\n**Lien TestFlight « {attrs['name']} »** : {link}\n")
 
 
 if __name__ == "__main__":
