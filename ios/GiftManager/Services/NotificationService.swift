@@ -44,36 +44,20 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
     }
 
     // MARK: - Rappels d'achats
+    //
+    // #59 : les rappels partent désormais du serveur (fonction Edge purchase-reminders,
+    // J-30 / J-15 / J-7 / J-2 à 18 h locales). La planification locale est supprimée — elle
+    // ne partait que si l'app avait été ouverte à temps, et ferait maintenant doublon.
 
-    func scheduleReminders(reservations: [MyReservation], events: [GiftEvent]) async {
+    /// Supprime les rappels locaux encore planifiés par les versions précédentes.
+    func cancelLocalPurchaseReminders() async {
         let pending = await center.pendingNotificationRequests().map(\.identifier).filter { $0.hasPrefix(reminderPrefix) }
         center.removePendingNotificationRequests(withIdentifiers: pending)
-        guard Self.isEnabled(.purchaseReminders) else { return }
+    }
 
-        let toBuy = reservations.filter { $0.status == .reserved && !$0.owned }
-        let byEvent = Dictionary(grouping: toBuy) { $0.eventId }
-        guard !byEvent.isEmpty, await requestAuthorization() else { return }
-
-        let calendar = Calendar.current
-        for (eventId, items) in byEvent {
-            guard let eventId, let event = events.first(where: { $0.id == eventId }) else { continue }
-            for daysBefore in [30, 7] {
-                guard let day = calendar.date(byAdding: .day, value: -daysBefore, to: event.eventDate.localDate),
-                      var fire = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: day),
-                      fire > .now else { continue }
-                fire = max(fire, .now.addingTimeInterval(60))
-                let content = UNMutableNotificationContent()
-                content.title = "\(event.title) dans \(daysBefore) jours"
-                content.body = items.count > 1
-                    ? "Il te reste \(items.count) cadeaux à acheter."
-                    : "Il te reste « \(items[0].title) » à acheter."
-                content.sound = .default
-                let trigger = UNCalendarNotificationTrigger(
-                    dateMatching: calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fire), repeats: false)
-                try? await center.add(UNNotificationRequest(identifier: "\(reminderPrefix)\(eventId)-\(daysBefore)",
-                                                            content: content, trigger: trigger))
-            }
-        }
+    func scheduleReminders(reservations: [MyReservation], events: [GiftEvent]) async {
+        // Le serveur s'en charge : on se contente de nettoyer l'héritage local.
+        await cancelLocalPurchaseReminders()
     }
 
     // MARK: - UNUserNotificationCenterDelegate

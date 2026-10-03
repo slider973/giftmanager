@@ -85,7 +85,7 @@ Fonctions serveur : `item_public_status(item_id)`, `reserve_item(item_id)`, `joi
 
 ## Hors périmètre v1
 
-Conversion de devises, extension de partage iOS, Android ou web, listes de souhaits d'adultes, cagnottes communes, suggestions de cadeaux par IA, notifications push (v1.1).
+Android ou web, suggestions de cadeaux par IA.
 
 ## Jalon
 

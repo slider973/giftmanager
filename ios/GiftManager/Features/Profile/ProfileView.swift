@@ -216,7 +216,7 @@ struct ProfileView: View {
     private var notificationsSection: some View {
         Section {
             Toggle(isOn: $purchaseReminders) {
-                Label("Rappels d'achats (J-30, J-7)", systemImage: "calendar.badge.clock")
+                Label("Rappels d'achats (J-30, J-15, J-7, J-2)", systemImage: "calendar.badge.clock")
             }
             .frame(minHeight: HitTarget.minimum)
             .fcListRow()
@@ -233,15 +233,22 @@ struct ProfileView: View {
         } header: {
             Text("Notifications")
         } footer: {
-            Text("Aucune notification ne dit qui a réservé quoi. Les rappels d'anniversaire ne concernent jamais tes propres listes.")
+            Text("Aucune notification ne dit qui a réservé quoi. Les rappels d'achats ne concernent que tes propres réservations, et ceux d'anniversaire jamais tes propres listes.")
         }
         .tint(Color.Theme.primary)
         .labelStyle(SettingsLabelStyle())
+        // #59 : les rappels d'achats viennent du serveur, la préférence est donc dans le profil.
+        .onAppear {
+            purchaseReminders = appState.profile?.notifyPurchaseReminders ?? true
+            birthdayReminders = appState.profile?.notifyBirthdayReminders ?? true
+        }
         .onChange(of: purchaseReminders) { _, value in
             NotificationService.set(.purchaseReminders, value)
-            Task { await appState.refreshReminders() }
+            Task {
+                await appState.setPurchaseReminders(value)
+                if let saved = appState.profile?.notifyPurchaseReminders, saved != value { purchaseReminders = saved }
+            }
         }
-        .onAppear { birthdayReminders = appState.profile?.notifyBirthdayReminders ?? true }
         .onChange(of: birthdayReminders) { _, value in
             Task {
                 await appState.setBirthdayReminders(value)

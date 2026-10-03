@@ -32,6 +32,11 @@ struct GiftRepository: Sendable {
         try await db.from("profiles").update(["notify_birthday_reminders": enabled]).eq("id", value: userId).execute()
     }
 
+    /// Rappels d'achat envoyés par le serveur (#59), sur mes seules réservations.
+    func setPurchaseReminders(userId: UUID, enabled: Bool) async throws {
+        try await db.from("profiles").update(["notify_purchase_reminders": enabled]).eq("id", value: userId).execute()
+    }
+
     func profiles(ids: [UUID]) async throws -> [Profile] {
         guard !ids.isEmpty else { return [] }
         return try await db.from("profiles").select().in("id", values: ids).execute().value

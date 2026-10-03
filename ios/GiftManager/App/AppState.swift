@@ -198,6 +198,21 @@ final class AppState {
         }
     }
 
+    /// #59 — Les rappels d'achat viennent du serveur : la préférence vit dans le profil,
+    /// et les rappels locaux encore planifiés sont annulés pour éviter les doublons.
+    func setPurchaseReminders(_ enabled: Bool) async {
+        guard let userId else { return }
+        do {
+            if profile?.notifyPurchaseReminders != enabled {
+                try await repository.setPurchaseReminders(userId: userId, enabled: enabled)
+                profile?.notifyPurchaseReminders = enabled
+            }
+            await NotificationService.shared.cancelLocalPurchaseReminders()
+        } catch {
+            report(error)
+        }
+    }
+
     func itemsChanged() {
         itemsRevision += 1
     }
