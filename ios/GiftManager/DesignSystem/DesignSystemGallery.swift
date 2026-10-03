@@ -13,6 +13,7 @@ struct DesignSystemGallery: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xxl) {
                 header
+                loadingSection
                 colorsSection
                 typographySection
                 giftCardsSection
@@ -41,6 +42,16 @@ struct DesignSystemGallery: View {
             Text("Design system · galerie de revue")
                 .font(Font.Theme.body)
                 .foregroundStyle(Color.Theme.textSecondary)
+        }
+    }
+
+    private var loadingSection: some View {
+        GallerySection(title: "Chargement") {
+            HStack(spacing: Spacing.xl) {
+                GiftLoadingView(size: 72)
+                GiftLoadingView(size: 44, label: "Chargement…")
+            }
+            .frame(maxWidth: .infinity)
         }
     }
 

@@ -33,15 +33,8 @@ struct RootView: View {
 
 private struct LaunchView: View {
     var body: some View {
-        VStack(spacing: Spacing.l) {
-            Image("gift_red")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 96)
-                .accessibilityHidden(true)
-            ProgressView()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .fcScreenBackground()
+        GiftLoadingView(size: 104)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .fcScreenBackground()
     }
 }
