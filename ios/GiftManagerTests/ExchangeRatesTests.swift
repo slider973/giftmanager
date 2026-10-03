@@ -71,8 +71,8 @@ final class ExchangeRatesTests: XCTestCase {
         XCTAssertNil(service.approxText(199, from: "CHF", to: "JPY"))
         // 199 CHF / 0,93 = 213,98 € → ≈ 214 €.
         XCTAssertEqual(plain(service.approxText(199, from: "CHF", to: "EUR")), "≈ 214 €")
-        // Devise absente d'un lien : EUR, comme pour l'affichage du prix.
-        XCTAssertEqual(plain(service.approxText(100, from: nil, to: "CHF")), "≈ CHF 93")
+        // Devise absente d'un lien : on ne devine pas.
+        XCTAssertNil(service.approxText(100, from: nil, to: "CHF"))
     }
 
     @MainActor

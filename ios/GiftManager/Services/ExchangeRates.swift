@@ -196,8 +196,8 @@ final class CurrencyService {
     /// Montant converti dans `target`, ou `nil` s'il n'y a rien à convertir
     /// (pas de prix, même devise, devise cible inconnue, taux absent).
     func convert(_ amount: Decimal?, from: String?, to target: String?) -> Decimal? {
-        guard let amount, let target, let rates else { return nil }
-        let origin = from ?? "EUR"
+        // Devise inconnue : on ne devine pas, aucune conversion.
+        guard let amount, let origin = from, let target, let rates else { return nil }
         guard origin.uppercased() != target.uppercased() else { return nil }
         return rates.convert(amount, from: origin, to: target)
     }
