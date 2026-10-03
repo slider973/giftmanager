@@ -54,7 +54,6 @@ struct FamilyGroup: Codable, Identifiable, Equatable, Hashable, Sendable {
 
 struct Household: Codable, Identifiable, Equatable, Hashable, Sendable {
     let id: UUID
-    let groupId: UUID
     var name: String
     var country: String
     /// Code permettant à un second parent de rejoindre le foyer.
@@ -62,19 +61,27 @@ struct Household: Codable, Identifiable, Equatable, Hashable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id, name, country
-        case groupId = "group_id"
         case inviteCode = "invite_code"
+    }
+}
+
+/// Partage d'un foyer vers une famille (#60) : un même foyer peut être visible dans plusieurs groupes.
+struct HouseholdGroup: Codable, Equatable, Hashable, Sendable {
+    let householdId: UUID
+    let groupId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case householdId = "household_id"
+        case groupId = "group_id"
     }
 }
 
 struct HouseholdMember: Codable, Equatable, Hashable, Sendable {
     let householdId: UUID
-    let groupId: UUID
     let userId: UUID
 
     enum CodingKeys: String, CodingKey {
         case householdId = "household_id"
-        case groupId = "group_id"
         case userId = "user_id"
     }
 }
@@ -206,7 +213,8 @@ enum GiftEventKind: String, Codable, CaseIterable, Sendable {
 
 struct GiftEvent: Codable, Identifiable, Equatable, Hashable, Sendable {
     let id: UUID
-    let groupId: UUID
+    /// `nil` pour Noël (global) et les anniversaires (portés par leur enfant) — voir #60.
+    let groupId: UUID?
     var kind: GiftEventKind
     var title: String
     var eventDate: DayDate
@@ -222,7 +230,7 @@ struct GiftEvent: Codable, Identifiable, Equatable, Hashable, Sendable {
         case createdBy = "created_by"
     }
 
-    init(id: UUID, groupId: UUID, kind: GiftEventKind, title: String, eventDate: DayDate, childId: UUID?, createdBy: UUID? = nil) {
+    init(id: UUID, groupId: UUID?, kind: GiftEventKind, title: String, eventDate: DayDate, childId: UUID?, createdBy: UUID? = nil) {
         self.id = id
         self.groupId = groupId
         self.kind = kind

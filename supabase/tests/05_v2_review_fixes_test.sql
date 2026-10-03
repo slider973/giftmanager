@@ -23,7 +23,7 @@ grant all on ids to authenticated;
 
 select pg_temp.login('a3000000-0000-0000-0000-000000000001');
 insert into ids values ('group', public.create_group('Famille V5', 'Foyer A', 'CH'));
-insert into ids select 'household_a', id from public.households where group_id = (select v from ids where k = 'group');
+insert into ids select 'household_a', hg.household_id from public.household_groups hg where hg.group_id = (select v from ids where k = 'group');
 with x as (insert into public.children (household_id, first_name, birthdate)
            values ((select v from ids where k = 'household_a'), 'Léo', ((current_date + 20) - interval '8 years')::date) returning id)
   insert into ids select 'leo', id from x;

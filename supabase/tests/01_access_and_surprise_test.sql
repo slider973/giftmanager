@@ -144,8 +144,8 @@ $$, '23505', null, 'une seule réservation par cadeau (contrainte d''unicité)')
 -- ---------------------------------------------------------------- revue de sécurité
 select pg_temp.login('c0000000-0000-0000-0000-000000000001');
 select throws_ok($$
-  insert into public.household_members (household_id, group_id, user_id)
-  values ((select v from ids where k = 'household_a'), (select v from ids where k = 'group'), auth.uid())
+  insert into public.household_members (household_id, user_id)
+  values ((select v from ids where k = 'household_a'), auth.uid())
 $$, '42501', null, 'un membre ne peut pas s''ajouter lui-même à un foyer');
 select throws_ok($$ select public.join_household('ZZZZZZZZ') $$, 'P0001', 'INVALID_INVITE_CODE', 'code de foyer invalide refusé');
 
@@ -159,7 +159,9 @@ select throws_ok($$ update public.groups set invite_code = 'HACKED' where id = (
 
 select pg_temp.login('d0000000-0000-0000-0000-000000000001');
 insert into ids values ('other_group', public.create_group('Autre famille', 'Foyer D', 'FR'));
-insert into ids select 'other_event', id from public.events where group_id = (select v from ids where k = 'other_group');
+with x as (insert into public.events (group_id, kind, title, event_date)
+           values ((select v from ids where k = 'other_group'), 'other', 'Fête des voisins', current_date + 60) returning id)
+  insert into ids select 'other_event', id from x;
 select pg_temp.login('a0000000-0000-0000-0000-000000000001');
 select throws_ok($$
   insert into public.wish_items (child_id, event_id, title)

@@ -65,6 +65,16 @@ struct GiftRepository: Sendable {
         try await db.rpc("join_household", params: ["p_code": code]).execute().value
     }
 
+    /// Partage le foyer de l'utilisateur avec une famille (#60) : ses enfants y deviennent visibles.
+    @discardableResult
+    func shareHousehold(withGroup groupId: UUID) async throws -> UUID {
+        try await db.rpc("share_household_with_group", params: ["p_group": groupId.uuidString]).execute().value
+    }
+
+    func unshareHousehold(fromGroup groupId: UUID) async throws {
+        try await db.rpc("unshare_household_from_group", params: ["p_group": groupId.uuidString]).execute()
+    }
+
     func renameGroup(_ groupId: UUID, name: String) async throws {
         try await db.from("groups").update(["name": name]).eq("id", value: groupId).execute()
     }
@@ -73,12 +83,25 @@ struct GiftRepository: Sendable {
         try await db.from("group_members").delete().eq("group_id", value: groupId).eq("user_id", value: userId).execute()
     }
 
+    /// Foyers partagés avec cette famille (le foyer n'appartient plus à un groupe — #60).
     func households(groupId: UUID) async throws -> [Household] {
-        try await db.from("households").select().eq("group_id", value: groupId).order("created_at").execute().value
+        try await db.from("households")
+            .select("id, name, country, invite_code, household_groups!inner(group_id)")
+            .eq("household_groups.group_id", value: groupId)
+            .order("created_at")
+            .execute().value
     }
 
     func householdMembers(groupId: UUID) async throws -> [HouseholdMember] {
-        try await db.from("household_members").select().eq("group_id", value: groupId).execute().value
+        try await db.from("household_members")
+            .select("household_id, user_id, households!inner(household_groups!inner(group_id))")
+            .eq("households.household_groups.group_id", value: groupId)
+            .execute().value
+    }
+
+    /// Familles avec lesquelles mon foyer est partagé.
+    func myHouseholdGroups() async throws -> [HouseholdGroup] {
+        try await db.from("household_groups").select("household_id, group_id").execute().value
     }
 
     func groupMembers(groupId: UUID) async throws -> [GroupMember] {
@@ -89,8 +112,11 @@ struct GiftRepository: Sendable {
 
     func children(groupId: UUID) async throws -> [Child] {
         try await db.from("children")
-            .select("id, household_id, first_name, birthdate, avatar_emoji, avatar_color, avatar_url, is_adult, households!inner(group_id)")
-            .eq("households.group_id", value: groupId)
+            .select("""
+                id, household_id, first_name, birthdate, avatar_emoji, avatar_color, avatar_url, is_adult, \
+                households!inner(household_groups!inner(group_id))
+                """)
+            .eq("households.household_groups.group_id", value: groupId)
             .order("first_name")
             .execute().value
     }
@@ -105,9 +131,11 @@ struct GiftRepository: Sendable {
 
     // MARK: - Événements
 
+    /// Événements visibles dans cette famille : Noël (global), les anniversaires des enfants
+    /// qui y sont visibles, et les événements propres au groupe. La RLS fait le tri (#60).
     func events(groupId: UUID) async throws -> [GiftEvent] {
         try await db.from("events").select("id, group_id, kind, title, event_date, child_id, created_by")
-            .eq("group_id", value: groupId).order("event_date").execute().value
+            .order("event_date").execute().value
     }
 
     func saveEvent(_ event: GiftEvent) async throws {

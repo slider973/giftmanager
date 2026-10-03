@@ -154,6 +154,28 @@ private struct HouseholdSetupView: View {
                     .font(Font.Theme.body)
                     .foregroundStyle(Color.Theme.textSecondary)
 
+                // #60 : le foyer suit son parent d'une famille à l'autre — rien à ressaisir.
+                if appState.canShareHouseholdWithCurrentGroup, let mine = appState.myHousehold {
+                    VStack(alignment: .leading, spacing: Spacing.m) {
+                        Text("Partager mon foyer")
+                            .font(Font.Theme.headline)
+                            .foregroundStyle(Color.Theme.textPrimary)
+                            .accessibilityAddTraits(.isHeader)
+                        Text(sharingDescription(mine))
+                            .font(Font.Theme.caption)
+                            .foregroundStyle(Color.Theme.textSecondary)
+                        PrimaryButton(title: "Partager « \(mine.name) »", systemImage: "house.and.flag", isLoading: isSaving) {
+                            Task {
+                                isSaving = true
+                                _ = await appState.shareHouseholdWithCurrentGroup()
+                                isSaving = false
+                            }
+                        }
+                        .disabled(isSaving)
+                    }
+                    .fcCard()
+                }
+
                 VStack(alignment: .leading, spacing: Spacing.m) {
                     Text("Créer mon foyer")
                         .font(Font.Theme.headline)
@@ -201,5 +223,16 @@ private struct HouseholdSetupView: View {
         .onAppear {
             if householdName.isEmpty, let name = appState.profile?.displayName { householdName = "Foyer de \(name)" }
         }
+    }
+
+    /// Décrit ce que le partage rend visible, enfants nommés quand il y en a.
+    private func sharingDescription(_ household: Household) -> String {
+        let names = appState.children(of: household).map(\.firstName)
+        guard !names.isEmpty else {
+            return "Ton foyer existe déjà : partage-le plutôt que d'en créer un second."
+        }
+        let list = ListFormatter.localizedString(byJoining: names)
+        let plural = names.count > 1
+        return "\(list) \(plural ? "apparaîtront" : "apparaîtra") dans cette famille avec \(plural ? "leurs listes" : "sa liste"). Aucune ressaisie."
     }
 }
