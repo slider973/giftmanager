@@ -157,6 +157,16 @@ FCSystemAppearance.apply()                   // au lancement : titres de navigat
 - Remerciements (#42) : un donateur n'est nommé aux parents que s'il s'est dévoilé (« Offert par … ») ; sinon « la personne qui l'a offert ». L'expéditeur d'un merci (un parent) est nommé côté donateur.
 - Conversion de devises (#38) : uniquement à côté d'un prix dans une autre devise que celle du profil, jamais à sa place. Format « prix d'origine ≈ montant converti », arrondi à l'unité (au centime sous 10). Là où plusieurs prix sont convertis (fiche cadeau, total de Mes achats), le mot « indicatif » est écrit en toutes lettres. Taux BCE du jour via `CurrencyService.shared` ; hors ligne, dernier taux connu ; sans aucun taux, rien n'est affiché.
 
+## Mode enfant (#36)
+
+Écran plein écran (`fullScreenCover`) ouvert depuis la carte « Mode enfant » en tête de la liste d'un de mes enfants (`ChildModeEntryCard`, visible seulement pour ses parents, hors archive, liste non vide).
+
+- **Contenu** : seulement les souhaits de la liste (`ChildModeItem` : photo, nom, cœur). Le type ne porte ni prix, ni statut, ni réservation, ni cagnotte, ni notes : rien de tout cela ne peut s'afficher par erreur. Idées et « possède déjà » exclus.
+- **Mise en page** : en-tête « Les envies de Léo » (`largeTitle`) + avatar + `mascot_love` ; grille 2 colonnes (1 aux tailles d'accessibilité) de grandes cartes photo carrées, rayon 28 (plus rond que `Radius.card` : registre jouet), titre en SF Pro Rounded `.title3` bold sur deux lignes réservées.
+- **Cœur** : toute la carte est la cible. Posé : disque blanc avec cœur plein `heart`, contour `heart` de 3 pt autour de la carte, rebond du symbole, petite gerbe de cœurs (absente si Réduire les animations), retour haptique. Enregistré tout de suite via `setPriority` ; en cas d'échec, le cœur revient en arrière et un bandeau l'explique.
+- **Sortie protégée** : bouton « Quitter » à maintenir 3 s (anneau `primary` qui se remplit), puis Face ID / Touch ID / code (`LocalAuthentication`). Un simple tap n'ouvre qu'un bandeau « Pour quitter, un adulte garde le doigt sur « Quitter » pendant 3 secondes. ». Sans code configuré sur l'appareil, l'appui long suffit. VoiceOver : l'activation passe directement à Face ID / code.
+- Barre d'état et indicateur d'accueil masqués. Pour verrouiller l'app elle-même, l'Accès guidé d'iOS reste l'outil adapté.
+
 ## Écarts avec les spécifications — décisions
 
 1. **Badges de statut et mode surprise** — L'écran 3 montre « Disponible » / « Déjà pris ». C'est la vue **d'un autre membre de la famille**. Quand un parent regarde la liste de son propre enfant, `StatusBadge` est masqué (aucun badge). Règle non négociable (cf. `docs/SPEC.md`).

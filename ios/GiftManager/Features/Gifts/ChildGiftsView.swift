@@ -7,6 +7,7 @@ struct ChildGiftsView: View {
     @State private var tab = 0
     @State private var adding: AddMode?
     @State private var isReordering = false
+    @State private var isChildMode = false
 
     /// Événement passé : aucune modification ni réservation.
     let readOnly: Bool
@@ -49,6 +50,10 @@ struct ChildGiftsView: View {
                              text: "La fête est passée : ouvre un cadeau reçu pour le marquer « Reçu ! » et dire merci.",
                              tone: .neutral)
                         .listRowInsets(EdgeInsets(top: 0, leading: Spacing.xl, bottom: Spacing.s, trailing: Spacing.xl))
+                }
+                if isParent && !readOnly && !model.wishes.isEmpty {
+                    ChildModeEntryCard(childName: child.firstName) { isChildMode = true }
+                        .listRowInsets(EdgeInsets(top: Spacing.xs, leading: Spacing.xl, bottom: Spacing.s, trailing: Spacing.xl))
                 }
                 SegmentedTabs(selection: $tab, titles: tabs)
                     .listRowInsets(EdgeInsets(top: 0, leading: Spacing.xl, bottom: Spacing.s, trailing: Spacing.xl))
@@ -94,6 +99,12 @@ struct ChildGiftsView: View {
         .sheet(item: $adding) { mode in
             NavigationStack {
                 AddGiftView(child: child, kind: mode.kind, eventId: model.eventId, owned: mode.owned) { adding = nil }
+            }
+        }
+        .fullScreenCover(isPresented: $isChildMode) {
+            ChildModeView(child: child, wishes: model.wishes, repository: appState.repository) { didChange in
+                isChildMode = false
+                if didChange { appState.itemsChanged() }
             }
         }
         .overlay {
