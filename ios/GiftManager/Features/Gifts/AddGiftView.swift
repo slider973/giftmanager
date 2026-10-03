@@ -31,8 +31,17 @@ struct AddGiftView: View {
     @State private var isSaving = false
     @State private var showAddLink = false
     @State private var fetchTask: Task<Void, Never>?
+    /// Cadeau déjà présent pour cet enfant, détecté avant l'enregistrement (#61).
+    @State private var duplicate: WishItem?
 
     private var isEditing: Bool { existing != nil }
+
+    private var duplicateMessage: String {
+        guard let duplicate else { return "" }
+        let event = appState.events.first { $0.id == duplicate.eventId }?.title
+        let place = event.map { "dans « \($0) »" } ?? "sans événement"
+        return "« \(duplicate.title) » figure déjà \(place) dans la liste de \(child.firstName)."
+    }
 
     var body: some View {
         ScrollView {
@@ -50,7 +59,7 @@ struct AddGiftView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             PrimaryButton(title: isEditing ? "Enregistrer" : (kind == .idea ? "Proposer cette idée" : "Ajouter à la liste"),
                           systemImage: "checkmark", isLoading: isSaving) {
-                Task { await save() }
+                Task { await saveChecked() }
             }
             .disabled(title.trimmed.isEmpty || isSaving)
             .padding(.horizontal, Spacing.xl)
@@ -62,6 +71,16 @@ struct AddGiftView: View {
             }
         }
         .fcScreenBackground()
+        // #61 : un cadeau rangé dans un autre événement semblait disparu, d'où des doublons.
+        .alert("Ce cadeau existe déjà", isPresented: Binding(get: { duplicate != nil }, set: { if !$0 { duplicate = nil } })) {
+            Button("Ajouter quand même") {
+                duplicate = nil
+                Task { await save() }
+            }
+            Button("Annuler", role: .cancel) { duplicate = nil }
+        } message: {
+            Text(duplicateMessage)
+        }
         .navigationTitle(isEditing ? "Modifier" : (kind == .idea ? "Proposer une idée" : "Ajouter un cadeau"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -379,6 +398,38 @@ struct AddGiftView: View {
         let detected = store ?? StoreCatalog.store(for: url.absoluteString)
         return DraftLink(url: url.absoluteString, store: detected?.name, country: detected?.country,
                          price: LinkPreviewService.parsePrice(priceText), currency: currency)
+    }
+
+    /// Avant d'enregistrer un nouveau cadeau, cherche un doublon tous événements confondus (#61).
+    private func saveChecked() async {
+        guard !isEditing else {
+            await save()
+            return
+        }
+        if let existing = await findDuplicate() {
+            duplicate = existing
+            return
+        }
+        await save()
+    }
+
+    /// Doublon = même enfant et titre identique (casse et espaces ignorés), ou même lien d'achat.
+    private func findDuplicate() async -> WishItem? {
+        let needle = DuplicateMatch.normalize(title)
+        guard !needle.isEmpty else { return nil }
+        let link = mainLink?.url
+        do {
+            // p_event omis : on regarde toute la liste, pas seulement l'événement affiché.
+            let all = try await appState.repository.childItems(childId: child.id)
+            if let byTitle = all.first(where: { DuplicateMatch.normalize($0.title) == needle }) { return byTitle }
+            guard let link else { return nil }
+            let links = try await appState.repository.links(itemIds: all.map(\.id))
+            guard let match = links.first(where: { DuplicateMatch.sameURL($0.url, link) }) else { return nil }
+            return all.first { $0.id == match.itemId }
+        } catch {
+            // La détection est un confort : en cas d'échec réseau, on laisse enregistrer.
+            return nil
+        }
     }
 
     private func save() async {
