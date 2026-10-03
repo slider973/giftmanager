@@ -17,6 +17,8 @@ struct GiftDetailView: View {
     @State private var joiningPot = false
     @State private var confirmLeavePot = false
     @State private var participants: [PotParticipant] = []
+    @State private var thanking = false
+    @State private var donors: [ItemDonor] = []
 
     private var child: Child { model.child }
     private var isParent: Bool { appState.isParent(of: child) }
@@ -24,6 +26,17 @@ struct GiftDetailView: View {
     private var canEdit: Bool { !readOnly && (item.kind == .wish ? isParent : item.createdBy == appState.userId) }
     /// Un parent peut offrir lui-même un cadeau de la liste de son enfant (action discrète, dans le menu).
     private var canParentReserve: Bool { !readOnly && isParent && item.kind == .wish && !item.owned && item.myReservation == nil }
+    /// Date de l'événement du cadeau (ou de la liste ouverte), pour le « Reçu ! » (#42).
+    private var eventDate: DayDate? {
+        let id = item.eventId ?? model.eventId
+        return appState.events.first { $0.id == id }?.eventDate
+    }
+    private var canMarkReceived: Bool {
+        ReceiptRules.canMarkReceived(isParent: isParent, kind: item.kind, owned: item.owned, eventDate: eventDate)
+    }
+    private var canSendThanks: Bool {
+        ReceiptRules.canSendThanks(isParent: isParent, kind: item.kind, owned: item.owned, eventDate: eventDate)
+    }
 
     var body: some View {
         ScrollView {
@@ -81,6 +94,9 @@ struct GiftDetailView: View {
                 }
 
                 if readOnly {
+                    if canMarkReceived || canSendThanks {
+                        VStack(alignment: .leading, spacing: Spacing.m) { receiptActions }
+                    }
                     FCNotice(systemImage: "archivebox", text: "Événement passé : fiche archivée.")
                 } else {
                     VStack(alignment: .leading, spacing: Spacing.m) {
@@ -136,6 +152,10 @@ struct GiftDetailView: View {
             }
         }
         .task(id: item.myContribution) { await loadParticipants() }
+        .task(id: item.owned) { await loadDonors() }
+        .sheet(isPresented: $thanking) {
+            ThanksComposerView(item: item, childName: child.firstName)
+        }
         .overlay {
             if celebrate {
                 CelebrationOverlay(celebration: celebration) { celebrate = false }
@@ -260,6 +280,7 @@ struct GiftDetailView: View {
     @ViewBuilder
     private var parentActions: some View {
         VStack(alignment: .leading, spacing: Spacing.m) {
+            receiptActions
             FCNotice(systemImage: "eye.slash", text: "Mode surprise : tu ne vois pas si ce cadeau est réservé.",
                      tone: .surprise)
             if item.kind == .wish && !item.owned {
@@ -276,7 +297,55 @@ struct GiftDetailView: View {
         }
     }
 
+    /// Après la fête : « Reçu ! », puis « Dire merci » ; donateurs qui se sont fait connaître.
+    @ViewBuilder
+    private var receiptActions: some View {
+        if canMarkReceived {
+            SecondaryButton(title: "Reçu !", systemImage: "gift.fill", isLoading: isWorking) {
+                Task { await markReceived() }
+            }
+            .accessibilityHint("Range le cadeau dans « Possède déjà »")
+        } else if canSendThanks {
+            if !donors.isEmpty {
+                Label {
+                    Text("Offert par \(Self.names(donors.map(\.displayName)))")
+                        .foregroundStyle(Color.Theme.textPrimary)
+                } icon: {
+                    Image(systemName: "heart.fill").foregroundStyle(Color.Theme.heart)
+                }
+                .font(Font.Theme.headline)
+            }
+            PrimaryButton(title: "Dire merci", systemImage: "envelope.fill") { thanking = true }
+            Text(donors.isEmpty ? "Ton message sera transmis à la personne qui l'a offert, sans révéler qui c'est."
+                                : "Ton message sera transmis à toutes les personnes qui l'ont offert.")
+                .font(Font.Theme.caption)
+                .foregroundStyle(Color.Theme.textSecondary)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    /// « Mamie », « Mamie et Paul », « Mamie, Paul et Léa ».
+    static func names(_ names: [String]) -> String {
+        guard names.count > 1 else { return names.first ?? "" }
+        return names.dropLast().joined(separator: ", ") + " et " + (names.last ?? "")
+    }
+
     // MARK: - Appels
+
+    private func markReceived() async {
+        await perform {
+            try await appState.repository.setOwned(itemId: item.id, owned: true)
+            item.owned = true
+        }
+        if item.owned { thanking = true }
+    }
+
+    private func loadDonors() async {
+        guard isParent, item.owned else { return }
+        // Seuls les donateurs qui ont choisi de se faire connaître sont renvoyés.
+        donors = (try? await appState.repository.itemDonors(itemId: item.id)) ?? []
+    }
 
     private func reserve() async {
         await perform {

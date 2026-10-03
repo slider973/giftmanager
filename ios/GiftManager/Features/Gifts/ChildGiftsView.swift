@@ -44,6 +44,12 @@ struct ChildGiftsView: View {
             Section {
                 header
                     .listRowInsets(EdgeInsets(top: Spacing.s, leading: Spacing.xl, bottom: Spacing.s, trailing: Spacing.xl))
+                if readOnly && isParent {
+                    FCNotice(systemImage: "gift",
+                             text: "La fête est passée : ouvre un cadeau reçu pour le marquer « Reçu ! » et dire merci.",
+                             tone: .neutral)
+                        .listRowInsets(EdgeInsets(top: 0, leading: Spacing.xl, bottom: Spacing.s, trailing: Spacing.xl))
+                }
                 SegmentedTabs(selection: $tab, titles: tabs)
                     .listRowInsets(EdgeInsets(top: 0, leading: Spacing.xl, bottom: Spacing.s, trailing: Spacing.xl))
             }

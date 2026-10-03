@@ -8,6 +8,7 @@ struct MyPurchasesView: View {
     @State private var reservations: [MyReservation] = []
     @State private var contributions: [MyContribution] = []
     @State private var leavingPot: MyContribution?
+    @State private var thanksCount = 0
     @State private var links: [UUID: [ItemLink]] = [:]
     @State private var hasLoaded = false
 
@@ -55,6 +56,12 @@ struct MyPurchasesView: View {
     var body: some View {
         NavigationStack {
             List {
+                if thanksCount > 0 {
+                    thanksBanner
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(rowInsets(top: Spacing.s, bottom: Spacing.xs))
+                }
                 if hasLoaded && reservations.isEmpty && contributions.isEmpty {
                     EmptyStateView(imageName: "mascot_sleeping", title: "Aucun achat prévu",
                                    message: "Réserve un cadeau ou participe à une cagnotte dans la liste d'un enfant : il apparaîtra ici.")
@@ -130,6 +137,16 @@ struct MyPurchasesView: View {
                 }
             }
             .navigationTitle("Mes achats")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        ThanksInboxView()
+                    } label: {
+                        Image(systemName: "envelope")
+                    }
+                    .accessibilityLabel("Remerciements reçus")
+                }
+            }
             .refreshable { await load() }
             .task(id: appState.itemsRevision) { await load() }
         }
@@ -234,6 +251,38 @@ struct MyPurchasesView: View {
             .padding(.trailing, -Spacing.xs)
         }
         .fcCard(padding: Spacing.m)
+    }
+
+    // MARK: - Remerciements (#42)
+
+    private var thanksBanner: some View {
+        ZStack {
+            NavigationLink { ThanksInboxView() } label: { EmptyView() }
+                .opacity(0)
+            HStack(spacing: Spacing.m) {
+                Image("mascot_love")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 52, height: 52)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(thanksCount > 1 ? "\(thanksCount) remerciements reçus" : "Un remerciement reçu")
+                        .font(Font.Theme.headline)
+                        .foregroundStyle(Color.Theme.textPrimary)
+                    Text("Lis les messages des parents")
+                        .font(Font.Theme.caption)
+                        .foregroundStyle(Color.Theme.textSecondary)
+                }
+                Spacer(minLength: Spacing.s)
+                Image(systemName: "chevron.right")
+                    .font(Font.Theme.callout.weight(.semibold))
+                    .foregroundStyle(Color.Theme.textSecondary)
+                    .accessibilityHidden(true)
+            }
+            .fcCard(padding: Spacing.m)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
     }
 
     // MARK: - Cagnottes
@@ -343,6 +392,7 @@ struct MyPurchasesView: View {
             async let pots = appState.repository.myContributions()
             reservations = try await appState.repository.myReservations()
             contributions = try await pots
+            thanksCount = (try? await appState.repository.myThanks().count) ?? thanksCount
             let fetched = try await appState.repository.links(itemIds: reservations.map(\.itemId))
             links = Dictionary(grouping: fetched, by: \.itemId)
             await NotificationService.shared.scheduleReminders(reservations: reservations, events: appState.events)
