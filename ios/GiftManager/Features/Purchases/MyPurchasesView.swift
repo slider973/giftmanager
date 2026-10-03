@@ -74,6 +74,13 @@ struct MyPurchasesView: View {
                         .listRowSeparator(.hidden)
                         .listRowInsets(rowInsets(top: Spacing.s, bottom: Spacing.s))
                 }
+                // Un budget se prépare aussi avant toute réservation (#40).
+                if hasLoaded {
+                    BudgetsSection()
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(rowInsets(top: Spacing.s, bottom: Spacing.s))
+                }
                 ForEach(groups) { group in
                     Section {
                         ForEach(group.children, id: \.name) { child in
@@ -179,6 +186,7 @@ struct MyPurchasesView: View {
                 Text("Budget estimé")
                     .font(Font.Theme.caption)
                     .foregroundStyle(Color.Theme.textSecondary)
+                ConvertedTotalLine(totals: totals, profileCurrency: appState.profile?.currency)
             }
             Spacer()
         }
@@ -200,7 +208,7 @@ struct MyPurchasesView: View {
                     .lineLimit(2)
                 HStack(spacing: Spacing.xs) {
                     if let country = link?.country { CountryFlag(code: country) }
-                    Text([link?.priceText, link?.store].compactMap { $0 }.joined(separator: " · "))
+                    Text([link?.priceWithApprox(profileCurrency: appState.profile?.currency), link?.store].compactMap { $0 }.joined(separator: " · "))
                         .font(Font.Theme.caption)
                         .monospacedDigit()
                         .foregroundStyle(Color.Theme.textSecondary)
@@ -341,6 +349,10 @@ struct MyPurchasesView: View {
                         .padding(.vertical, 2)
                         .background(Color.Theme.potBg, in: Capsule())
                         .fixedSize()
+                    if let approx = CurrencyService.shared.approxText(contribution.amount, from: contribution.currency,
+                                                                       to: appState.profile?.currency) {
+                        ApproxPriceText(text: approx).font(Font.Theme.caption)
+                    }
                     if let total {
                         Text("\(total) réunis · \(count) participant\(count > 1 ? "s" : "")")
                             .font(Font.Theme.caption)

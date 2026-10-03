@@ -61,6 +61,7 @@ targets:
         AppIdentifierPrefix: $(AppIdentifierPrefix)
         NSCameraUsageDescription: Pour prendre en photo un cadeau à ajouter à la liste.
         NSPhotoLibraryUsageDescription: Pour choisir la photo d'un cadeau ou d'un enfant.
+        NSFaceIDUsageDescription: Pour qu'un adulte puisse quitter le mode enfant.
         CFBundleURLTypes:
           - CFBundleURLName: ch.jonathanlemaine.giftmanager
             CFBundleURLSchemes: [famillecadeaux]

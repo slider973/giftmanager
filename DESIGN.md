@@ -134,6 +134,8 @@ FCSystemAppearance.apply()                   // au lancement : titres de navigat
 | `FeaturePill` | `FeaturePill(systemImage: String, color: Color, title: String, subtitle: String, background: Color? = nil)` | `color` teinte l'icône ; `background` = pastel du disque (sinon teinte de `color` à 16 %) |
 | `SectionHeader` | `SectionHeader(title: String, actionSystemImage: String? = nil, action: (() -> Void)? = nil, actionLabel: String? = nil)` | Bouton rond `primary` ; `actionLabel` pour VoiceOver (« Ajouter » par défaut) |
 | `FCTextField` | `FCTextField(title: String, text: Binding<String>, systemImage: String? = nil, prompt: String? = nil, isTitleHidden: Bool = false)` | Libellé visible au-dessus ; `isTitleHidden` le garde pour VoiceOver seulement. Bouton « Effacer » au focus |
+| `ApproxPriceText` | `ApproxPriceText(text: String)` | Conversion indicative « ≈ 214 € » posée **après** le prix d'origine, toujours `textSecondary`, chiffres tabulaires ; VoiceOver : « environ 214 €, conversion indicative ». Hérite de la police |
+| `IndicativeRateNote` | `IndicativeRateNote(rateDateText: String?)` | Mention « Conversion indicative, taux BCE du 2 octobre. Le prix de la boutique fait foi. » sous des prix convertis |
 | `DesignSystemGallery` | `DesignSystemGallery()` | `#if DEBUG` |
 
 ### Règles d'usage
@@ -153,6 +155,31 @@ FCSystemAppearance.apply()                   // au lancement : titres de navigat
 - Cagnotte (#35) : progression visible des non-parents ; noms et montants des participants seulement pour un participant (« Moi » pour soi). Toujours rappeler que les autres participants voient le prénom et la part.
 - Équilibre (#41) : une ligne `caption` sous la liste, `textSecondary` ; ambre (`accentAmber`) quand rien n'est prévu. Jamais sur mes propres listes.
 - Remerciements (#42) : un donateur n'est nommé aux parents que s'il s'est dévoilé (« Offert par … ») ; sinon « la personne qui l'a offert ». L'expéditeur d'un merci (un parent) est nommé côté donateur.
+- Conversion de devises (#38) : uniquement à côté d'un prix dans une autre devise que celle du profil, jamais à sa place. Format « prix d'origine ≈ montant converti », arrondi à l'unité (au centime sous 10). Là où plusieurs prix sont convertis (fiche cadeau, total de Mes achats), le mot « indicatif » est écrit en toutes lettres. Taux BCE du jour via `CurrencyService.shared` ; hors ligne, dernier taux connu ; sans aucun taux, rien n'est affiché.
+
+## Mode enfant (#36)
+
+Écran plein écran (`fullScreenCover`) ouvert depuis la carte « Mode enfant » en tête de la liste d'un de mes enfants (`ChildModeEntryCard`, visible seulement pour ses parents, hors archive, liste non vide).
+
+- **Contenu** : seulement les souhaits de la liste (`ChildModeItem` : photo, nom, cœur). Le type ne porte ni prix, ni statut, ni réservation, ni cagnotte, ni notes : rien de tout cela ne peut s'afficher par erreur. Idées et « possède déjà » exclus.
+- **Mise en page** : en-tête « Les envies de Léo » (`largeTitle`) + avatar + `mascot_love` ; grille 2 colonnes (1 aux tailles d'accessibilité) de grandes cartes photo carrées, rayon 28 (plus rond que `Radius.card` : registre jouet), titre en SF Pro Rounded `.title3` bold sur deux lignes réservées.
+- **Cœur** : toute la carte est la cible. Posé : disque blanc avec cœur plein `heart`, contour `heart` de 3 pt autour de la carte, rebond du symbole, petite gerbe de cœurs (absente si Réduire les animations), retour haptique. Enregistré tout de suite via `setPriority` ; en cas d'échec, le cœur revient en arrière et un bandeau l'explique.
+- **Sortie protégée** : bouton « Quitter » à maintenir 3 s (anneau `primary` qui se remplit), puis Face ID / Touch ID / code (`LocalAuthentication`). Un simple tap n'ouvre qu'un bandeau « Pour quitter, un adulte garde le doigt sur « Quitter » pendant 3 secondes. ». Sans code configuré sur l'appareil, l'appui long suffit. VoiceOver : l'activation passe directement à Face ID / code.
+- Barre d'état et indicateur d'accueil masqués. Pour verrouiller l'app elle-même, l'Accès guidé d'iOS reste l'outil adapté.
+
+## Budgets (#40)
+
+Section « Budgets » de Mes achats (`BudgetsSection`), sous le récapitulatif. Privé : seul l'auteur voit ses budgets.
+
+- **Carte** (`BudgetCard`) : périmètre (« Léo · Noël 2026 »), « 180 / 200 CHF » en chiffres tabulaires, jauge capsule de 8 pt (mise à l'échelle Dynamic Type) sur rail `separator`.
+- **Niveaux** (`BudgetMath.level`) : confortable → jauge `secondary` + « Reste 80 CHF » ; à partir de 85 % → jauge `accentAmber` + « Plus que 20 CHF » (icône jauge) ; dépassé → jauge et montant `takenFg`, « Dépassé de 45 € » avec triangle, filet `takenFg` autour de la carte. Le niveau est toujours dit en texte et en icône, jamais par la couleur seule.
+- **Devises** : budget dans une autre devise que le profil → « ≈ 227 / 186 CHF » (`ApproxPriceText`). Total « ≈ X sur Y au total · indicatif » seulement si les budgets mélangent les devises **et** ne se recoupent pas (`BudgetMath.areDisjoint`) : un budget « Léo » et un budget « Noël » comptent les mêmes cadeaux, les additionner tromperait.
+- **Éditeur** (`BudgetEditorView`, feuille) : enfant (« Tous les enfants »), événement (« Tous les événements »), au moins l'un des deux ; montant en `title` + devise en menu ; rappel « seuls les cadeaux dont un lien est dans cette devise sont comptés » ; `FCNotice` de confidentialité ; suppression en texte `takenFg` avec confirmation.
+
+## Suivi des prix (#39)
+
+- **Fiche cadeau** : section « Suivi du prix » (`PriceHistorySection`) uniquement sur un cadeau que j'ai réservé, et seulement s'il existe des relevés (le serveur ne renvoie rien aux autres, parents compris). Une ligne par boutique (`PriceTrendRow`) : dernier prix, courbe en escalier de 48 pt (Swift Charts, sans axes, masquée pour VoiceOver), tendance en texte (« CHF 30,00 de moins depuis le 27 sept. » en `availableFg` avec flèche ; hausse et stabilité en `textSecondary`), pastille « Plus en stock » (`takenBg` / `takenFg`). Ruptures et baisses en tête.
+- **Notification** : toucher une alerte « Prix en baisse » / « Plus en stock » (`thread-id` `price-<item_id>`) ouvre la fiche du cadeau en feuille au-dessus de l'onglet courant (`NotificationRouter`, `PriceAlertPresenter`). Cadeau introuvable → état vide `mascot_thinking`.
 
 ## Écarts avec les spécifications — décisions
 

@@ -39,6 +39,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Pour prendre en photo un cadeau à ajouter à la liste.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Pour qu'un adulte puisse quitter le mode enfant.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Pour choisir la photo d'un cadeau ou d'un enfant.</string>
 	<key>SupabasePublishableKey</key>
