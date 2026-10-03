@@ -56,6 +56,7 @@ struct ChildModeExitButton: View {
         }
         .padding(.leading, Spacing.s)
         .padding(.trailing, Spacing.m)
+        .padding(.vertical, Spacing.xs)
         .frame(minHeight: HitTarget.minimum)
         .background {
             Capsule()
