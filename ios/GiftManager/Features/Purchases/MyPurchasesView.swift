@@ -73,6 +73,9 @@ struct MyPurchasesView: View {
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .listRowInsets(rowInsets(top: Spacing.s, bottom: Spacing.s))
+                }
+                // Un budget se prépare aussi avant toute réservation (#40).
+                if hasLoaded {
                     BudgetsSection()
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -346,6 +349,10 @@ struct MyPurchasesView: View {
                         .padding(.vertical, 2)
                         .background(Color.Theme.potBg, in: Capsule())
                         .fixedSize()
+                    if let approx = CurrencyService.shared.approxText(contribution.amount, from: contribution.currency,
+                                                                       to: appState.profile?.currency) {
+                        ApproxPriceText(text: approx).font(Font.Theme.caption)
+                    }
                     if let total {
                         Text("\(total) réunis · \(count) participant\(count > 1 ? "s" : "")")
                             .font(Font.Theme.caption)
