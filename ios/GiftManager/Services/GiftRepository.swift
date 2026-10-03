@@ -85,7 +85,7 @@ struct GiftRepository: Sendable {
 
     func children(groupId: UUID) async throws -> [Child] {
         try await db.from("children")
-            .select("id, household_id, first_name, birthdate, avatar_emoji, avatar_color, avatar_url, households!inner(group_id)")
+            .select("id, household_id, first_name, birthdate, avatar_emoji, avatar_color, avatar_url, is_adult, households!inner(group_id)")
             .eq("households.group_id", value: groupId)
             .order("first_name")
             .execute().value
@@ -224,6 +224,79 @@ struct GiftRepository: Sendable {
         try await db.rpc("my_reservations").execute().value
     }
 
+    // MARK: - Cagnotte (#35)
+
+    /// Participe (ou modifie sa part) ; la devise doit être celle de la cagnotte existante.
+    func joinPot(itemId: UUID, amount: Decimal, currency: String) async throws {
+        struct Params: Encodable {
+            let p_item: UUID
+            let p_amount: Decimal
+            let p_currency: String
+        }
+        try await db.rpc("join_pot", params: Params(p_item: itemId, p_amount: amount, p_currency: currency.uppercased()))
+            .execute()
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    func leavePot(itemId: UUID) async throws {
+        try await db.rpc("leave_pot", params: ["p_item": itemId.uuidString]).execute()
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// Participants et montants : renvoyé uniquement à un participant (vide sinon).
+    func potParticipants(itemId: UUID) async throws -> [PotParticipant] {
+        try await db.rpc("pot_participants", params: ["p_item": itemId.uuidString]).execute().value
+    }
+
+    func myContributions() async throws -> [MyContribution] {
+        try await db.rpc("my_contributions").execute().value
+    }
+
+    // MARK: - Équilibre (#41)
+
+    /// Compteurs anonymes par enfant ; rien pour mes propres enfants.
+    func reservationCounts(eventId: UUID?) async throws -> [ReservationCounts] {
+        struct Params: Encodable { let p_event: UUID? }
+        return try await db.rpc("children_reservation_counts", params: Params(p_event: eventId)).execute().value
+    }
+
+    // MARK: - Remerciements (#42)
+
+    /// Envoyé par un parent ; le serveur le transmet aux donateurs sans révéler leur identité.
+    func sendThanks(itemId: UUID, message: String, photoURL: String?) async throws {
+        struct Params: Encodable {
+            let p_item: UUID
+            let p_message: String
+            let p_photo_url: String?
+        }
+        try await db.rpc("send_thanks", params: Params(p_item: itemId, p_message: message, p_photo_url: photoURL)).execute()
+    }
+
+    /// Le donateur se fait connaître (ou redevient anonyme) auprès des parents pour ce cadeau.
+    func revealMyself(itemId: UUID, reveal: Bool) async throws {
+        struct Params: Encodable {
+            let p_item: UUID
+            let p_reveal: Bool
+        }
+        try await db.rpc("reveal_myself", params: Params(p_item: itemId, p_reveal: reveal)).execute()
+    }
+
+    /// Donateurs dévoilés d'un cadeau (parents uniquement ; vide sinon).
+    func itemDonors(itemId: UUID) async throws -> [ItemDonor] {
+        try await db.rpc("item_donors", params: ["p_item": itemId.uuidString]).execute().value
+    }
+
+    func myThanks() async throws -> [ThanksNote] {
+        try await db.rpc("my_thanks").execute().value
+    }
+
+    // MARK: - Anniversaires (#43)
+
+    /// Crée les anniversaires à venir manquants (l'an prochain, une fois celui de l'année passé).
+    func ensureBirthdayEvents(groupId: UUID) async throws {
+        try await db.rpc("ensure_birthday_events", params: ["p_group": groupId.uuidString]).execute()
+    }
+
     // MARK: - Notifications
 
     func registerDevice(token: String, environment: String) async throws {
@@ -248,7 +321,7 @@ struct GiftRepository: Sendable {
 
 /// Erreurs métier renvoyées par les fonctions SQL, traduites pour l'utilisateur.
 enum GiftError: LocalizedError {
-    case unavailable, owned, notFound, invalidInvite, alreadyInHousehold, other(String)
+    case unavailable, owned, notFound, invalidInvite, alreadyInHousehold, currencyMismatch, other(String)
 
     init(_ error: Error) {
         let message = String(describing: error)
@@ -257,6 +330,7 @@ enum GiftError: LocalizedError {
         else if message.contains("ITEM_NOT_FOUND") || message.contains("RESERVATION_NOT_FOUND") { self = .notFound }
         else if message.contains("INVALID_INVITE_CODE") { self = .invalidInvite }
         else if message.contains("ALREADY_IN_HOUSEHOLD") { self = .alreadyInHousehold }
+        else if message.contains("CURRENCY_MISMATCH") { self = .currencyMismatch }
         else { self = .other(error.localizedDescription) }
     }
 
@@ -267,6 +341,7 @@ enum GiftError: LocalizedError {
         case .notFound: "Ce cadeau n'existe plus."
         case .invalidInvite: "Ce code d'invitation n'est pas valide."
         case .alreadyInHousehold: "Tu fais déjà partie d'un foyer dans cette famille."
+        case .currencyMismatch: "Cette cagnotte est tenue dans une autre devise : participe dans la même devise."
         case .other(let message): message
         }
     }
