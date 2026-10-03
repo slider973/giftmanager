@@ -273,6 +273,57 @@ enum ReservationState: String, Codable, Sendable {
     case reserved, purchased
 }
 
+/// Validation d'une idée par les parents (#57).
+///
+/// Le parent est le seul à savoir si un cadeau convient (âge, doublon, règles de la maison) :
+/// l'écarter ne protégeait rien, puisque le secret porte sur la réservation, pas sur l'objet.
+enum IdeaReview: String, Codable, Sendable {
+    /// Idée non soumise : invisible des parents, comme avant.
+    case none
+    case pending
+    case accepted
+    case rejected
+    case ownedAlready = "owned_already"
+
+    var isSubmitted: Bool { self != .none }
+
+    var label: String {
+        switch self {
+        case .none: "Surprise totale"
+        case .pending: "En attente"
+        case .accepted: "Acceptée"
+        case .rejected: "Refusée"
+        case .ownedAlready: "Déjà possédé"
+        }
+    }
+}
+
+/// Idée soumise par un membre, en attente du verdict d'un parent (#57).
+struct PendingIdea: Codable, Identifiable, Equatable, Hashable, Sendable {
+    let id: UUID
+    let childId: UUID
+    let childName: String
+    let title: String
+    let notes: String?
+    let imageUrl: String?
+    let createdBy: UUID?
+    let authorName: String?
+    let createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, notes
+        case childId = "child_id"
+        case childName = "child_name"
+        case imageUrl = "image_url"
+        case createdBy = "created_by"
+        case authorName = "author_name"
+        case createdAt = "created_at"
+    }
+
+    var imageURL: URL? { imageUrl.flatMap(URL.init(string:)) }
+    var author: String { authorName?.isEmpty == false ? authorName! : "Quelqu'un de la famille" }
+}
+
 struct WishItem: Codable, Identifiable, Equatable, Hashable, Sendable {
     let id: UUID
     let childId: UUID
@@ -293,6 +344,9 @@ struct WishItem: Codable, Identifiable, Equatable, Hashable, Sendable {
     var potCount: Int?
     /// Ma part dans la cagnotte, si je participe.
     var myContribution: Decimal?
+    /// Validation parentale d'une idée (#57).
+    var reviewStatus: IdeaReview = .none
+    var reviewNote: String?
 
     enum CodingKeys: String, CodingKey {
         case id, kind, title, notes, priority, position, owned, status
@@ -305,12 +359,42 @@ struct WishItem: Codable, Identifiable, Equatable, Hashable, Sendable {
         case potCurrency = "pot_currency"
         case potCount = "pot_count"
         case myContribution = "my_contribution"
+        case reviewStatus = "review_status"
+        case reviewNote = "review_note"
     }
 
     var imageURL: URL? { imageUrl.flatMap(URL.init(string:)) }
     var isFavorite: Bool { priority > 0 }
     /// Je participe à la cagnotte de ce cadeau.
     var isInMyPot: Bool { (myContribution ?? 0) > 0 }
+}
+
+extension WishItem {
+    /// Décodage tolérant : les champs de validation (#57) et de cagnotte (#35) sont absents
+    /// des réponses plus anciennes et des charges utiles réduites (widget, extension de partage).
+    /// Déclaré en extension pour conserver l'initialiseur par défaut généré par Swift.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        childId = try c.decode(UUID.self, forKey: .childId)
+        eventId = try c.decodeIfPresent(UUID.self, forKey: .eventId)
+        kind = try c.decode(WishKind.self, forKey: .kind)
+        title = try c.decode(String.self, forKey: .title)
+        notes = try c.decodeIfPresent(String.self, forKey: .notes)
+        imageUrl = try c.decodeIfPresent(String.self, forKey: .imageUrl)
+        priority = try c.decodeIfPresent(Int.self, forKey: .priority) ?? 0
+        position = try c.decodeIfPresent(Int.self, forKey: .position) ?? 0
+        owned = try c.decodeIfPresent(Bool.self, forKey: .owned) ?? false
+        createdBy = try c.decodeIfPresent(UUID.self, forKey: .createdBy)
+        status = try c.decodeIfPresent(ItemStatus.self, forKey: .status)
+        myReservation = try c.decodeIfPresent(ReservationState.self, forKey: .myReservation)
+        potTotal = try c.decodeIfPresent(Decimal.self, forKey: .potTotal)
+        potCurrency = try c.decodeIfPresent(String.self, forKey: .potCurrency)
+        potCount = try c.decodeIfPresent(Int.self, forKey: .potCount)
+        myContribution = try c.decodeIfPresent(Decimal.self, forKey: .myContribution)
+        reviewStatus = try c.decodeIfPresent(IdeaReview.self, forKey: .reviewStatus) ?? .none
+        reviewNote = try c.decodeIfPresent(String.self, forKey: .reviewNote)
+    }
 }
 
 struct ItemLink: Codable, Identifiable, Equatable, Hashable, Sendable {

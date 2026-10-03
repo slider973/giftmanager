@@ -33,8 +33,29 @@ struct AddGiftView: View {
     @State private var fetchTask: Task<Void, Never>?
     /// Cadeau déjà présent pour cet enfant, détecté avant l'enregistrement (#61).
     @State private var duplicate: WishItem?
+    /// Idée soumise à la validation des parents (#57) — activé par défaut.
+    @State private var submitToParents = true
+    /// Nombre de membres qui verraient l'idée si elle n'est pas soumise.
+    @State private var audience: Int?
 
     private var isEditing: Bool { existing != nil }
+
+    private var audienceIsEmpty: Bool { !submitToParents && audience == 0 }
+
+    private var audienceText: String {
+        if submitToParents {
+            let names = appState.household(of: child)
+                .map { appState.parents(of: $0).map(\.displayName).filter { !$0.isEmpty } } ?? []
+            let who = names.isEmpty ? "Ses parents" : ListFormatter.localizedString(byJoining: names)
+            return "\(who) \(names.count > 1 ? "décideront" : "décidera") si le cadeau convient. Personne ne saura qui l'offre."
+        }
+        switch audience {
+        case .none: return "Surprise totale : les parents ne verront pas cette idée."
+        case 0: return "Personne ne pourra voir cette idée : ses parents en sont exclus et il n'y a aucun autre membre dans cette famille."
+        case 1: return "Surprise totale : une seule personne verra cette idée, jamais ses parents."
+        case let count?: return "Surprise totale : \(count) personnes verront cette idée, jamais ses parents."
+        }
+    }
 
     private var duplicateMessage: String {
         guard let duplicate else { return "" }
@@ -101,6 +122,11 @@ struct AddGiftView: View {
             }
         }
         .onAppear(perform: load)
+        .task {
+            // Sert à prévenir quand une idée non soumise n'atteindrait personne (#57).
+            guard kind == .idea, !isEditing else { return }
+            audience = try? await appState.repository.ideaAudience(childId: child.id)
+        }
     }
 
     // MARK: - Sections
@@ -242,6 +268,23 @@ struct AddGiftView: View {
 
     private var optionsCard: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // #57 : une idée est soumise aux parents par défaut — eux seuls savent si elle convient.
+            if kind == .idea && !isEditing {
+                Toggle(isOn: $submitToParents) {
+                    Label {
+                        Text("Soumettre aux parents").foregroundStyle(Color.Theme.textPrimary)
+                    } icon: {
+                        Image(systemName: "checkmark.seal").foregroundStyle(Color.Theme.primary)
+                    }
+                }
+                .tint(Color.Theme.primary)
+                .frame(minHeight: HitTarget.minimum)
+                Text(audienceText)
+                    .font(Font.Theme.caption)
+                    .foregroundStyle(audienceIsEmpty ? Color.Theme.takenFg : Color.Theme.textSecondary)
+                    .padding(.bottom, Spacing.s)
+                Divider().overlay(Color.Theme.separator)
+            }
             if kind == .wish && !owned {
                 Toggle(isOn: $isFavorite) {
                     Label {
@@ -452,7 +495,9 @@ struct AddGiftView: View {
                 let item = GiftRepository.NewItem(child_id: child.id, event_id: owned ? nil : selectedEvent,
                                                   kind: kind.rawValue, title: title.trimmed, notes: note,
                                                   image_url: finalImage, priority: isFavorite ? 1 : 0,
-                                                  owned: owned, created_by: userId)
+                                                  owned: owned, created_by: userId,
+                                                  review_status: (kind == .idea && submitToParents
+                                                                  ? IdeaReview.pending : IdeaReview.none).rawValue)
                 let newId = try await appState.repository.addItem(item, links: links)
                 if !owned {
                     let repository = appState.repository

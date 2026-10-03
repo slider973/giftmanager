@@ -11,6 +11,7 @@ struct FamilyHomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.l) {
                     header
+                    pendingIdeasBanner
                     SegmentedTabs(selection: $tab, titles: ["Événements", "Membres", "Paramètres"])
                     switch tab {
                     case 0: eventsSection
@@ -26,6 +27,11 @@ struct FamilyHomeView: View {
             .navigationTitle(appState.currentGroup?.name ?? "Notre famille")
             .navigationDestination(for: GiftEvent.self) { EventDetailView(event: $0) }
             .navigationDestination(for: ChildDestination.self) { ChildGiftsView(child: $0.child, eventId: $0.eventId, readOnly: $0.readOnly) }
+            .navigationDestination(for: FamilyDestination.self) { destination in
+                switch destination {
+                case .pendingIdeas: PendingIdeasView()
+                }
+            }
             .sheet(item: $editingEvent) { EventEditorView(mode: $0) }
         }
     }
@@ -38,6 +44,37 @@ struct FamilyHomeView: View {
                 .foregroundStyle(Color.Theme.textSecondary)
         }
         .padding(.top, Spacing.s)
+    }
+
+    /// #57 — Idées proposées pour mes enfants, en attente de mon verdict.
+    @ViewBuilder
+    private var pendingIdeasBanner: some View {
+        if appState.pendingIdeasCount > 0 {
+            NavigationLink(value: FamilyDestination.pendingIdeas) {
+                HStack(spacing: Spacing.m) {
+                    Image(systemName: "lightbulb.fill")
+                        .foregroundStyle(Color.Theme.accentAmber)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Text(appState.pendingIdeasCount == 1
+                             ? "Une idée attend ton avis"
+                             : "\(appState.pendingIdeasCount) idées attendent ton avis")
+                            .font(Font.Theme.headline)
+                            .foregroundStyle(Color.Theme.textPrimary)
+                        Text("Tu décides si le cadeau convient, sans savoir qui l'offre.")
+                            .font(Font.Theme.caption)
+                            .foregroundStyle(Color.Theme.textSecondary)
+                    }
+                    Spacer(minLength: Spacing.s)
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(Color.Theme.textSecondary)
+                        .accessibilityHidden(true)
+                }
+                .frame(minHeight: HitTarget.minimum)
+                .fcCard()
+            }
+            .buttonStyle(FCPressableStyle())
+        }
     }
 
     @ViewBuilder
@@ -84,6 +121,12 @@ struct ChildDestination: Hashable {
     let eventId: UUID?
     /// Événement passé : liste en lecture seule.
     var readOnly = false
+}
+
+/// Écrans de la famille atteints par un lien, sans objet à transporter.
+enum FamilyDestination: Hashable {
+    /// Idées proposées pour mes enfants, en attente de mon verdict (#57).
+    case pendingIdeas
 }
 
 extension GiftEventKind {

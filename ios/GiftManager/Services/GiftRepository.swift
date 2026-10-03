@@ -163,6 +163,30 @@ struct GiftRepository: Sendable {
         return try await db.from("item_links").select().in("item_id", values: itemIds).order("created_at").execute().value
     }
 
+    // MARK: - Validation des idées (#57)
+
+    /// Verdict du parent sur une idée : `accepted`, `rejected` ou `owned_already`.
+    @discardableResult
+    func reviewIdea(itemId: UUID, decision: IdeaReview, note: String? = nil) async throws -> String {
+        struct Params: Encodable {
+            let p_item: UUID
+            let p_decision: String
+            let p_note: String?
+        }
+        return try await db.rpc("review_idea", params: Params(p_item: itemId, p_decision: decision.rawValue, p_note: note))
+            .execute().value
+    }
+
+    /// Idées soumises en attente d'un verdict, pour mes enfants.
+    func pendingIdeas() async throws -> [PendingIdea] {
+        try await db.rpc("pending_ideas").execute().value
+    }
+
+    /// Nombre de personnes qui verraient une idée non soumise : 0 ⇒ elle n'atteindrait personne.
+    func ideaAudience(childId: UUID) async throws -> Int {
+        try await db.rpc("idea_audience", params: ["p_child": childId.uuidString]).execute().value
+    }
+
     struct NewItem: Encodable {
         let child_id: UUID
         let event_id: UUID?
@@ -173,6 +197,8 @@ struct GiftRepository: Sendable {
         let priority: Int
         let owned: Bool
         let created_by: UUID
+        /// « pending » soumet l'idée aux parents, « none » garde la surprise totale (#57).
+        var review_status: String = IdeaReview.none.rawValue
     }
 
     @discardableResult

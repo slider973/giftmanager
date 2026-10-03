@@ -38,6 +38,17 @@ struct GiftDetailView: View {
         ReceiptRules.canSendThanks(isParent: isParent, kind: item.kind, owned: item.owned, eventDate: eventDate)
     }
 
+    /// État de l'idée vu par son auteur ou par le parent (#57).
+    private var ideaBannerText: String {
+        switch item.reviewStatus {
+        case .none: "Idée proposée — invisible pour les parents"
+        case .pending: isParent ? "Idée proposée : à toi de décider" : "Idée soumise aux parents"
+        case .accepted: "Idée acceptée — elle a rejoint la liste"
+        case .rejected: item.reviewNote.map { "Idée refusée : \($0)" } ?? "Idée refusée par les parents"
+        case .ownedAlready: "L'enfant l'a déjà"
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.xl) {
@@ -59,9 +70,9 @@ struct GiftDetailView: View {
 
                 VStack(alignment: .leading, spacing: Spacing.s) {
                     if item.kind == .idea {
-                        Label("Idée proposée — invisible pour les parents", systemImage: "lightbulb")
+                        Label(ideaBannerText, systemImage: item.reviewStatus == .pending ? "hourglass" : "lightbulb")
                             .font(Font.Theme.captionBold)
-                            .foregroundStyle(Color.Theme.accentAmber)
+                            .foregroundStyle(item.reviewStatus == .rejected ? Color.Theme.takenFg : Color.Theme.accentAmber)
                     }
                     Text(item.title)
                         .font(Font.Theme.title)

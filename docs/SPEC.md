@@ -24,7 +24,7 @@ Une app iOS pour coordonner les cadeaux des enfants au sein d'une famille élarg
 - **Événement** : Noël, global et commun à toutes les familles, ou anniversaire, porté par un enfant et visible dans chacune de ses familles.
 - **Liste de souhaits** : les cadeaux d'un enfant pour un événement.
 - **Cadeau** : titre, image, notes, priorité, et un ou plusieurs **liens d'achat** (URL, boutique, pays, prix, devise).
-- **Idée** : suggestion de cadeau proposée par un adulte pour un enfant d'un autre foyer. Visible des autres membres, **jamais des parents de l'enfant** ; un membre peut la réserver comme un cadeau de la liste.
+- **Idée** : suggestion de cadeau proposée par un adulte pour un enfant d'un autre foyer. Par défaut **soumise à ses parents**, qui l'acceptent, la refusent ou signalent que l'enfant l'a déjà : eux seuls savent si le cadeau convient (âge, doublon, règles de la maison), et le secret porte sur la réservation, pas sur l'objet. Une acceptation la fait entrer dans la liste de souhaits, son auteur restant crédité. L'auteur peut choisir de **ne pas la soumettre** : elle reste alors invisible des parents, au prix d'aucune vérification.
 - **Possède déjà** : cadeau marqué comme déjà possédé par l'enfant, visible de tous, pour éviter les doublons.
 - **Réservation** : un membre s'engage à offrir un cadeau (`réservé` → `acheté`). Seul l'auteur de la réservation la voit.
 

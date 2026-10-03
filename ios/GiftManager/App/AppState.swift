@@ -24,6 +24,8 @@ final class AppState {
     private(set) var householdMembers: [HouseholdMember] = []
     /// Familles avec lesquelles mon foyer est partagé (#60).
     private(set) var householdGroups: [HouseholdGroup] = []
+    /// Idées proposées pour mes enfants, en attente de mon verdict (#57).
+    private(set) var pendingIdeasCount = 0
     private(set) var members: [Profile] = []
     private(set) var children: [Child] = []
     private(set) var events: [GiftEvent] = []
@@ -157,6 +159,7 @@ final class AppState {
         }
         self.events = try await events
         self.householdGroups = (try? await householdGroups) ?? []
+        pendingIdeasCount = (try? await repository.pendingIdeas().count) ?? 0
         members = try await repository.profiles(ids: try await groupMembers.map(\.userId))
         lastGroupRefresh = .now
     }
