@@ -32,7 +32,15 @@ select id, group_id from public.households;
 -- ---------------------------------------------------------------------------
 -- 2. Fusion des foyers en double (même utilisateur, un foyer par groupe)
 --    Prudence : on ne fusionne que les foyers dont l'ensemble des parents est identique.
+--
+--    Le trigger wish_items_check_event vérifie qu'un cadeau vise un événement du groupe
+--    de son enfant. Pendant la fusion, les cadeaux changent d'enfant avant que les
+--    événements ne soient regroupés (section 3) : la vérification est donc prématurée et
+--    doit être suspendue. Elle est rétablie juste après, et le trigger lui-même est
+--    remplacé en section 7 par une version qui connaît les foyers partagés.
 -- ---------------------------------------------------------------------------
+
+alter table public.wish_items disable trigger wish_items_check_event;
 
 do $$
 declare
@@ -146,6 +154,9 @@ alter table public.events
   );
 
 create unique index events_christmas_unique on public.events (event_date) where kind = 'christmas';
+
+-- Les événements sont regroupés : la cohérence cadeau ↔ événement peut de nouveau être vérifiée.
+alter table public.wish_items enable trigger wish_items_check_event;
 
 -- ---------------------------------------------------------------------------
 -- 4. Le foyer n'est plus rattaché à un groupe
