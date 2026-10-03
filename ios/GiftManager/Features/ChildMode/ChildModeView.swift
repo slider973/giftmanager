@@ -73,6 +73,8 @@ struct ChildModeView: View {
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
         .interactiveDismissDisabled()
+        .onAppear { NotificationRouter.shared.suspended = true }
+        .onDisappear { NotificationRouter.shared.suspended = false }
         .task(id: hint) {
             guard hint != nil else { return }
             try? await Task.sleep(for: .seconds(3.5))

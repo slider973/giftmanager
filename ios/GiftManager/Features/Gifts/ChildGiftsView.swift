@@ -51,7 +51,7 @@ struct ChildGiftsView: View {
                              tone: .neutral)
                         .listRowInsets(EdgeInsets(top: 0, leading: Spacing.xl, bottom: Spacing.s, trailing: Spacing.xl))
                 }
-                if isParent && !readOnly && !model.wishes.isEmpty {
+                if isParent && !readOnly && !child.isAdult && !model.wishes.isEmpty {
                     ChildModeEntryCard(childName: child.firstName) { isChildMode = true }
                         .listRowInsets(EdgeInsets(top: Spacing.xs, leading: Spacing.xl, bottom: Spacing.s, trailing: Spacing.xl))
                 }

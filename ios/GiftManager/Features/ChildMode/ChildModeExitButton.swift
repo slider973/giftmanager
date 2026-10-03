@@ -3,6 +3,12 @@ import SwiftUI
 
 /// Vérification de l'adulte à la sortie du mode enfant : Face ID, Touch ID ou code de l'appareil.
 enum ParentAuthenticator {
+    /// Face ID, Touch ID ou un code est configuré sur l'appareil.
+    static var isAvailable: Bool {
+        var error: NSError?
+        return LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
+    }
+
     /// `true` si l'adulte est vérifié, ou si l'appareil n'a aucun code configuré
     /// (l'appui long reste alors la seule protection). `false` si l'authentification échoue ou est annulée.
     static func authenticate() async -> Bool {
@@ -73,10 +79,17 @@ struct ChildModeExitButton: View {
         .sensoryFeedback(.impact(weight: .medium), trigger: completions)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Quitter le mode enfant")
-        .accessibilityHint("Réservé aux adultes : maintiens le doigt appuyé trois secondes.")
+        .accessibilityHint("Réservé aux adultes : touche deux fois et maintiens trois secondes.")
         .accessibilityAddTraits(.isButton)
-        // VoiceOver : l'activation passe directement à Face ID ou au code.
-        .accessibilityAction { Task { await unlock() } }
+        // VoiceOver : avec un code sur l'appareil, l'activation passe à Face ID ou au code.
+        // Sans code, l'appui maintenu reste obligatoire (toucher deux fois et maintenir) : on rappelle la consigne.
+        .accessibilityAction {
+            if ParentAuthenticator.isAvailable {
+                Task { await unlock() }
+            } else {
+                onTooShort()
+            }
+        }
     }
 
     private func pressingChanged(_ pressing: Bool) {
