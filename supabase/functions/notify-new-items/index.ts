@@ -102,7 +102,7 @@ async function notifyThanks(auth: string, itemId: string): Promise<Response> {
 // éviter qu'on achète deux fois la même chose. Le serveur décide seul des destinataires
 // et de la fenêtre d'agrégation (claim_reservation_notice).
 async function notifyReservation(auth: string, itemId: string): Promise<Response> {
-  const asUser = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth *** } });
+  const asUser = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth } } });
   const caller = (await asUser.auth.getUser()).data.user?.id;
   if (!caller || typeof itemId !== "string") return json({ error: "unauthorized" }, 401);
 
@@ -126,7 +126,7 @@ async function notifyReservation(auth: string, itemId: string): Promise<Response
 
 // Verdict sur une idée (#57) : seul son auteur est informé, jamais le reste de la famille.
 async function notifyIdeaReview(auth: string, itemId: string, decision: string): Promise<Response> {
-  const asUser = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth *** } });
+  const asUser = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth } } });
   const caller = (await asUser.auth.getUser()).data.user?.id;
   if (!caller || typeof itemId !== "string") return json({ error: "unauthorized" }, 401);
 
