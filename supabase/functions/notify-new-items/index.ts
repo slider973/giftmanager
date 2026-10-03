@@ -25,6 +25,8 @@ Deno.serve(async (req) => {
 
   const payload = await req.json().catch(() => ({}));
   if (payload.type === "thanks") return await notifyThanks(auth, payload.item_id);
+  if (payload.type === "reservation") return await notifyReservation(auth, payload.item_id);
+  if (payload.type === "idea_review") return await notifyIdeaReview(auth, payload.item_id, payload.decision);
   const { item_ids } = payload;
   if (!Array.isArray(item_ids) || item_ids.length === 0 || item_ids.length > 50) return json({ error: "item_ids" }, 400);
 
@@ -92,6 +94,60 @@ async function notifyThanks(auth: string, itemId: string): Promise<Response> {
   const sent = await push(admin, donors, "Un grand merci 🎁", `${author?.display_name || "Un parent"} te remercie pour « ${item.title} ».`);
   // Réponse identique qu'il y ait des donateurs ou non : le parent n'apprend rien.
   void sent;
+  return json({ ok: true });
+}
+
+// Réservation (#58) : alerte anonyme aux membres qui ne sont ni parents ni l'acheteur.
+// Le message ne nomme personne et ne cite aucun titre de cadeau : il sert seulement à
+// éviter qu'on achète deux fois la même chose. Le serveur décide seul des destinataires
+// et de la fenêtre d'agrégation (claim_reservation_notice).
+async function notifyReservation(auth: string, itemId: string): Promise<Response> {
+  const asUser = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth *** } });
+  const caller = (await asUser.auth.getUser()).data.user?.id;
+  if (!caller || typeof itemId !== "string") return json({ error: "unauthorized" }, 401);
+
+  const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+  const { data: rows } = await admin.rpc("claim_reservation_notice", { p_item: itemId, p_user: caller });
+  if (!rows?.length) return json({ ok: true });
+
+  const first = rows[0] as { child_name: string; item_count: number; available_count: number };
+  const recipients = (rows as { user_id: string }[]).map((r) => r.user_id);
+  const title = `Liste de ${first.child_name}`;
+  const taken = first.item_count > 1
+    ? `${first.item_count} cadeaux viennent d'être réservés.`
+    : "Un cadeau vient d'être réservé.";
+  const left = first.available_count > 0
+    ? ` Il en reste ${first.available_count} disponible${first.available_count > 1 ? "s" : ""}.`
+    : " Il n'en reste aucun de disponible.";
+  await push(admin, recipients, title, taken + left);
+  // Réponse constante : l'appelant n'apprend ni qui a été notifié, ni combien.
+  return json({ ok: true });
+}
+
+// Verdict sur une idée (#57) : seul son auteur est informé, jamais le reste de la famille.
+async function notifyIdeaReview(auth: string, itemId: string, decision: string): Promise<Response> {
+  const asUser = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth *** } });
+  const caller = (await asUser.auth.getUser()).data.user?.id;
+  if (!caller || typeof itemId !== "string") return json({ error: "unauthorized" }, 401);
+
+  const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+  const { data: item } = await admin.from("wish_items")
+    .select("id, title, created_by, child_id, review_status, reviewed_by, children!inner(first_name, household_id)")
+    .eq("id", itemId).single();
+  if (!item) return json({ ok: true });
+  // Seul le parent qui vient de trancher déclenche l'envoi.
+  if ((item as any).reviewed_by !== caller) return json({ ok: true });
+  const author = (item as any).created_by as string | null;
+  if (!author || author === caller) return json({ ok: true });
+
+  const childName = (item as any).children.first_name as string;
+  const verdicts: Record<string, string> = {
+    accepted: `Ton idée « ${item.title} » a été acceptée : elle rejoint la liste de ${childName}.`,
+    rejected: `Ton idée « ${item.title} » n'a pas été retenue pour ${childName}.`,
+    owned_already: `${childName} possède déjà « ${item.title} » : ton idée a été écartée.`,
+  };
+  const body = verdicts[decision] ?? verdicts.rejected;
+  await push(admin, [author], "Réponse à ta proposition", body);
   return json({ ok: true });
 }
 

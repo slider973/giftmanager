@@ -367,6 +367,20 @@ struct GiftRepository: Sendable {
         try? await client.functions.invoke("notify-new-items", options: FunctionInvokeOptions(body: Body(item_ids: itemIds)))
     }
 
+    /// Alerte anonyme après une réservation (#58). Le serveur choisit les destinataires :
+    /// ni les parents de l'enfant, ni l'acheteur, et rien si l'audience est trop petite.
+    func notifyReservation(itemId: UUID) async {
+        struct Body: Encodable { let type = "reservation"; let item_id: UUID }
+        try? await client.functions.invoke("notify-new-items", options: FunctionInvokeOptions(body: Body(item_id: itemId)))
+    }
+
+    /// Informe l'auteur d'une idée du verdict de son parent (#57).
+    func notifyIdeaReview(itemId: UUID, decision: IdeaReview) async {
+        struct Body: Encodable { let type = "idea_review"; let item_id: UUID; let decision: String }
+        try? await client.functions.invoke("notify-new-items",
+                                           options: FunctionInvokeOptions(body: Body(item_id: itemId, decision: decision.rawValue)))
+    }
+
     // MARK: - Images
 
     /// Envoie une image JPEG dans le bucket `images` (dossier de l'utilisateur) et renvoie son URL publique.

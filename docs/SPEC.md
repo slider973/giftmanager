@@ -45,6 +45,7 @@ Une app iOS pour coordonner les cadeaux des enfants au sein d'une famille élarg
   - ne renvoie **aucun statut** aux parents de l'enfant (mode surprise).
 - **Parent qui veut acheter sur la liste de son propre enfant** : il peut réserver ; si le cadeau est déjà pris, le serveur répond seulement « ce cadeau n'est plus disponible » pour **cet** article, sans jamais dire par qui. Aucune vue globale ne lui est montrée.
 - Les notifications ne révèlent jamais l'identité de l'acheteur.
+- À la réservation, les membres qui ne sont ni parents de l'enfant ni l'acheteur reçoivent une alerte **anonyme** (« un cadeau vient d'être réservé »), sans nom ni titre de cadeau, pour éviter un second achat. Elle n'est envoyée qu'à partir de **deux** destinataires — à un seul, « quelqu'un a réservé » le désignerait par élimination — et au plus une fois par enfant toutes les 30 minutes. Rien n'est notifié sur « acheté » ni sur une annulation.
 - **Risque accepté** : un parent déterminé pourrait tenter de réserver un à un les cadeaux de son enfant pour deviner lesquels sont pris. Cela demande une action volontaire, laisse des réservations à son nom et ne révèle jamais l'acheteur.
 - Un parent ne peut ni quitter son foyer ni en rejoindre un autre via l'API (sinon il lèverait le mode surprise) ; un second parent rejoint le foyer avec le **code du foyer**.
 - Les tests automatiques des règles d'accès de la base (RLS) couvrent chacun de ces cas.

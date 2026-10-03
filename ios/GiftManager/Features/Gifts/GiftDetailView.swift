@@ -369,6 +369,10 @@ struct GiftDetailView: View {
             item.myReservation = .reserved
             celebration = .reserved
             celebrate = true
+            // #58 : prévient anonymement les autres, pour éviter un second achat.
+            let repository = appState.repository
+            let itemId = item.id
+            Task.detached { await repository.notifyReservation(itemId: itemId) }
         }
     }
 

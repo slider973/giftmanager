@@ -123,6 +123,9 @@ struct PendingIdeasView: View {
             note = ""
             ideas.removeAll { $0.id == idea.id }
             appState.itemsChanged()
+            // #57 : l'auteur est informé du verdict, personne d'autre.
+            let repository = appState.repository
+            Task.detached { await repository.notifyIdeaReview(itemId: idea.id, decision: decision) }
         } catch {
             appState.report(error)
         }
