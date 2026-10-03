@@ -1,14 +1,18 @@
 import SwiftUI
 
-/// Ajout / modification / suppression d'un enfant (#7). Réservé aux parents du foyer (RLS).
+/// Ajout / modification / suppression d'un enfant (#7) ou d'une liste d'adulte du foyer (#37).
+/// Réservé aux membres du foyer (RLS).
 struct ChildEditorView: View {
     enum Mode: Identifiable {
         case create
+        /// Liste d'un adulte du foyer (moi, mon conjoint) : même mode surprise qu'un enfant.
+        case createAdult
         case edit(Child)
 
         var id: String {
             switch self {
             case .create: "create"
+            case .createAdult: "createAdult"
             case .edit(let child): child.id.uuidString
             }
         }
@@ -31,6 +35,16 @@ struct ChildEditorView: View {
         return nil
     }
 
+    private var isAdult: Bool {
+        if case .createAdult = mode { return true }
+        return existing?.isAdult ?? false
+    }
+
+    private var navigationTitle: String {
+        if let existing { return existing.firstName }
+        return isAdult ? "Nouvelle liste d'adulte" : "Nouvel enfant"
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -41,8 +55,15 @@ struct ChildEditorView: View {
                         .accessibilityHidden(true)
                         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: emoji)
 
-                    FCTextField(title: "Prénom", text: $firstName, systemImage: "person", prompt: "Ex. Léo")
+                    FCTextField(title: isAdult ? "Nom affiché" : "Prénom", text: $firstName, systemImage: "person",
+                                prompt: isAdult ? "Ex. Papa, Mamie Jo, Claire" : "Ex. Léo")
                         .textContentType(.givenName)
+
+                    if isAdult {
+                        FCNotice(systemImage: "eye.slash",
+                                 text: "Comme pour les enfants : personne de ton foyer ne verra ce qui est réservé sur cette liste, ni les idées proposées.",
+                                 tone: .surprise)
+                    }
 
                     VStack(alignment: .leading, spacing: 0) {
                         Toggle(isOn: $hasBirthdate.animation()) {
@@ -54,7 +75,7 @@ struct ChildEditorView: View {
                         if hasBirthdate {
                             Divider().overlay(Color.Theme.separator)
                                 .padding(.vertical, Spacing.xs)
-                            DatePicker("Née / né le", selection: $birthdate, in: ...Date.now, displayedComponents: .date)
+                            DatePicker(isAdult ? "Anniversaire" : "Née / né le", selection: $birthdate, in: ...Date.now, displayedComponents: .date)
                                 .environment(\.locale, Locale(identifier: "fr_FR"))
                                 .foregroundStyle(Color.Theme.textPrimary)
                                 .tint(Color.Theme.primary)
@@ -112,7 +133,7 @@ struct ChildEditorView: View {
                     }
                     .fcCard()
 
-                    PrimaryButton(title: existing == nil ? "Ajouter" : "Enregistrer", systemImage: "checkmark", isLoading: isSaving) {
+                    PrimaryButton(title: existing == nil ? (isAdult ? "Créer la liste" : "Ajouter") : "Enregistrer", systemImage: "checkmark", isLoading: isSaving) {
                         Task { await save() }
                     }
                     .disabled(firstName.trimmed.isEmpty || isSaving)
@@ -132,18 +153,27 @@ struct ChildEditorView: View {
                 .padding(Spacing.xl)
             }
             .fcScreenBackground()
-            .navigationTitle(existing == nil ? "Nouvel enfant" : existing!.firstName)
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Annuler") { dismiss() } }
             }
             .confirmationDialog("Supprimer \(existing?.firstName ?? "") ?", isPresented: $confirmDelete, titleVisibility: .visible) {
-                Button("Supprimer l'enfant et sa liste", role: .destructive) { Task { await delete() } }
+                Button(isAdult ? "Supprimer la liste" : "Supprimer l'enfant et sa liste", role: .destructive) {
+                    Task { await delete() }
+                }
             } message: {
                 Text("Sa liste de cadeaux, ses idées et les réservations associées seront supprimées.")
             }
         }
-        .onAppear(perform: load)
+        .onAppear {
+            // Liste d'adulte : la date de naissance est facultative, désactivée par défaut.
+            if case .createAdult = mode {
+                hasBirthdate = false
+                birthdate = Calendar.current.date(byAdding: .year, value: -35, to: .now) ?? .now
+            }
+            load()
+        }
     }
 
     private static func colorLabel(_ name: String) -> String {
@@ -172,7 +202,7 @@ struct ChildEditorView: View {
         defer { isSaving = false }
         let child = Child(id: existing?.id ?? UUID(), householdId: household, firstName: firstName.trimmed,
                           birthdate: hasBirthdate ? DayDate(birthdate) : nil, avatarEmoji: emoji,
-                          avatarColor: colorName, avatarUrl: existing?.avatarUrl)
+                          avatarColor: colorName, avatarUrl: existing?.avatarUrl, isAdult: isAdult)
         do {
             try await appState.repository.saveChild(child)
             await appState.reloadGroup()

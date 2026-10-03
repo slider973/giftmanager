@@ -303,8 +303,10 @@ final class AppState {
         return members.filter { ids.contains($0.id) }
     }
 
+    /// Enfants puis listes d'adultes du foyer.
     func children(of household: Household) -> [Child] {
-        children.filter { $0.householdId == household.id }
+        let members = children.filter { $0.householdId == household.id }
+        return members.filter { !$0.isAdult } + members.filter(\.isAdult)
     }
 
     var upcomingEvents: [GiftEvent] {
@@ -324,7 +326,8 @@ final class AppState {
         children.first { $0.id == id }
     }
 
-    /// Enfants concernés par un événement (tous pour Noël, l'enfant pour un anniversaire).
+    /// Listes concernées par un événement (toutes pour Noël, celle du fêté pour un anniversaire),
+    /// listes d'adultes comprises.
     func children(for event: GiftEvent) -> [Child] {
         if let childId = event.childId { return children.filter { $0.id == childId } }
         return children

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Détail d'un événement : les enfants concernés et l'accès à leurs listes (#8).
+/// Détail d'un événement : les listes concernées, enfants puis adultes (#8, #37).
 struct EventDetailView: View {
     let event: GiftEvent
     @Environment(AppState.self) private var appState
@@ -27,25 +27,35 @@ struct EventDetailView: View {
                     FCNotice(systemImage: "archivebox", text: "Événement passé : les listes sont archivées en lecture seule.")
                 }
 
-                let mine = appState.children(for: event).filter { appState.isParent(of: $0) }
-                let others = appState.children(for: event).filter { !appState.isParent(of: $0) }
+                let all = appState.children(for: event)
+                let mine = all.filter { appState.isParent(of: $0) }
+                let otherKids = all.filter { !appState.isParent(of: $0) && !$0.isAdult }
+                let otherAdults = all.filter { !appState.isParent(of: $0) && $0.isAdult }
 
-                if !others.isEmpty {
-                    SectionHeader(title: "Les listes de la famille")
-                    ForEach(others) { childLink($0) }
+                if !otherKids.isEmpty {
+                    SectionHeader(title: "Les listes des enfants")
+                    ForEach(otherKids) { childLink($0) }
+                }
+                if !otherAdults.isEmpty {
+                    SectionHeader(title: "Les listes des adultes")
+                        .padding(.top, otherKids.isEmpty ? 0 : Spacing.m)
+                    ForEach(otherAdults) { childLink($0) }
                 }
                 if !mine.isEmpty {
-                    SectionHeader(title: "Mes enfants")
-                        .padding(.top, others.isEmpty ? 0 : Spacing.m)
+                    // Mes enfants et les listes d'adultes de mon foyer : mode surprise pour toutes.
+                    SectionHeader(title: mine.contains(where: \.isAdult) ? "Mon foyer" : "Mes enfants")
+                        .padding(.top, otherKids.isEmpty && otherAdults.isEmpty ? 0 : Spacing.m)
                     ForEach(mine) { childLink($0) }
                     FCNotice(systemImage: "eye.slash",
-                             text: "Mode surprise : tu ne vois pas ce qui a été réservé pour tes enfants.",
+                             text: mine.contains(where: \.isAdult)
+                                ? "Mode surprise : tu ne vois pas ce qui a été réservé sur les listes de ton foyer."
+                                : "Mode surprise : tu ne vois pas ce qui a été réservé pour tes enfants.",
                              tone: .surprise)
                         .padding(.top, Spacing.xs)
                 }
-                if appState.children(for: event).isEmpty {
-                    EmptyStateView(imageName: "empty_box", title: "Aucun enfant",
-                                   message: "Ajoute les enfants dans Famille › Membres.")
+                if all.isEmpty {
+                    EmptyStateView(imageName: "empty_box", title: "Aucune liste",
+                                   message: "Ajoute les enfants ou une liste d'adulte dans Famille › Membres.")
                 }
             }
             .padding(Spacing.xl)

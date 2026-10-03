@@ -159,7 +159,8 @@ struct ChildRow: View {
                 Text(child.firstName)
                     .font(Font.Theme.headline)
                     .foregroundStyle(Color.Theme.textPrimary)
-                Text([Formatting.ageText(child.age), appState.household(of: child)?.name]
+                // Liste d'adulte : pas d'âge affiché, on précise la nature de la liste.
+                Text([child.isAdult ? "Liste d'adulte" : Formatting.ageText(child.age), appState.household(of: child)?.name]
                     .compactMap { $0 }.joined(separator: " · "))
                     .font(Font.Theme.caption)
                     .foregroundStyle(Color.Theme.textSecondary)
