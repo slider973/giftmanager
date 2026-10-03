@@ -2,7 +2,7 @@
 --   alice : parente du foyer A (enfant Léo, liste d'adulte « Alice »), eve : sa conjointe (même foyer)
 --   bob   : parent du foyer B ; carol, dave : membres sans foyer ; frank : hors du groupe
 begin;
-select plan(48);
+select plan(50);
 
 create function pg_temp.login(p_user uuid) returns void language sql as $$
   select set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
@@ -106,6 +106,12 @@ select throws_ok($$ select public.set_budget(null, null, 50, 'CHF') $$, 'P0001',
 select public.reserve_item((select v from ids where k = 'velo'));
 select is((select spent from public.my_budgets() where currency = 'CHF'), 100.00::numeric, 'dépensé : prix du cadeau réservé');
 select is((select amount from public.my_budgets() where currency = 'CHF'), 250.00::numeric, 'montant du budget');
+-- Comme l'app : paramètres nommés, enfant omis (budget d'événement seul).
+select lives_ok($$ select public.set_budget(
+    p_event => (select id from public.events where group_id = (select v from ids where k = 'group') and kind = 'christmas' limit 1),
+    p_amount => 300, p_currency => 'EUR') $$, 'budget d''événement seul, enfant omis');
+select throws_ok($$ select public.set_budget(p_child => (select v from ids where k = 'leo')) $$,
+  'P0001', 'BUDGET_AMOUNT_REQUIRED', 'montant et devise obligatoires');
 
 select pg_temp.login('a2000000-0000-0000-0000-000000000001');
 select is((select count(*) from public.budgets), 0::bigint, 'le parent ne lit pas le budget d''un autre');
