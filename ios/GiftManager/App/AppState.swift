@@ -28,6 +28,8 @@ final class AppState {
 
     /// Incrémenté après chaque modification de cadeaux pour que les écrans se rechargent.
     private(set) var itemsRevision = 0
+    /// Dernier chargement de la famille (enfants, foyers, événements des autres membres).
+    private var lastGroupRefresh: Date?
 
     var errorMessage: String?
     /// Prénom fourni par Apple à la première connexion, proposé à la création du profil.
@@ -148,6 +150,16 @@ final class AppState {
         self.children = try await children
         self.events = try await events
         members = try await repository.profiles(ids: try await groupMembers.map(\.userId))
+        lastGroupRefresh = .now
+    }
+
+    /// Au retour au premier plan : les autres foyers ont pu ajouter des enfants, des événements ou des cadeaux
+    /// pendant que l'app était en arrière-plan. Au plus une fois toutes les 30 s.
+    func refreshOnForeground() async {
+        guard phase == .ready else { return }
+        if let last = lastGroupRefresh, Date.now.timeIntervalSince(last) < 30 { return }
+        await reloadGroup()
+        itemsChanged()
     }
 
     func reloadGroup() async {
