@@ -20,6 +20,11 @@ struct EventDetailView: View {
                         Text(event.isPast ? "Événement passé" : Formatting.countdownText(days: event.daysRemaining))
                             .font(Font.Theme.caption)
                             .foregroundStyle(Color.Theme.textSecondary)
+                        if let line = birthdayLine {
+                            Text(line)
+                                .font(Font.Theme.caption.weight(.semibold))
+                                .foregroundStyle(Color.Theme.textPrimary)
+                        }
                     }
                 }
                 .accessibilityElement(children: .combine)
@@ -73,6 +78,13 @@ struct EventDetailView: View {
         }
         .sheet(item: $editing) { EventEditorView(mode: $0) }
         .task(id: appState.itemsRevision) { await loadCounts() }
+    }
+
+    /// Anniversaire (#43) : « Léo fête ses 8 ans ». Rien sans date de naissance.
+    private var birthdayLine: String? {
+        guard event.kind == .birthday, let child = appState.child(event.childId),
+              let age = child.age(on: event.eventDate.localDate), let ageText = Formatting.ageText(age) else { return nil }
+        return event.isPast ? "\(child.firstName) a fêté ses \(ageText)" : "\(child.firstName) fête ses \(ageText)"
     }
 
     private func loadCounts() async {

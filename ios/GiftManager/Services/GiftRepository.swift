@@ -28,6 +28,10 @@ struct GiftRepository: Sendable {
             .execute()
     }
 
+    func setBirthdayReminders(userId: UUID, enabled: Bool) async throws {
+        try await db.from("profiles").update(["notify_birthday_reminders": enabled]).eq("id", value: userId).execute()
+    }
+
     func profiles(ids: [UUID]) async throws -> [Profile] {
         guard !ids.isEmpty else { return [] }
         return try await db.from("profiles").select().in("id", values: ids).execute().value

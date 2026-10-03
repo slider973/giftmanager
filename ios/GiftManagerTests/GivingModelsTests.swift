@@ -206,6 +206,27 @@ final class GivingModelsTests: XCTestCase {
         XCTAssertFalse(ReceiptRules.isReceived(owned: false, eventDate: christmas, today: today))
     }
 
+    // MARK: - Anniversaires
+
+    func testProfileBirthdayReminderPreference() throws {
+        let id = UUID().uuidString
+        let off = try decode(Profile.self, """
+        {"id":"\(id)","display_name":"Mamie","country":"CH","currency":"CHF","onboarded":true,
+         "notify_birthday_reminders":false}
+        """)
+        XCTAssertFalse(off.notifyBirthdayReminders)
+        let legacy = try decode(Profile.self, """
+        {"id":"\(id)","display_name":"Mamie","country":"CH","currency":"CHF","onboarded":true}
+        """)
+        XCTAssertTrue(legacy.notifyBirthdayReminders)
+    }
+
+    func testDonorNamesAreJoinedInFrench() {
+        XCTAssertEqual(GiftDetailView.names(["Mamie"]), "Mamie")
+        XCTAssertEqual(GiftDetailView.names(["Mamie", "Paul"]), "Mamie et Paul")
+        XCTAssertEqual(GiftDetailView.names(["Mamie", "Paul", "Léa"]), "Mamie, Paul et Léa")
+    }
+
     // MARK: - Utilitaires
 
     private func link(price: Decimal, currency: String) -> ItemLink {

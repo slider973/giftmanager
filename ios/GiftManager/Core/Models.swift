@@ -9,10 +9,33 @@ struct Profile: Codable, Identifiable, Equatable, Sendable {
     var country: String
     var currency: String
     var onboarded: Bool
+    /// Rappels d'anniversaire J-30 / J-7 (#43), envoyés par le serveur.
+    var notifyBirthdayReminders: Bool
 
     enum CodingKeys: String, CodingKey {
         case id, country, currency, onboarded
         case displayName = "display_name"
+        case notifyBirthdayReminders = "notify_birthday_reminders"
+    }
+
+    init(id: UUID, displayName: String, country: String, currency: String, onboarded: Bool,
+         notifyBirthdayReminders: Bool = true) {
+        self.id = id
+        self.displayName = displayName
+        self.country = country
+        self.currency = currency
+        self.onboarded = onboarded
+        self.notifyBirthdayReminders = notifyBirthdayReminders
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        displayName = try c.decode(String.self, forKey: .displayName)
+        country = try c.decode(String.self, forKey: .country)
+        currency = try c.decode(String.self, forKey: .currency)
+        onboarded = try c.decode(Bool.self, forKey: .onboarded)
+        notifyBirthdayReminders = try c.decodeIfPresent(Bool.self, forKey: .notifyBirthdayReminders) ?? true
     }
 }
 
