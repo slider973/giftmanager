@@ -14,6 +14,8 @@ struct ProfileView: View {
     @State private var purchaseReminders = NotificationService.isEnabled(.purchaseReminders)
     @State private var familyNews = NotificationService.isEnabled(.familyNews)
     @State private var birthdayReminders = true
+    /// Famille dont on s'apprête à retirer le partage du foyer (#60).
+    @State private var unsharing: FamilyGroup?
 
     private var hasChanges: Bool {
         guard let profile = appState.profile else { return false }
@@ -30,6 +32,7 @@ struct ProfileView: View {
                 }
 
                 identitySection
+                myHouseholdSection
                 notificationsSection
 
                 Section {
@@ -164,10 +167,56 @@ struct ProfileView: View {
         .animation(.easeOut(duration: 0.2), value: hasChanges)
     }
 
+    /// #60 — Mon foyer suit mes familles : un seul foyer, partagé avec plusieurs groupes.
+    @ViewBuilder
+    private var myHouseholdSection: some View {
+        if let household = appState.myHousehold {
+            Section {
+                ForEach(appState.familiesSharingMyHousehold) { group in
+                    HStack(spacing: Spacing.m) {
+                        Image(systemName: "person.3.fill")
+                            .foregroundStyle(Color.Theme.textSecondary)
+                            .accessibilityHidden(true)
+                        Text(group.name)
+                            .foregroundStyle(Color.Theme.textPrimary)
+                        Spacer(minLength: Spacing.s)
+                        if appState.familiesSharingMyHousehold.count > 1 {
+                            Button("Retirer") { unsharing = group }
+                                .font(Font.Theme.caption)
+                                .foregroundStyle(Color.Theme.takenFg)
+                                .buttonStyle(.plain)
+                        }
+                    }
+                    .frame(minHeight: HitTarget.minimum)
+                    .fcListRow()
+                }
+            } header: {
+                Text("« \(household.name) » est visible dans")
+            } footer: {
+                Text(appState.children(of: household).isEmpty
+                     ? "Rejoins une autre famille : ton foyer y sera proposé, sans rien ressaisir."
+                     : "Tes enfants et leurs listes suivent ton foyer dans chacune de ces familles. Un cadeau réservé dans l'une apparaît « déjà pris » dans les autres, sans jamais dire par qui.")
+            }
+            .confirmationDialog("Retirer ton foyer de « \(unsharing?.name ?? "") » ?",
+                                isPresented: Binding(get: { unsharing != nil }, set: { if !$0 { unsharing = nil } }),
+                                titleVisibility: .visible) {
+                Button("Retirer", role: .destructive) {
+                    if let group = unsharing {
+                        Task { _ = await appState.unshareHousehold(from: group) }
+                    }
+                    unsharing = nil
+                }
+                Button("Annuler", role: .cancel) { unsharing = nil }
+            } message: {
+                Text("Cette famille ne verra plus tes enfants ni leurs listes. Les réservations déjà faites sont conservées.")
+            }
+        }
+    }
+
     private var notificationsSection: some View {
         Section {
             Toggle(isOn: $purchaseReminders) {
-                Label("Rappels d'achats (J-30, J-7)", systemImage: "calendar.badge.clock")
+                Label("Rappels d'achats (J-30, J-15, J-7, J-2)", systemImage: "calendar.badge.clock")
             }
             .frame(minHeight: HitTarget.minimum)
             .fcListRow()
@@ -184,15 +233,22 @@ struct ProfileView: View {
         } header: {
             Text("Notifications")
         } footer: {
-            Text("Aucune notification ne dit qui a réservé quoi. Les rappels d'anniversaire ne concernent jamais tes propres listes.")
+            Text("Aucune notification ne dit qui a réservé quoi. Les rappels d'achats ne concernent que tes propres réservations, et ceux d'anniversaire jamais tes propres listes.")
         }
         .tint(Color.Theme.primary)
         .labelStyle(SettingsLabelStyle())
+        // #59 : les rappels d'achats viennent du serveur, la préférence est donc dans le profil.
+        .onAppear {
+            purchaseReminders = appState.profile?.notifyPurchaseReminders ?? true
+            birthdayReminders = appState.profile?.notifyBirthdayReminders ?? true
+        }
         .onChange(of: purchaseReminders) { _, value in
             NotificationService.set(.purchaseReminders, value)
-            Task { await appState.refreshReminders() }
+            Task {
+                await appState.setPurchaseReminders(value)
+                if let saved = appState.profile?.notifyPurchaseReminders, saved != value { purchaseReminders = saved }
+            }
         }
-        .onAppear { birthdayReminders = appState.profile?.notifyBirthdayReminders ?? true }
         .onChange(of: birthdayReminders) { _, value in
             Task {
                 await appState.setBirthdayReminders(value)

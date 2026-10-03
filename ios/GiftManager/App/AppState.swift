@@ -22,6 +22,10 @@ final class AppState {
     private(set) var currentGroup: FamilyGroup?
     private(set) var households: [Household] = []
     private(set) var householdMembers: [HouseholdMember] = []
+    /// Familles avec lesquelles mon foyer est partagé (#60).
+    private(set) var householdGroups: [HouseholdGroup] = []
+    /// Idées proposées pour mes enfants, en attente de mon verdict (#57).
+    private(set) var pendingIdeasCount = 0
     private(set) var members: [Profile] = []
     private(set) var children: [Child] = []
     private(set) var events: [GiftEvent] = []
@@ -88,6 +92,7 @@ final class AppState {
         currentGroup = nil
         households = []
         householdMembers = []
+        householdGroups = []
         members = []
         children = []
         events = []
@@ -145,10 +150,16 @@ final class AppState {
         async let groupMembers = repository.groupMembers(groupId: group.id)
         async let children = repository.children(groupId: group.id)
         async let events = repository.events(groupId: group.id)
+        async let householdGroups = repository.myHouseholdGroups()
         self.households = try await households
         self.householdMembers = try await householdMembers
-        self.children = try await children
+        // Un enfant peut remonter plusieurs fois s'il est visible via plusieurs partages (#60).
+        self.children = try await children.reduce(into: [Child]()) { unique, child in
+            if !unique.contains(where: { $0.id == child.id }) { unique.append(child) }
+        }
         self.events = try await events
+        self.householdGroups = (try? await householdGroups) ?? []
+        pendingIdeasCount = (try? await repository.pendingIdeas().count) ?? 0
         members = try await repository.profiles(ids: try await groupMembers.map(\.userId))
         lastGroupRefresh = .now
     }
@@ -182,6 +193,21 @@ final class AppState {
         do {
             try await repository.setBirthdayReminders(userId: userId, enabled: enabled)
             profile?.notifyBirthdayReminders = enabled
+        } catch {
+            report(error)
+        }
+    }
+
+    /// #59 — Les rappels d'achat viennent du serveur : la préférence vit dans le profil,
+    /// et les rappels locaux encore planifiés sont annulés pour éviter les doublons.
+    func setPurchaseReminders(_ enabled: Bool) async {
+        guard let userId else { return }
+        do {
+            if profile?.notifyPurchaseReminders != enabled {
+                try await repository.setPurchaseReminders(userId: userId, enabled: enabled)
+                profile?.notifyPurchaseReminders = enabled
+            }
+            await NotificationService.shared.cancelLocalPurchaseReminders()
         } catch {
             report(error)
         }
@@ -300,12 +326,50 @@ final class AppState {
         }
     }
 
+    /// Partage le foyer existant avec la famille courante (#60) : les enfants y apparaissent
+    /// sans ressaisie.
+    func shareHouseholdWithCurrentGroup() async -> Bool {
+        guard let group = currentGroup else { return false }
+        do {
+            try await repository.shareHousehold(withGroup: group.id)
+            await refreshAll()
+            return true
+        } catch {
+            report(error)
+            return false
+        }
+    }
+
+    func unshareHousehold(from group: FamilyGroup) async -> Bool {
+        do {
+            try await repository.unshareHousehold(fromGroup: group.id)
+            await refreshAll()
+            return true
+        } catch {
+            report(error)
+            return false
+        }
+    }
+
     // MARK: - Dérivés
 
     var myHousehold: Household? {
         guard let userId,
               let membership = householdMembers.first(where: { $0.userId == userId }) else { return nil }
         return households.first { $0.id == membership.householdId }
+    }
+
+    /// Familles où mon foyer est visible, hors celle en cours de consultation.
+    var familiesSharingMyHousehold: [FamilyGroup] {
+        guard let householdId = myHousehold?.id else { return [] }
+        let ids = Set(householdGroups.filter { $0.householdId == householdId }.map(\.groupId))
+        return groups.filter { ids.contains($0.id) }
+    }
+
+    /// Mon foyer existe mais n'est pas encore partagé avec la famille affichée.
+    var canShareHouseholdWithCurrentGroup: Bool {
+        guard let householdId = myHousehold?.id, let group = currentGroup else { return false }
+        return !householdGroups.contains { $0.householdId == householdId && $0.groupId == group.id }
     }
 
     var myChildren: [Child] {

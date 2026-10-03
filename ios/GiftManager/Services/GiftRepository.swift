@@ -32,6 +32,11 @@ struct GiftRepository: Sendable {
         try await db.from("profiles").update(["notify_birthday_reminders": enabled]).eq("id", value: userId).execute()
     }
 
+    /// Rappels d'achat envoyés par le serveur (#59), sur mes seules réservations.
+    func setPurchaseReminders(userId: UUID, enabled: Bool) async throws {
+        try await db.from("profiles").update(["notify_purchase_reminders": enabled]).eq("id", value: userId).execute()
+    }
+
     func profiles(ids: [UUID]) async throws -> [Profile] {
         guard !ids.isEmpty else { return [] }
         return try await db.from("profiles").select().in("id", values: ids).execute().value
@@ -65,6 +70,16 @@ struct GiftRepository: Sendable {
         try await db.rpc("join_household", params: ["p_code": code]).execute().value
     }
 
+    /// Partage le foyer de l'utilisateur avec une famille (#60) : ses enfants y deviennent visibles.
+    @discardableResult
+    func shareHousehold(withGroup groupId: UUID) async throws -> UUID {
+        try await db.rpc("share_household_with_group", params: ["p_group": groupId.uuidString]).execute().value
+    }
+
+    func unshareHousehold(fromGroup groupId: UUID) async throws {
+        try await db.rpc("unshare_household_from_group", params: ["p_group": groupId.uuidString]).execute()
+    }
+
     func renameGroup(_ groupId: UUID, name: String) async throws {
         try await db.from("groups").update(["name": name]).eq("id", value: groupId).execute()
     }
@@ -73,12 +88,25 @@ struct GiftRepository: Sendable {
         try await db.from("group_members").delete().eq("group_id", value: groupId).eq("user_id", value: userId).execute()
     }
 
+    /// Foyers partagés avec cette famille (le foyer n'appartient plus à un groupe — #60).
     func households(groupId: UUID) async throws -> [Household] {
-        try await db.from("households").select().eq("group_id", value: groupId).order("created_at").execute().value
+        try await db.from("households")
+            .select("id, name, country, invite_code, household_groups!inner(group_id)")
+            .eq("household_groups.group_id", value: groupId)
+            .order("created_at")
+            .execute().value
     }
 
     func householdMembers(groupId: UUID) async throws -> [HouseholdMember] {
-        try await db.from("household_members").select().eq("group_id", value: groupId).execute().value
+        try await db.from("household_members")
+            .select("household_id, user_id, households!inner(household_groups!inner(group_id))")
+            .eq("households.household_groups.group_id", value: groupId)
+            .execute().value
+    }
+
+    /// Familles avec lesquelles mon foyer est partagé.
+    func myHouseholdGroups() async throws -> [HouseholdGroup] {
+        try await db.from("household_groups").select("household_id, group_id").execute().value
     }
 
     func groupMembers(groupId: UUID) async throws -> [GroupMember] {
@@ -89,8 +117,11 @@ struct GiftRepository: Sendable {
 
     func children(groupId: UUID) async throws -> [Child] {
         try await db.from("children")
-            .select("id, household_id, first_name, birthdate, avatar_emoji, avatar_color, avatar_url, is_adult, households!inner(group_id)")
-            .eq("households.group_id", value: groupId)
+            .select("""
+                id, household_id, first_name, birthdate, avatar_emoji, avatar_color, avatar_url, is_adult, \
+                households!inner(household_groups!inner(group_id))
+                """)
+            .eq("households.household_groups.group_id", value: groupId)
             .order("first_name")
             .execute().value
     }
@@ -105,9 +136,11 @@ struct GiftRepository: Sendable {
 
     // MARK: - Événements
 
+    /// Événements visibles dans cette famille : Noël (global), les anniversaires des enfants
+    /// qui y sont visibles, et les événements propres au groupe. La RLS fait le tri (#60).
     func events(groupId: UUID) async throws -> [GiftEvent] {
         try await db.from("events").select("id, group_id, kind, title, event_date, child_id, created_by")
-            .eq("group_id", value: groupId).order("event_date").execute().value
+            .order("event_date").execute().value
     }
 
     func saveEvent(_ event: GiftEvent) async throws {
@@ -135,6 +168,30 @@ struct GiftRepository: Sendable {
         return try await db.from("item_links").select().in("item_id", values: itemIds).order("created_at").execute().value
     }
 
+    // MARK: - Validation des idées (#57)
+
+    /// Verdict du parent sur une idée : `accepted`, `rejected` ou `owned_already`.
+    @discardableResult
+    func reviewIdea(itemId: UUID, decision: IdeaReview, note: String? = nil) async throws -> String {
+        struct Params: Encodable {
+            let p_item: UUID
+            let p_decision: String
+            let p_note: String?
+        }
+        return try await db.rpc("review_idea", params: Params(p_item: itemId, p_decision: decision.rawValue, p_note: note))
+            .execute().value
+    }
+
+    /// Idées soumises en attente d'un verdict, pour mes enfants.
+    func pendingIdeas() async throws -> [PendingIdea] {
+        try await db.rpc("pending_ideas").execute().value
+    }
+
+    /// Nombre de personnes qui verraient une idée non soumise : 0 ⇒ elle n'atteindrait personne.
+    func ideaAudience(childId: UUID) async throws -> Int {
+        try await db.rpc("idea_audience", params: ["p_child": childId.uuidString]).execute().value
+    }
+
     struct NewItem: Encodable {
         let child_id: UUID
         let event_id: UUID?
@@ -145,6 +202,8 @@ struct GiftRepository: Sendable {
         let priority: Int
         let owned: Bool
         let created_by: UUID
+        /// « pending » soumet l'idée aux parents, « none » garde la surprise totale (#57).
+        var review_status: String = IdeaReview.none.rawValue
     }
 
     @discardableResult
@@ -311,6 +370,20 @@ struct GiftRepository: Sendable {
     func notifyNewItems(_ itemIds: [UUID]) async {
         struct Body: Encodable { let item_ids: [UUID] }
         try? await client.functions.invoke("notify-new-items", options: FunctionInvokeOptions(body: Body(item_ids: itemIds)))
+    }
+
+    /// Alerte anonyme après une réservation (#58). Le serveur choisit les destinataires :
+    /// ni les parents de l'enfant, ni l'acheteur, et rien si l'audience est trop petite.
+    func notifyReservation(itemId: UUID) async {
+        struct Body: Encodable { let type = "reservation"; let item_id: UUID }
+        try? await client.functions.invoke("notify-new-items", options: FunctionInvokeOptions(body: Body(item_id: itemId)))
+    }
+
+    /// Informe l'auteur d'une idée du verdict de son parent (#57).
+    func notifyIdeaReview(itemId: UUID, decision: IdeaReview) async {
+        struct Body: Encodable { let type = "idea_review"; let item_id: UUID; let decision: String }
+        try? await client.functions.invoke("notify-new-items",
+                                           options: FunctionInvokeOptions(body: Body(item_id: itemId, decision: decision.rawValue)))
     }
 
     // MARK: - Images

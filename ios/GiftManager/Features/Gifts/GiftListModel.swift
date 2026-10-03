@@ -6,7 +6,8 @@ import Observation
 @Observable
 final class GiftListModel {
     let child: Child
-    let eventId: UUID?
+    /// Événement affiché ; `nil` = tous les cadeaux de l'enfant, tous événements confondus (#61).
+    private(set) var eventId: UUID?
     private(set) var items: [WishItem] = []
     private(set) var links: [UUID: [ItemLink]] = [:]
     private(set) var isLoading = false
@@ -20,6 +21,14 @@ final class GiftListModel {
     var wishes: [WishItem] { items.filter { $0.kind == .wish && !$0.owned } }
     var owned: [WishItem] { items.filter { $0.kind == .wish && $0.owned } }
     var ideas: [WishItem] { items.filter { $0.kind == .idea } }
+
+    /// Change l'événement affiché et recharge. Un cadeau rangé ailleurs n'est plus « perdu ».
+    func select(eventId: UUID?, repository: GiftRepository) async throws {
+        guard eventId != self.eventId else { return }
+        self.eventId = eventId
+        hasLoaded = false
+        try await load(repository)
+    }
 
     func load(_ repository: GiftRepository) async throws {
         isLoading = true

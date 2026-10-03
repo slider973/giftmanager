@@ -8,12 +8,15 @@ struct ChildGiftsView: View {
     @State private var adding: AddMode?
     @State private var isReordering = false
     @State private var isChildMode = false
+    /// Événement dont la liste est filtrée ; `nil` = tous les cadeaux de l'enfant (#61).
+    @State private var selectedEvent: UUID?
 
     /// Événement passé : aucune modification ni réservation.
     let readOnly: Bool
 
     init(child: Child, eventId: UUID?, readOnly: Bool = false) {
         _model = State(initialValue: GiftListModel(child: child, eventId: eventId))
+        _selectedEvent = State(initialValue: eventId)
         self.readOnly = readOnly
     }
 
@@ -56,7 +59,13 @@ struct ChildGiftsView: View {
                         .listRowInsets(EdgeInsets(top: Spacing.xs, leading: Spacing.xl, bottom: Spacing.s, trailing: Spacing.xl))
                 }
                 SegmentedTabs(selection: $tab, titles: tabs)
-                    .listRowInsets(EdgeInsets(top: 0, leading: Spacing.xl, bottom: Spacing.s, trailing: Spacing.xl))
+                    .listRowInsets(EdgeInsets(top: 0, leading: Spacing.xl, bottom: Spacing.xs, trailing: Spacing.xl))
+                // #61 : l'événement filtré doit être visible, sinon un cadeau semble disparu.
+                HStack {
+                    eventFilter
+                    Spacer(minLength: 0)
+                }
+                .listRowInsets(EdgeInsets(top: 0, leading: Spacing.xl, bottom: Spacing.s, trailing: Spacing.xl))
             }
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
@@ -136,6 +145,61 @@ struct ChildGiftsView: View {
             Spacer()
         }
         .accessibilityElement(children: .combine)
+    }
+
+    /// #61 — La liste était filtrée par événement sans le dire : un cadeau rangé dans un autre
+    /// événement semblait avoir disparu. Le filtre est maintenant visible et modifiable.
+    private var eventFilter: some View {
+        Menu {
+            Picker("Événement", selection: eventSelection) {
+                Text("Tous les cadeaux").tag(UUID?.none)
+                ForEach(selectableEvents) { event in
+                    Text(event.title).tag(Optional(event.id))
+                }
+            }
+        } label: {
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: "calendar")
+                    .accessibilityHidden(true)
+                Text(selectedEventTitle)
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(Font.Theme.caption)
+                    .accessibilityHidden(true)
+            }
+            .font(Font.Theme.captionBold)
+            .foregroundStyle(Color.Theme.primary)
+            .padding(.horizontal, Spacing.m)
+            .frame(minHeight: HitTarget.minimum)
+            .background(Color.Theme.surface, in: Capsule())
+        }
+        .accessibilityLabel("Événement affiché : \(selectedEventTitle)")
+        .accessibilityHint("Change les cadeaux affichés")
+    }
+
+    /// Événements proposés : ceux qui concernent cet enfant (Noël et son anniversaire).
+    private var selectableEvents: [GiftEvent] {
+        appState.events
+            .filter { $0.childId == nil || $0.childId == child.id }
+            .sorted { $0.eventDate < $1.eventDate }
+    }
+
+    private var selectedEventTitle: String {
+        guard let id = selectedEvent else { return "Tous les cadeaux" }
+        return appState.events.first { $0.id == id }?.title ?? "Tous les cadeaux"
+    }
+
+    private var eventSelection: Binding<UUID?> {
+        Binding(get: { selectedEvent }, set: { newValue in
+            selectedEvent = newValue
+            Task {
+                do {
+                    try await model.select(eventId: newValue, repository: appState.repository)
+                } catch {
+                    appState.report(error)
+                }
+            }
+        })
     }
 
     private func card(for item: WishItem) -> some View {

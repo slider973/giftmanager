@@ -26,7 +26,7 @@ grant all on ids to authenticated;
 
 select pg_temp.login('a2000000-0000-0000-0000-000000000001');
 insert into ids values ('group', public.create_group('Famille V3', 'Foyer A', 'CH'));
-insert into ids select 'household_a', id from public.households where group_id = (select v from ids where k = 'group');
+insert into ids select 'household_a', hg.household_id from public.household_groups hg where hg.group_id = (select v from ids where k = 'group');
 -- Léo : anniversaire dans 30 jours ; Alice (adulte) : dans 7 jours.
 with x as (insert into public.children (household_id, first_name, birthdate)
            values ((select v from ids where k = 'household_a'), 'Léo', ((current_date + 30) - interval '8 years')::date) returning id)
@@ -63,7 +63,7 @@ select public.join_group((select invite_code from invite));
 select pg_temp.logout();
 
 -- ---------------------------------------------------------------- #43 rappels
-select is((select count(*) from public.events where kind = 'birthday' and group_id = (select v from ids where k = 'group')), 2::bigint, 'deux anniversaires créés automatiquement');
+select is((select count(*) from public.events where kind = 'birthday' and child_id in (select id from public.children where household_id = (select v from ids where k = 'household_a'))), 2::bigint, 'deux anniversaires créés automatiquement');
 select is((select count(*) from private.birthday_reminder_candidates() where child_name = 'Léo' and days_before = 30), 3::bigint,
   'J-30 de Léo : bob, carol et dave');
 select is((select count(*) from private.birthday_reminder_candidates() where child_name = 'Léo'
@@ -74,7 +74,7 @@ select is((select count(*) from private.birthday_reminder_candidates() where chi
 select is((select count(*) from private.birthday_reminder_candidates() where child_name = 'Alice'
            and user_id in ('a2000000-0000-0000-0000-000000000001', 'e2000000-0000-0000-0000-000000000001')), 0::bigint,
   'ni l''adulte concerné, ni son conjoint');
-select is((select count(*) from private.birthday_reminder_candidates(current_date + 40) where event_id in (select id from public.events where group_id = (select v from ids where k = 'group'))), 0::bigint,
+select is((select count(*) from private.birthday_reminder_candidates(current_date + 40) where event_id in (select id from public.events where child_id in (select id from public.children where household_id = (select v from ids where k = 'household_a')))), 0::bigint,
   'événements passés : aucun rappel');
 select is((select count(*) from private.birthday_reminder_candidates(current_date + 25)
            where child_name = 'Léo' and days_before = 7), 3::bigint,
@@ -83,12 +83,12 @@ select is((select count(*) from private.birthday_reminder_candidates(current_dat
 update public.profiles set notify_birthday_reminders = false where id = 'd2000000-0000-0000-0000-000000000001';
 select is((select count(*) from private.birthday_reminder_candidates() where user_id = 'd2000000-0000-0000-0000-000000000001'), 0::bigint,
   'préférence désactivée : dave n''est pas notifié');
-select is((select count(*) from private.birthday_reminder_candidates() where event_id in (select id from public.events where group_id = (select v from ids where k = 'group'))), 4::bigint, 'les autres le sont toujours');
+select is((select count(*) from private.birthday_reminder_candidates() where event_id in (select id from public.events where child_id in (select id from public.children where household_id = (select v from ids where k = 'household_a')))), 4::bigint, 'les autres le sont toujours');
 
-select is((select count(*) from public.claim_birthday_reminders() where event_id in (select id from public.events where group_id = (select v from ids where k = 'group'))), 4::bigint, 'claim : 4 rappels à envoyer');
-select is((select count(*) from public.claim_birthday_reminders() where event_id in (select id from public.events where group_id = (select v from ids where k = 'group'))), 0::bigint, 'claim idempotent : pas de rappel en double');
+select is((select count(*) from public.claim_birthday_reminders() where event_id in (select id from public.events where child_id in (select id from public.children where household_id = (select v from ids where k = 'household_a')))), 4::bigint, 'claim : 4 rappels à envoyer');
+select is((select count(*) from public.claim_birthday_reminders() where event_id in (select id from public.events where child_id in (select id from public.children where household_id = (select v from ids where k = 'household_a')))), 0::bigint, 'claim idempotent : pas de rappel en double');
 update public.profiles set notify_birthday_reminders = true where id = 'd2000000-0000-0000-0000-000000000001';
-select is((select count(*) from public.claim_birthday_reminders() where event_id in (select id from public.events where group_id = (select v from ids where k = 'group'))), 2::bigint, 'réactivée : dave reçoit ses deux rappels, une seule fois');
+select is((select count(*) from public.claim_birthday_reminders() where event_id in (select id from public.events where child_id in (select id from public.children where household_id = (select v from ids where k = 'household_a')))), 2::bigint, 'réactivée : dave reçoit ses deux rappels, une seule fois');
 
 select pg_temp.login('a2000000-0000-0000-0000-000000000001');
 select throws_ok($$ select * from public.claim_birthday_reminders() $$, '42501', null, 'claim réservé au service role');
@@ -108,7 +108,7 @@ select is((select spent from public.my_budgets() where currency = 'CHF'), 100.00
 select is((select amount from public.my_budgets() where currency = 'CHF'), 250.00::numeric, 'montant du budget');
 -- Comme l'app : paramètres nommés, enfant omis (budget d'événement seul).
 select lives_ok($$ select public.set_budget(
-    p_event => (select id from public.events where group_id = (select v from ids where k = 'group') and kind = 'christmas' limit 1),
+    p_event => (select id from public.events where kind = 'christmas' limit 1),
     p_amount => 300, p_currency => 'EUR') $$, 'budget d''événement seul, enfant omis');
 select throws_ok($$ select public.set_budget(p_child => (select v from ids where k = 'leo')) $$,
   'P0001', 'BUDGET_AMOUNT_REQUIRED', 'montant et devise obligatoires');

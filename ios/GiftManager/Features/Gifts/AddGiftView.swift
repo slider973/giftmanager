@@ -31,8 +31,38 @@ struct AddGiftView: View {
     @State private var isSaving = false
     @State private var showAddLink = false
     @State private var fetchTask: Task<Void, Never>?
+    /// Cadeau déjà présent pour cet enfant, détecté avant l'enregistrement (#61).
+    @State private var duplicate: WishItem?
+    /// Idée soumise à la validation des parents (#57) — activé par défaut.
+    @State private var submitToParents = true
+    /// Nombre de membres qui verraient l'idée si elle n'est pas soumise.
+    @State private var audience: Int?
 
     private var isEditing: Bool { existing != nil }
+
+    private var audienceIsEmpty: Bool { !submitToParents && audience == 0 }
+
+    private var audienceText: String {
+        if submitToParents {
+            let names = appState.household(of: child)
+                .map { appState.parents(of: $0).map(\.displayName).filter { !$0.isEmpty } } ?? []
+            let who = names.isEmpty ? "Ses parents" : ListFormatter.localizedString(byJoining: names)
+            return "\(who) \(names.count > 1 ? "décideront" : "décidera") si le cadeau convient. Personne ne saura qui l'offre."
+        }
+        switch audience {
+        case .none: return "Surprise totale : les parents ne verront pas cette idée."
+        case 0: return "Personne ne pourra voir cette idée : ses parents en sont exclus et il n'y a aucun autre membre dans cette famille."
+        case 1: return "Surprise totale : une seule personne verra cette idée, jamais ses parents."
+        case let count?: return "Surprise totale : \(count) personnes verront cette idée, jamais ses parents."
+        }
+    }
+
+    private var duplicateMessage: String {
+        guard let duplicate else { return "" }
+        let event = appState.events.first { $0.id == duplicate.eventId }?.title
+        let place = event.map { "dans « \($0) »" } ?? "sans événement"
+        return "« \(duplicate.title) » figure déjà \(place) dans la liste de \(child.firstName)."
+    }
 
     var body: some View {
         ScrollView {
@@ -50,7 +80,7 @@ struct AddGiftView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             PrimaryButton(title: isEditing ? "Enregistrer" : (kind == .idea ? "Proposer cette idée" : "Ajouter à la liste"),
                           systemImage: "checkmark", isLoading: isSaving) {
-                Task { await save() }
+                Task { await saveChecked() }
             }
             .disabled(title.trimmed.isEmpty || isSaving)
             .padding(.horizontal, Spacing.xl)
@@ -62,6 +92,16 @@ struct AddGiftView: View {
             }
         }
         .fcScreenBackground()
+        // #61 : un cadeau rangé dans un autre événement semblait disparu, d'où des doublons.
+        .alert("Ce cadeau existe déjà", isPresented: Binding(get: { duplicate != nil }, set: { if !$0 { duplicate = nil } })) {
+            Button("Ajouter quand même") {
+                duplicate = nil
+                Task { await save() }
+            }
+            Button("Annuler", role: .cancel) { duplicate = nil }
+        } message: {
+            Text(duplicateMessage)
+        }
         .navigationTitle(isEditing ? "Modifier" : (kind == .idea ? "Proposer une idée" : "Ajouter un cadeau"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -82,6 +122,11 @@ struct AddGiftView: View {
             }
         }
         .onAppear(perform: load)
+        .task {
+            // Sert à prévenir quand une idée non soumise n'atteindrait personne (#57).
+            guard kind == .idea, !isEditing else { return }
+            audience = try? await appState.repository.ideaAudience(childId: child.id)
+        }
     }
 
     // MARK: - Sections
@@ -223,6 +268,23 @@ struct AddGiftView: View {
 
     private var optionsCard: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // #57 : une idée est soumise aux parents par défaut — eux seuls savent si elle convient.
+            if kind == .idea && !isEditing {
+                Toggle(isOn: $submitToParents) {
+                    Label {
+                        Text("Soumettre aux parents").foregroundStyle(Color.Theme.textPrimary)
+                    } icon: {
+                        Image(systemName: "checkmark.seal").foregroundStyle(Color.Theme.primary)
+                    }
+                }
+                .tint(Color.Theme.primary)
+                .frame(minHeight: HitTarget.minimum)
+                Text(audienceText)
+                    .font(Font.Theme.caption)
+                    .foregroundStyle(audienceIsEmpty ? Color.Theme.takenFg : Color.Theme.textSecondary)
+                    .padding(.bottom, Spacing.s)
+                Divider().overlay(Color.Theme.separator)
+            }
             if kind == .wish && !owned {
                 Toggle(isOn: $isFavorite) {
                     Label {
@@ -381,6 +443,38 @@ struct AddGiftView: View {
                          price: LinkPreviewService.parsePrice(priceText), currency: currency)
     }
 
+    /// Avant d'enregistrer un nouveau cadeau, cherche un doublon tous événements confondus (#61).
+    private func saveChecked() async {
+        guard !isEditing else {
+            await save()
+            return
+        }
+        if let existing = await findDuplicate() {
+            duplicate = existing
+            return
+        }
+        await save()
+    }
+
+    /// Doublon = même enfant et titre identique (casse et espaces ignorés), ou même lien d'achat.
+    private func findDuplicate() async -> WishItem? {
+        let needle = DuplicateMatch.normalize(title)
+        guard !needle.isEmpty else { return nil }
+        let link = mainLink?.url
+        do {
+            // p_event omis : on regarde toute la liste, pas seulement l'événement affiché.
+            let all = try await appState.repository.childItems(childId: child.id)
+            if let byTitle = all.first(where: { DuplicateMatch.normalize($0.title) == needle }) { return byTitle }
+            guard let link else { return nil }
+            let links = try await appState.repository.links(itemIds: all.map(\.id))
+            guard let match = links.first(where: { DuplicateMatch.sameURL($0.url, link) }) else { return nil }
+            return all.first { $0.id == match.itemId }
+        } catch {
+            // La détection est un confort : en cas d'échec réseau, on laisse enregistrer.
+            return nil
+        }
+    }
+
     private func save() async {
         guard let userId = appState.userId else { return }
         isSaving = true
@@ -401,7 +495,9 @@ struct AddGiftView: View {
                 let item = GiftRepository.NewItem(child_id: child.id, event_id: owned ? nil : selectedEvent,
                                                   kind: kind.rawValue, title: title.trimmed, notes: note,
                                                   image_url: finalImage, priority: isFavorite ? 1 : 0,
-                                                  owned: owned, created_by: userId)
+                                                  owned: owned, created_by: userId,
+                                                  review_status: (kind == .idea && submitToParents
+                                                                  ? IdeaReview.pending : IdeaReview.none).rawValue)
                 let newId = try await appState.repository.addItem(item, links: links)
                 if !owned {
                     let repository = appState.repository

@@ -19,12 +19,12 @@ Une app iOS pour coordonner les cadeaux des enfants au sein d'une famille élarg
 ## Concepts
 
 - **Groupe familial** : la famille élargie (ex. « Famille Lemaine »). On le rejoint par invitation (lien ou code).
-- **Foyer** : un ou deux parents et leurs enfants, dans un pays donné. Un groupe contient plusieurs foyers.
+- **Foyer** : un ou deux parents et leurs enfants, dans un pays donné. Il appartient à ses parents, **pas** à un groupe : il est *partagé* vers une ou plusieurs familles. Rejoindre une nouvelle famille (belle-famille, famille recomposée) n'oblige donc jamais à recréer ses enfants.
 - **Enfant** : profil sans compte, géré par les parents de son foyer.
-- **Événement** : Noël (pour tous les enfants du groupe) ou anniversaire (pour un enfant).
+- **Événement** : Noël, global et commun à toutes les familles, ou anniversaire, porté par un enfant et visible dans chacune de ses familles.
 - **Liste de souhaits** : les cadeaux d'un enfant pour un événement.
 - **Cadeau** : titre, image, notes, priorité, et un ou plusieurs **liens d'achat** (URL, boutique, pays, prix, devise).
-- **Idée** : suggestion de cadeau proposée par un adulte pour un enfant d'un autre foyer. Visible des autres membres, **jamais des parents de l'enfant** ; un membre peut la réserver comme un cadeau de la liste.
+- **Idée** : suggestion de cadeau proposée par un adulte pour un enfant d'un autre foyer. Par défaut **soumise à ses parents**, qui l'acceptent, la refusent ou signalent que l'enfant l'a déjà : eux seuls savent si le cadeau convient (âge, doublon, règles de la maison), et le secret porte sur la réservation, pas sur l'objet. Une acceptation la fait entrer dans la liste de souhaits, son auteur restant crédité. L'auteur peut choisir de **ne pas la soumettre** : elle reste alors invisible des parents, au prix d'aucune vérification.
 - **Possède déjà** : cadeau marqué comme déjà possédé par l'enfant, visible de tous, pour éviter les doublons.
 - **Réservation** : un membre s'engage à offrir un cadeau (`réservé` → `acheté`). Seul l'auteur de la réservation la voit.
 
@@ -39,11 +39,13 @@ Une app iOS pour coordonner les cadeaux des enfants au sein d'une famille élarg
 ## Règles d'anonymat (garanties côté serveur)
 
 - Une réservation n'est lisible **que par son auteur**.
+- Une réservation faite dans une famille rend le cadeau « déjà pris » dans **toutes** les familles où l'enfant est visible. Sans cela l'anti-doublon inter-familles ne fonctionnerait pas. Aucune information nominative ne traverse la frontière entre groupes : le statut reste `pris` / `disponible`.
 - Le statut public d'un cadeau (`disponible` / `pris`) est fourni par une fonction serveur qui :
   - renvoie `pris` ou `disponible` aux membres du groupe **qui ne sont pas** parents de l'enfant ;
   - ne renvoie **aucun statut** aux parents de l'enfant (mode surprise).
 - **Parent qui veut acheter sur la liste de son propre enfant** : il peut réserver ; si le cadeau est déjà pris, le serveur répond seulement « ce cadeau n'est plus disponible » pour **cet** article, sans jamais dire par qui. Aucune vue globale ne lui est montrée.
 - Les notifications ne révèlent jamais l'identité de l'acheteur.
+- À la réservation, les membres qui ne sont ni parents de l'enfant ni l'acheteur reçoivent une alerte **anonyme** (« un cadeau vient d'être réservé »), sans nom ni titre de cadeau, pour éviter un second achat. Elle n'est envoyée qu'à partir de **deux** destinataires — à un seul, « quelqu'un a réservé » le désignerait par élimination — et au plus une fois par enfant toutes les 30 minutes. Rien n'est notifié sur « acheté » ni sur une annulation.
 - **Risque accepté** : un parent déterminé pourrait tenter de réserver un à un les cadeaux de son enfant pour deviner lesquels sont pris. Cela demande une action volontaire, laisse des réservations à son nom et ne révèle jamais l'acheteur.
 - Un parent ne peut ni quitter son foyer ni en rejoindre un autre via l'API (sinon il lèverait le mode surprise) ; un second parent rejoint le foyer avec le **code du foyer**.
 - Les tests automatiques des règles d'accès de la base (RLS) couvrent chacun de ces cas.
@@ -67,20 +69,23 @@ Une app iOS pour coordonner les cadeaux des enfants au sein d'une famille élarg
 ```
 profiles(id → auth.users, display_name, country, currency)
 groups(id, name, created_by, invite_code)
-households(id, group_id, name, country)
-household_members(household_id, user_id)            -- parents
+households(id, name, country, invite_code)            -- n'appartient plus à un groupe
+household_groups(household_id, group_id)              -- partage du foyer vers les familles
+household_members(household_id, user_id)              -- parents ; un seul foyer par utilisateur
 children(id, household_id, first_name, birthdate, avatar)
-events(id, group_id, kind: christmas|birthday, title, date, child_id NULL)
-wish_items(id, child_id, event_id, kind: wish|idea, title, notes, image_url, priority, owned bool, created_by)
+events(id, group_id NULL, kind: christmas|birthday|other, title, date, child_id NULL)
+wish_items(id, child_id, event_id, kind: wish|idea, title, notes, image_url, priority, owned, created_by)
 item_links(id, item_id, url, store, country, price, currency)
 reservations(id, item_id UNIQUE, user_id, status: reserved|purchased, created_at)
 ```
 
-Fonctions serveur : `item_public_status(item_id)`, `reserve_item(item_id)`, `join_group(invite_code)`.
+Portée des événements : Noël a `group_id` et `child_id` nuls (global) ; un anniversaire a `group_id` nul et suit son enfant ; les autres événements appartiennent à un groupe.
+
+Fonctions serveur : `item_public_status(item_id)`, `reserve_item(item_id)`, `join_group(invite_code)`, `share_household_with_group(group)`, `unshare_household_from_group(group)`.
 
 ## Hors périmètre v1
 
-Conversion de devises, extension de partage iOS, Android ou web, listes de souhaits d'adultes, cagnottes communes, suggestions de cadeaux par IA, notifications push (v1.1).
+Android ou web, suggestions de cadeaux par IA.
 
 ## Jalon
 

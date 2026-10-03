@@ -56,7 +56,7 @@ Puis relancer `scripts/secrets/inject.sh` et `scripts/secrets/sync-github.sh`.
 
 ## Tâches planifiées (pg_cron)
 
-Les migrations planifient `birthday-reminders` (08:00 UTC) et `track-prices` (05:00 UTC). pg_cron appelle les fonctions Edge avec l'en-tête `x-cron-secret`. Deux secrets Vault sont à créer **une fois** sur la base de prod (sans eux l'appel est un no-op) :
+Les migrations planifient `birthday-reminders` (08:00 UTC), `track-prices` (05:00 UTC) et `purchase-reminders` (toutes les heures : seuls les profils pour qui il est 18 h localement sont servis). pg_cron appelle les fonctions Edge avec l'en-tête `x-cron-secret`. Deux secrets Vault sont à créer **une fois** sur la base de prod (sans eux l'appel est un no-op) :
 
 ```sql
 -- éditeur SQL Supabase ; remplacer les deux valeurs (cron_secret : `op read op://giftmanager/cron/password`)
