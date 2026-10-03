@@ -44,6 +44,12 @@ struct ChildGiftsView: View {
             Section {
                 header
                     .listRowInsets(EdgeInsets(top: Spacing.s, leading: Spacing.xl, bottom: Spacing.s, trailing: Spacing.xl))
+                if readOnly && isParent {
+                    FCNotice(systemImage: "gift",
+                             text: "La fête est passée : ouvre un cadeau reçu pour le marquer « Reçu ! » et dire merci.",
+                             tone: .neutral)
+                        .listRowInsets(EdgeInsets(top: 0, leading: Spacing.xl, bottom: Spacing.s, trailing: Spacing.xl))
+                }
                 SegmentedTabs(selection: $tab, titles: tabs)
                     .listRowInsets(EdgeInsets(top: 0, leading: Spacing.xl, bottom: Spacing.s, trailing: Spacing.xl))
             }
@@ -111,7 +117,7 @@ struct ChildGiftsView: View {
                     .font(Font.Theme.title)
                     .foregroundStyle(Color.Theme.textPrimary)
                     .accessibilityAddTraits(.isHeader)
-                Text([Formatting.ageText(child.age), isParent ? "Ses envies" : appState.household(of: child)?.name]
+                Text([child.isAdult ? nil : Formatting.ageText(child.age), isParent ? "Ses envies" : appState.household(of: child)?.name]
                     .compactMap { $0 }.joined(separator: " · "))
                     .font(Font.Theme.caption)
                     .foregroundStyle(Color.Theme.textSecondary)
@@ -133,7 +139,8 @@ struct ChildGiftsView: View {
         switch tab {
         case 0:
             EmptyStateView(imageName: "empty_box", title: "Liste vide",
-                           message: isParent ? "Ajoute ses envies avec \(child.firstName) en collant des liens de boutiques."
+                           message: isParent ? (child.isAdult ? "Colle des liens de boutiques pour ajouter les envies de \(child.firstName)."
+                                                              : "Ajoute ses envies avec \(child.firstName) en collant des liens de boutiques.")
                                              : "\(child.firstName) n'a pas encore fait sa liste.",
                            actionTitle: isParent && !readOnly ? "Ajouter un cadeau" : nil) {
                 adding = AddMode(kind: .wish, owned: false)

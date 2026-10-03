@@ -9,10 +9,33 @@ struct Profile: Codable, Identifiable, Equatable, Sendable {
     var country: String
     var currency: String
     var onboarded: Bool
+    /// Rappels d'anniversaire J-30 / J-7 (#43), envoyés par le serveur.
+    var notifyBirthdayReminders: Bool
 
     enum CodingKeys: String, CodingKey {
         case id, country, currency, onboarded
         case displayName = "display_name"
+        case notifyBirthdayReminders = "notify_birthday_reminders"
+    }
+
+    init(id: UUID, displayName: String, country: String, currency: String, onboarded: Bool,
+         notifyBirthdayReminders: Bool = true) {
+        self.id = id
+        self.displayName = displayName
+        self.country = country
+        self.currency = currency
+        self.onboarded = onboarded
+        self.notifyBirthdayReminders = notifyBirthdayReminders
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        displayName = try c.decode(String.self, forKey: .displayName)
+        country = try c.decode(String.self, forKey: .country)
+        currency = try c.decode(String.self, forKey: .currency)
+        onboarded = try c.decode(Bool.self, forKey: .onboarded)
+        notifyBirthdayReminders = try c.decodeIfPresent(Bool.self, forKey: .notifyBirthdayReminders) ?? true
     }
 }
 
@@ -118,6 +141,8 @@ struct Child: Codable, Identifiable, Equatable, Hashable, Sendable {
     var avatarEmoji: String?
     var avatarColor: String?
     var avatarUrl: String?
+    /// Liste d'un adulte du foyer (#37) : mêmes règles de surprise que pour un enfant.
+    var isAdult: Bool
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -127,6 +152,31 @@ struct Child: Codable, Identifiable, Equatable, Hashable, Sendable {
         case avatarEmoji = "avatar_emoji"
         case avatarColor = "avatar_color"
         case avatarUrl = "avatar_url"
+        case isAdult = "is_adult"
+    }
+
+    init(id: UUID, householdId: UUID, firstName: String, birthdate: DayDate?, avatarEmoji: String?,
+         avatarColor: String?, avatarUrl: String?, isAdult: Bool = false) {
+        self.id = id
+        self.householdId = householdId
+        self.firstName = firstName
+        self.birthdate = birthdate
+        self.avatarEmoji = avatarEmoji
+        self.avatarColor = avatarColor
+        self.avatarUrl = avatarUrl
+        self.isAdult = isAdult
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        householdId = try c.decode(UUID.self, forKey: .householdId)
+        firstName = try c.decode(String.self, forKey: .firstName)
+        birthdate = try c.decodeIfPresent(DayDate.self, forKey: .birthdate)
+        avatarEmoji = try c.decodeIfPresent(String.self, forKey: .avatarEmoji)
+        avatarColor = try c.decodeIfPresent(String.self, forKey: .avatarColor)
+        avatarUrl = try c.decodeIfPresent(String.self, forKey: .avatarUrl)
+        isAdult = try c.decodeIfPresent(Bool.self, forKey: .isAdult) ?? false
     }
 
     var age: Int? { age(on: .now) }
@@ -146,6 +196,7 @@ struct Child: Codable, Identifiable, Equatable, Hashable, Sendable {
         try c.encode(avatarEmoji, forKey: .avatarEmoji)
         try c.encode(avatarColor, forKey: .avatarColor)
         try c.encode(avatarUrl, forKey: .avatarUrl)
+        try c.encode(isAdult, forKey: .isAdult)
     }
 }
 
@@ -206,6 +257,8 @@ enum WishKind: String, Codable, Sendable {
 /// Statut public d'un cadeau, tel que renvoyé par `child_items`. `nil` = mode surprise (parent).
 enum ItemStatus: String, Codable, Sendable {
     case available, taken, mine, owned
+    /// Cadeau financé à plusieurs (#35).
+    case pot
 }
 
 enum ReservationState: String, Codable, Sendable {
@@ -226,6 +279,12 @@ struct WishItem: Codable, Identifiable, Equatable, Hashable, Sendable {
     var createdBy: UUID?
     var status: ItemStatus?
     var myReservation: ReservationState?
+    /// Cagnotte (#35) : jamais renseignée pour les parents.
+    var potTotal: Decimal?
+    var potCurrency: String?
+    var potCount: Int?
+    /// Ma part dans la cagnotte, si je participe.
+    var myContribution: Decimal?
 
     enum CodingKeys: String, CodingKey {
         case id, kind, title, notes, priority, position, owned, status
@@ -234,10 +293,16 @@ struct WishItem: Codable, Identifiable, Equatable, Hashable, Sendable {
         case imageUrl = "image_url"
         case createdBy = "created_by"
         case myReservation = "my_reservation"
+        case potTotal = "pot_total"
+        case potCurrency = "pot_currency"
+        case potCount = "pot_count"
+        case myContribution = "my_contribution"
     }
 
     var imageURL: URL? { imageUrl.flatMap(URL.init(string:)) }
     var isFavorite: Bool { priority > 0 }
+    /// Je participe à la cagnotte de ce cadeau.
+    var isInMyPot: Bool { (myContribution ?? 0) > 0 }
 }
 
 struct ItemLink: Codable, Identifiable, Equatable, Hashable, Sendable {

@@ -181,6 +181,15 @@ private struct MembersSection: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(FCPressableStyle(pressedScale: 1))
+                Button { editingChild = .createAdult } label: {
+                    Label("Créer une liste d'adulte", systemImage: "person.crop.circle.badge.plus")
+                        .font(Font.Theme.callout.weight(.medium))
+                        .foregroundStyle(Color.Theme.primary)
+                        .frame(minHeight: HitTarget.minimum)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(FCPressableStyle(pressedScale: 1))
+                .accessibilityHint("Ta liste ou celle de ton conjoint, avec le même mode surprise que pour les enfants")
                 if let code = household.inviteCode {
                     ShareLink(item: "Rejoins notre foyer « \(household.name) » sur Gift Manager avec le code : \(code)") {
                         HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {

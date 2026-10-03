@@ -134,6 +134,9 @@ final class AppState {
 
     func refreshGroupData() async throws {
         guard let group = currentGroup else { return }
+        // Anniversaires automatiques (#43) : crée celui de l'an prochain une fois le précédent passé.
+        // Sans effet si tout est à jour ; une erreur ici ne doit pas bloquer le chargement.
+        try? await repository.ensureBirthdayEvents(groupId: group.id)
         async let households = repository.households(groupId: group.id)
         async let householdMembers = repository.householdMembers(groupId: group.id)
         async let groupMembers = repository.groupMembers(groupId: group.id)
@@ -158,6 +161,17 @@ final class AppState {
         UserDefaults.standard.set(group.id.uuidString, forKey: Self.currentGroupKey)
         currentGroup = group
         await refreshAll()
+    }
+
+    /// Préférence serveur des rappels d'anniversaire (#43).
+    func setBirthdayReminders(_ enabled: Bool) async {
+        guard let userId, profile?.notifyBirthdayReminders != enabled else { return }
+        do {
+            try await repository.setBirthdayReminders(userId: userId, enabled: enabled)
+            profile?.notifyBirthdayReminders = enabled
+        } catch {
+            report(error)
+        }
     }
 
     func itemsChanged() {
@@ -211,7 +225,8 @@ final class AppState {
 
     func saveProfile(name: String, country: String, currency: String) async {
         guard let userId else { return }
-        let updated = Profile(id: userId, displayName: name, country: country, currency: currency, onboarded: true)
+        let updated = Profile(id: userId, displayName: name, country: country, currency: currency, onboarded: true,
+                              notifyBirthdayReminders: profile?.notifyBirthdayReminders ?? true)
         do {
             try await repository.updateProfile(updated)
             profile = updated
@@ -303,8 +318,10 @@ final class AppState {
         return members.filter { ids.contains($0.id) }
     }
 
+    /// Enfants puis listes d'adultes du foyer.
     func children(of household: Household) -> [Child] {
-        children.filter { $0.householdId == household.id }
+        let members = children.filter { $0.householdId == household.id }
+        return members.filter { !$0.isAdult } + members.filter(\.isAdult)
     }
 
     var upcomingEvents: [GiftEvent] {
@@ -324,7 +341,8 @@ final class AppState {
         children.first { $0.id == id }
     }
 
-    /// Enfants concernés par un événement (tous pour Noël, l'enfant pour un anniversaire).
+    /// Listes concernées par un événement (toutes pour Noël, celle du fêté pour un anniversaire),
+    /// listes d'adultes comprises.
     func children(for event: GiftEvent) -> [Child] {
         if let childId = event.childId { return children.filter { $0.id == childId } }
         return children

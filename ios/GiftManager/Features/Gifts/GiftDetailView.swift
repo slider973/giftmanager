@@ -13,6 +13,12 @@ struct GiftDetailView: View {
     @State private var editing = false
     @State private var confirmDelete = false
     @State private var celebrate = false
+    @State private var celebration = Celebration.reserved
+    @State private var joiningPot = false
+    @State private var confirmLeavePot = false
+    @State private var participants: [PotParticipant] = []
+    @State private var thanking = false
+    @State private var donors: [ItemDonor] = []
 
     private var child: Child { model.child }
     private var isParent: Bool { appState.isParent(of: child) }
@@ -20,6 +26,17 @@ struct GiftDetailView: View {
     private var canEdit: Bool { !readOnly && (item.kind == .wish ? isParent : item.createdBy == appState.userId) }
     /// Un parent peut offrir lui-même un cadeau de la liste de son enfant (action discrète, dans le menu).
     private var canParentReserve: Bool { !readOnly && isParent && item.kind == .wish && !item.owned && item.myReservation == nil }
+    /// Date de l'événement du cadeau (ou de la liste ouverte), pour le « Reçu ! » (#42).
+    private var eventDate: DayDate? {
+        let id = item.eventId ?? model.eventId
+        return appState.events.first { $0.id == id }?.eventDate
+    }
+    private var canMarkReceived: Bool {
+        ReceiptRules.canMarkReceived(isParent: isParent, kind: item.kind, owned: item.owned, eventDate: eventDate)
+    }
+    private var canSendThanks: Bool {
+        ReceiptRules.canSendThanks(isParent: isParent, kind: item.kind, owned: item.owned, eventDate: eventDate)
+    }
 
     var body: some View {
         ScrollView {
@@ -77,6 +94,9 @@ struct GiftDetailView: View {
                 }
 
                 if readOnly {
+                    if canMarkReceived || canSendThanks {
+                        VStack(alignment: .leading, spacing: Spacing.m) { receiptActions }
+                    }
                     FCNotice(systemImage: "archivebox", text: "Événement passé : fiche archivée.")
                 } else {
                     VStack(alignment: .leading, spacing: Spacing.m) {
@@ -121,9 +141,24 @@ struct GiftDetailView: View {
         .confirmationDialog("Supprimer « \(item.title) » ?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Supprimer", role: .destructive) { Task { await delete() } }
         }
+        .confirmationDialog("Quitter la cagnotte ?", isPresented: $confirmLeavePot, titleVisibility: .visible) {
+            Button("Quitter la cagnotte", role: .destructive) { Task { await leavePot() } }
+        } message: {
+            Text("Ta part sera retirée. Si tu étais seul·e, le cadeau redevient disponible.")
+        }
+        .sheet(isPresented: $joiningPot) {
+            JoinPotView(item: item, childName: child.firstName, links: links) {
+                Task { await refreshAfterPot(celebrating: true) }
+            }
+        }
+        .task(id: item.myContribution) { await loadParticipants() }
+        .task(id: item.owned) { await loadDonors() }
+        .sheet(isPresented: $thanking) {
+            ThanksComposerView(item: item, childName: child.firstName)
+        }
         .overlay {
             if celebrate {
-                CelebrationOverlay { celebrate = false }
+                CelebrationOverlay(celebration: celebration) { celebrate = false }
             }
         }
     }
@@ -140,11 +175,16 @@ struct GiftDetailView: View {
                 SecondaryButton(title: "Je l'offre", systemImage: "gift.fill", isLoading: isWorking) {
                     Task { await reserve() }
                 }
+                TextLinkButton(title: "Participer à une cagnotte") { joiningPot = true }
+                    .frame(maxWidth: .infinity)
+                    .accessibilityHint("Offrir ce cadeau à plusieurs, chacun avec sa part")
                 Label("Personne ne saura que c'est toi, et les parents ne verront rien.", systemImage: "lock.fill")
                     .font(Font.Theme.caption)
                     .foregroundStyle(Color.Theme.textSecondary)
                     .frame(maxWidth: .infinity)
                     .multilineTextAlignment(.center)
+            case .pot:
+                potActions
             case .mine:
                 mineActions
             case .taken:
@@ -177,9 +217,70 @@ struct GiftDetailView: View {
             .frame(maxWidth: .infinity)
     }
 
+    /// Cagnotte en cours : progression pour tous les non-parents, détail pour les participants.
+    @ViewBuilder
+    private var potActions: some View {
+        if let progress = PotProgress.make(item: item, links: links) {
+            PotProgressCard(progress: progress,
+                            myShareText: item.myContribution.flatMap { Money.format($0, currency: progress.currency) })
+        }
+        if item.isInMyPot {
+            if !participants.isEmpty {
+                participantsList
+            }
+            PrimaryButton(title: "Modifier ma part", systemImage: "pencil") { joiningPot = true }
+            TextLinkButton(title: "Quitter la cagnotte") { confirmLeavePot = true }
+                .frame(maxWidth: .infinity)
+        } else {
+            SecondaryButton(title: "Participer à la cagnotte", systemImage: "person.3.fill", isLoading: isWorking) {
+                joiningPot = true
+            }
+        }
+        Label(item.isInMyPot ? "Les parents ne voient ni la cagnotte ni ses participants."
+                             : "Les participants restent secrets : les parents ne verront rien.",
+              systemImage: "lock.fill")
+            .font(Font.Theme.caption)
+            .foregroundStyle(Color.Theme.textSecondary)
+            .frame(maxWidth: .infinity)
+            .multilineTextAlignment(.center)
+    }
+
+    /// Liste visible uniquement des participants (le serveur ne la renvoie qu'à eux).
+    private var participantsList: some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            Text("Participants")
+                .font(Font.Theme.headline)
+                .foregroundStyle(Color.Theme.textPrimary)
+                .accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) {
+                ForEach(Array(participants.enumerated()), id: \.offset) { index, participant in
+                    if index > 0 {
+                        Divider().overlay(Color.Theme.separator)
+                    }
+                    HStack(spacing: Spacing.m) {
+                        ChildAvatar(name: participant.displayName, emoji: nil, colorName: nil, size: 32)
+                            .accessibilityHidden(true)
+                        Text(participant.isMe ? "Moi" : participant.displayName)
+                            .font(Font.Theme.callout.weight(participant.isMe ? .semibold : .regular))
+                            .foregroundStyle(Color.Theme.textPrimary)
+                        Spacer(minLength: Spacing.s)
+                        Text(participant.amountText)
+                            .font(Font.Theme.callout)
+                            .monospacedDigit()
+                            .foregroundStyle(Color.Theme.textSecondary)
+                    }
+                    .frame(minHeight: HitTarget.minimum)
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .fcCard(padding: Spacing.m)
+        }
+    }
+
     @ViewBuilder
     private var parentActions: some View {
         VStack(alignment: .leading, spacing: Spacing.m) {
+            receiptActions
             FCNotice(systemImage: "eye.slash", text: "Mode surprise : tu ne vois pas si ce cadeau est réservé.",
                      tone: .surprise)
             if item.kind == .wish && !item.owned {
@@ -196,13 +297,62 @@ struct GiftDetailView: View {
         }
     }
 
+    /// Après la fête : « Reçu ! », puis « Dire merci » ; donateurs qui se sont fait connaître.
+    @ViewBuilder
+    private var receiptActions: some View {
+        if canMarkReceived {
+            SecondaryButton(title: "Reçu !", systemImage: "gift.fill", isLoading: isWorking) {
+                Task { await markReceived() }
+            }
+            .accessibilityHint("Range le cadeau dans « Possède déjà »")
+        } else if canSendThanks {
+            if !donors.isEmpty {
+                Label {
+                    Text("Offert par \(Self.names(donors.map(\.displayName)))")
+                        .foregroundStyle(Color.Theme.textPrimary)
+                } icon: {
+                    Image(systemName: "heart.fill").foregroundStyle(Color.Theme.heart)
+                }
+                .font(Font.Theme.headline)
+            }
+            PrimaryButton(title: "Dire merci", systemImage: "envelope.fill") { thanking = true }
+            Text(donors.isEmpty ? "Ton message sera transmis à la personne qui l'a offert, sans révéler qui c'est."
+                                : "Ton message sera transmis à toutes les personnes qui l'ont offert.")
+                .font(Font.Theme.caption)
+                .foregroundStyle(Color.Theme.textSecondary)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    /// « Mamie », « Mamie et Paul », « Mamie, Paul et Léa ».
+    static func names(_ names: [String]) -> String {
+        guard names.count > 1 else { return names.first ?? "" }
+        return names.dropLast().joined(separator: ", ") + " et " + (names.last ?? "")
+    }
+
     // MARK: - Appels
+
+    private func markReceived() async {
+        await perform {
+            try await appState.repository.setOwned(itemId: item.id, owned: true)
+            item.owned = true
+        }
+        if item.owned { thanking = true }
+    }
+
+    private func loadDonors() async {
+        guard isParent, item.owned else { return }
+        // Seuls les donateurs qui ont choisi de se faire connaître sont renvoyés.
+        donors = (try? await appState.repository.itemDonors(itemId: item.id)) ?? []
+    }
 
     private func reserve() async {
         await perform {
             try await appState.repository.reserve(itemId: item.id)
             item.status = isParent ? nil : .mine
             item.myReservation = .reserved
+            celebration = .reserved
             celebrate = true
         }
     }
@@ -219,6 +369,41 @@ struct GiftDetailView: View {
         await perform {
             try await appState.repository.setPurchased(itemId: item.id, purchased: purchased)
             item.myReservation = purchased ? .purchased : .reserved
+        }
+    }
+
+    private func leavePot() async {
+        await perform {
+            try await appState.repository.leavePot(itemId: item.id)
+            try await reloadItem()
+        }
+    }
+
+    /// Recharge le cadeau après une participation (montant total, nombre de participants).
+    private func refreshAfterPot(celebrating: Bool) async {
+        await perform {
+            try await reloadItem()
+            if celebrating {
+                celebration = .pot
+                celebrate = true
+            }
+        }
+    }
+
+    private func reloadItem() async throws {
+        try await model.load(appState.repository)
+        if let fresh = model.items.first(where: { $0.id == item.id }) { item = fresh }
+    }
+
+    private func loadParticipants() async {
+        guard item.isInMyPot, !isParent else {
+            participants = []
+            return
+        }
+        do {
+            participants = try await appState.repository.potParticipants(itemId: item.id)
+        } catch {
+            appState.report(error)
         }
     }
 
@@ -260,8 +445,28 @@ struct GiftDetailView: View {
     }
 }
 
-/// Petite célébration après une réservation.
+/// Message de la célébration, selon l'action.
+enum Celebration {
+    case reserved, pot
+
+    var title: String {
+        switch self {
+        case .reserved: "Réservé !"
+        case .pot: "Tu participes !"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .reserved: "Ton secret est bien gardé."
+        case .pot: "Les parents n'en sauront rien."
+        }
+    }
+}
+
+/// Petite célébration après une réservation ou une participation.
 private struct CelebrationOverlay: View {
+    let celebration: Celebration
     let onFinish: () -> Void
     @State private var appear = false
 
@@ -272,10 +477,10 @@ private struct CelebrationOverlay: View {
                 .scaledToFit()
                 .frame(width: 180)
                 .accessibilityHidden(true)
-            Text("Réservé !")
+            Text(celebration.title)
                 .font(Font.Theme.title)
                 .foregroundStyle(Color.Theme.textPrimary)
-            Text("Ton secret est bien gardé.")
+            Text(celebration.message)
                 .font(Font.Theme.body)
                 .foregroundStyle(Color.Theme.textSecondary)
         }

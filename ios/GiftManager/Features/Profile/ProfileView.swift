@@ -13,6 +13,7 @@ struct ProfileView: View {
     @State private var confirmDelete = false
     @State private var purchaseReminders = NotificationService.isEnabled(.purchaseReminders)
     @State private var familyNews = NotificationService.isEnabled(.familyNews)
+    @State private var birthdayReminders = true
 
     private var hasChanges: Bool {
         guard let profile = appState.profile else { return false }
@@ -175,16 +176,29 @@ struct ProfileView: View {
             }
             .frame(minHeight: HitTarget.minimum)
             .fcListRow()
+            Toggle(isOn: $birthdayReminders) {
+                Label("Rappels d'anniversaire (J-30, J-7)", systemImage: "birthday.cake")
+            }
+            .frame(minHeight: HitTarget.minimum)
+            .fcListRow()
         } header: {
             Text("Notifications")
         } footer: {
-            Text("Aucune notification ne dit qui a réservé quoi.")
+            Text("Aucune notification ne dit qui a réservé quoi. Les rappels d'anniversaire ne concernent jamais tes propres listes.")
         }
         .tint(Color.Theme.primary)
         .labelStyle(SettingsLabelStyle())
         .onChange(of: purchaseReminders) { _, value in
             NotificationService.set(.purchaseReminders, value)
             Task { await appState.refreshReminders() }
+        }
+        .onAppear { birthdayReminders = appState.profile?.notifyBirthdayReminders ?? true }
+        .onChange(of: birthdayReminders) { _, value in
+            Task {
+                await appState.setBirthdayReminders(value)
+                // Échec : l'interrupteur revient à l'état enregistré.
+                if let saved = appState.profile?.notifyBirthdayReminders, saved != value { birthdayReminders = saved }
+            }
         }
         .onChange(of: familyNews) { _, value in
             NotificationService.set(.familyNews, value)

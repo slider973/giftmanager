@@ -32,6 +32,7 @@ Contrastes mesurés (WCAG 2.x) : toutes les paires texte / fond ≥ 4,5:1 dans l
 | `takenBg` / `takenFg` | `#FDE3E3` / `#B3302F` | `#45222A` / `#FFA3A3` | Badge « Déjà pris » | 5,1 / 7,3 |
 | `mineBg` / `mineFg` | `#DCE8FB` / `#234E9A` | `#22365A` / `#A9C6FF` | Badge « Je l'offre » | 6,5 / 7,0 |
 | `ownedBg` / `ownedFg` | `#ECE7FA` / `#5A47A6` | `#322B55` / `#CBBEFF` | Badge « Possède déjà » | 6,0 / 7,7 |
+| `potBg` / `potFg` | `#FCEBD0` / `#8B4A0C` | `#47331A` / `#F7C98B` | Badge « Cagnotte », jauge de cagnotte, « Ma part » | 5,8 / 7,8 |
 | `pastelPink` | `#F9D9DC` | `#4A2C36` | Groupes, anniversaires, avatars | — |
 | `pastelMint` | `#D5F0E4` | `#1F4237` | Listes, Noël, avatars | — |
 | `pastelBlue` | `#DCE8FB` | `#233A5E` | Liens / boutiques, avatars | — |
@@ -90,7 +91,7 @@ Tout est dans [`ios/GiftManager/DesignSystem/`](ios/GiftManager/DesignSystem) (`
 ```swift
 Color.Theme.background / surface / primary / onPrimary / secondary / textPrimary / textSecondary
 Color.Theme.separator / heart / accentAmber
-Color.Theme.availableBg / availableFg / takenBg / takenFg / mineBg / mineFg / ownedBg / ownedFg
+Color.Theme.availableBg / availableFg / takenBg / takenFg / mineBg / mineFg / ownedBg / ownedFg / potBg / potFg
 Color.Theme.pastelPink / pastelMint / pastelBlue / pastelPeach / pastelLavender
 Color.Theme.pastel(named: String?) -> Color?   // "pastelMint" ou "mint"
 Color.Theme.pastel(for seed: String) -> Color   // pastel stable dérivé d'un prénom
@@ -110,8 +111,9 @@ FCSystemAppearance.apply()                   // au lancement : titres de navigat
 
 | Composant | Signature | Notes |
 |---|---|---|
-| `GiftStatus` | `enum GiftStatus: Equatable, CaseIterable { case available, taken, mine, owned }` | `.label`, `.background`, `.foreground` |
-| `StatusBadge` | `StatusBadge(status: GiftStatus)` | « Disponible », « Déjà pris », « Je l'offre », « Possède déjà » |
+| `GiftStatus` | `enum GiftStatus: Equatable, CaseIterable { case available, taken, mine, owned, pot }` | `.label`, `.background`, `.foreground` |
+| `StatusBadge` | `StatusBadge(status: GiftStatus)` | « Disponible », « Déjà pris », « Je l'offre », « Possède déjà », « Cagnotte » |
+| `PotProgressCard` | `PotProgressCard(progress: PotProgress, myShareText: String? = nil)` | Montant réuni « sur » le prix, jauge `potFg` sur `potBg` (ressort, instantanée si Réduire les animations), participants, reste. Sans prix dans la devise de la cagnotte : pas de jauge. Pastille « Objectif atteint ». Un seul élément VoiceOver |
 | `PriorityHeart` | `PriorityHeart(isOn: Bool, action: (() -> Void)? = nil)` | Bouton bascule 44 pt + haptique si `action`, indicateur sinon |
 | `CountryFlag` | `CountryFlag(code: String)` | Émoji depuis ISO2 (`UK` → `GB`), repli globe ; nom du pays en français pour VoiceOver. Hérite de la police |
 | `RemoteImage` | `RemoteImage(url: URL?, contentMode: ContentMode = .fill, placeholderSeed: String? = nil)` | Remplit le cadre de l'appelant. États : chargement (cadeau qui respire), absent, échec (cadeau + pastille « ! »). Placeholder : pastel stable dérivé de `placeholderSeed` (titre du cadeau ; pêche sans graine), symbole `textPrimary` à 28 %, plafonné à 48 pt |
@@ -147,7 +149,10 @@ FCSystemAppearance.apply()                   // au lancement : titres de navigat
 - Avatar à côté du prénom écrit : `accessibilityHidden(true)` sur l'avatar, sinon VoiceOver lit le prénom deux fois.
 - Les icônes sont des SF Symbols ; les seuls émojis sont les drapeaux, les vignettes d'événement et les avatars choisis par la famille.
 - Toute icône seule porte un `accessibilityLabel` ; les cartes regroupent leur contenu en un seul élément VoiceOver.
-- Mode surprise : ne jamais calculer un `GiftStatus` pour un parent qui regarde la liste de son enfant ; passer `nil`.
+- Mode surprise : ne jamais calculer un `GiftStatus` pour un parent qui regarde la liste de son enfant ; passer `nil`. Idem pour les listes d'adultes de son foyer (#37).
+- Cagnotte (#35) : progression visible des non-parents ; noms et montants des participants seulement pour un participant (« Moi » pour soi). Toujours rappeler que les autres participants voient le prénom et la part.
+- Équilibre (#41) : une ligne `caption` sous la liste, `textSecondary` ; ambre (`accentAmber`) quand rien n'est prévu. Jamais sur mes propres listes.
+- Remerciements (#42) : un donateur n'est nommé aux parents que s'il s'est dévoilé (« Offert par … ») ; sinon « la personne qui l'a offert ». L'expéditeur d'un merci (un parent) est nommé côté donateur.
 
 ## Écarts avec les spécifications — décisions
 

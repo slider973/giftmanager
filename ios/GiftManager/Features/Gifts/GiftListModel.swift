@@ -67,6 +67,7 @@ extension WishItem {
         case .taken: return .taken
         case .mine: return .mine
         case .owned: return .owned
+        case .pot: return .pot
         case nil: return nil
         }
     }

@@ -48,6 +48,9 @@ extension Color {
         static let mineFg = named("mineFg")
         static let ownedBg = named("ownedBg")
         static let ownedFg = named("ownedFg")
+        /// Cagnotte : miel doux, texte brun ambré (5,8:1 clair, 7,8:1 sombre).
+        static let potBg = named("potBg")
+        static let potFg = named("potFg")
 
         // MARK: Pastels (catégories, avatars, pastilles)
 
