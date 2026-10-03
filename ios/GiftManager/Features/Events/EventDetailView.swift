@@ -78,6 +78,10 @@ struct EventDetailView: View {
         }
         .sheet(item: $editing) { EventEditorView(mode: $0) }
         .task(id: appState.itemsRevision) { await loadCounts() }
+        .refreshable {
+            await appState.reloadGroup()
+            appState.itemsChanged()
+        }
     }
 
     /// Anniversaire (#43) : « Léo fête ses 8 ans ». Rien sans date de naissance.

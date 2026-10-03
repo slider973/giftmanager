@@ -23,7 +23,10 @@ struct GiftManagerApp: App {
         .onChange(of: scenePhase) { _, phase in
             // Le widget relit les données avec la session partagée (connexion, événements, achats).
             if phase == .background { WidgetCenter.shared.reloadAllTimelines() }
-            if phase == .active { Task { await CurrencyService.shared.refreshIfNeeded() } }
+            if phase == .active {
+                Task { await CurrencyService.shared.refreshIfNeeded() }
+                Task { await appState.refreshOnForeground() }
+            }
         }
     }
 }
