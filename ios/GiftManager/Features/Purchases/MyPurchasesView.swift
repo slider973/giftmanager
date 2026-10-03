@@ -1,10 +1,13 @@
 import SwiftUI
 
-/// « Mes achats » : mes réservations par événement puis par enfant, total par devise (#12).
+/// « Mes achats » : mes réservations par événement puis par enfant, total par devise (#12),
+/// puis mes cagnottes avec ma part (#35).
 struct MyPurchasesView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.openURL) private var openURL
     @State private var reservations: [MyReservation] = []
+    @State private var contributions: [MyContribution] = []
+    @State private var leavingPot: MyContribution?
     @State private var links: [UUID: [ItemLink]] = [:]
     @State private var hasLoaded = false
 
@@ -29,6 +32,12 @@ struct MyPurchasesView: View {
 
     private var remainingCount: Int { reservations.filter { $0.status == .reserved }.count }
 
+    /// Sans réservation, le résumé compte les cagnottes.
+    private var summaryCountLabel: String {
+        if reservations.isEmpty { return contributions.count > 1 ? "cagnottes" : "cagnotte" }
+        return remainingCount > 1 ? "cadeaux à acheter" : "cadeau à acheter"
+    }
+
     /// Total par devise, à partir du lien le plus pertinent de chaque cadeau.
     private var totals: [(currency: String, amount: Decimal)] {
         var sums: [String: Decimal] = [:]
@@ -36,19 +45,23 @@ struct MyPurchasesView: View {
             guard let link = bestLink(reservation.itemId), let price = link.price else { continue }
             sums[link.currency ?? "EUR", default: 0] += price
         }
+        // Cagnottes : seule ma part compte dans mon budget.
+        for contribution in contributions {
+            sums[contribution.currency, default: 0] += contribution.amount
+        }
         return sums.sorted { $0.key < $1.key }.map { (currency: $0.key, amount: $0.value) }
     }
 
     var body: some View {
         NavigationStack {
             List {
-                if hasLoaded && reservations.isEmpty {
+                if hasLoaded && reservations.isEmpty && contributions.isEmpty {
                     EmptyStateView(imageName: "mascot_sleeping", title: "Aucun achat prévu",
-                                   message: "Réserve un cadeau dans la liste d'un enfant : il apparaîtra ici.")
+                                   message: "Réserve un cadeau ou participe à une cagnotte dans la liste d'un enfant : il apparaîtra ici.")
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                 }
-                if !reservations.isEmpty {
+                if !reservations.isEmpty || !contributions.isEmpty {
                     summary
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -94,10 +107,20 @@ struct MyPurchasesView: View {
                         .accessibilityAddTraits(.isHeader)
                     }
                 }
+                if !contributions.isEmpty {
+                    potsSection
+                }
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .fcScreenBackground()
+            .confirmationDialog("Quitter la cagnotte ?", isPresented: Binding(
+                get: { leavingPot != nil }, set: { if !$0 { leavingPot = nil } }
+            ), titleVisibility: .visible, presenting: leavingPot) { contribution in
+                Button("Quitter « \(contribution.title) »", role: .destructive) { Task { await leave(contribution) } }
+            } message: { _ in
+                Text("Ta part sera retirée de la cagnotte.")
+            }
             .overlay {
                 if !hasLoaded {
                     ProgressView("Chargement de tes achats…")
@@ -119,11 +142,11 @@ struct MyPurchasesView: View {
     private var summary: some View {
         HStack(spacing: Spacing.l) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(remainingCount)")
+                Text("\(reservations.isEmpty ? contributions.count : remainingCount)")
                     .font(Font.Theme.title)
                     .monospacedDigit()
                     .foregroundStyle(Color.Theme.textPrimary)
-                Text(remainingCount > 1 ? "cadeaux à acheter" : "cadeau à acheter")
+                Text(summaryCountLabel)
                     .font(Font.Theme.caption)
                     .foregroundStyle(Color.Theme.textSecondary)
             }
@@ -171,8 +194,7 @@ struct MyPurchasesView: View {
                         .foregroundStyle(Color.Theme.availableFg)
                 }
                 if reservation.owned {
-                    FCNotice(systemImage: "exclamationmark.triangle",
-                             text: "Les parents l'ont noté comme déjà possédé", tone: .warning)
+                    ownedNotice(eventDate: reservation.eventDate)
                         .padding(.top, Spacing.xs)
                 }
             }
@@ -214,13 +236,113 @@ struct MyPurchasesView: View {
         .fcCard(padding: Spacing.m)
     }
 
+    // MARK: - Cagnottes
+
+    private var potsSection: some View {
+        Section {
+            ForEach(contributions) { contribution in
+                potRow(contribution)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(rowInsets(top: Spacing.xs, bottom: Spacing.xs))
+                    .swipeActions(edge: .trailing) {
+                        Button("Quitter", role: .destructive) { leavingPot = contribution }
+                    }
+            }
+        } header: {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Cagnottes")
+                    .font(Font.Theme.headline)
+                    .foregroundStyle(Color.Theme.textPrimary)
+                Spacer(minLength: Spacing.s)
+                Text(contributions.count > 1 ? "\(contributions.count) participations" : "1 participation")
+                    .font(Font.Theme.caption)
+                    .foregroundStyle(Color.Theme.textSecondary)
+            }
+            .textCase(nil)
+            .padding(.vertical, Spacing.s)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+        }
+    }
+
+    private func potRow(_ contribution: MyContribution) -> some View {
+        let share = Money.format(contribution.amount, currency: contribution.currency) ?? ""
+        let total = Money.format(contribution.potTotal, currency: contribution.currency)
+        let count = contribution.potCount ?? 1
+        return HStack(alignment: .top, spacing: Spacing.m) {
+            RemoteImage(url: contribution.imageUrl.flatMap(URL.init(string:)), placeholderSeed: contribution.title)
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: Radius.thumb, style: .continuous))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                Text(contribution.title)
+                    .font(Font.Theme.headline)
+                    .foregroundStyle(Color.Theme.textPrimary)
+                    .lineLimit(2)
+                Text(["Pour \(contribution.childName)", contribution.eventTitle].compactMap { $0 }.joined(separator: " · "))
+                    .font(Font.Theme.caption)
+                    .foregroundStyle(Color.Theme.textSecondary)
+                HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
+                    Text("Ma part : \(share)")
+                        .font(Font.Theme.captionBold)
+                        .monospacedDigit()
+                        .foregroundStyle(Color.Theme.potFg)
+                        .padding(.horizontal, Spacing.s)
+                        .padding(.vertical, 2)
+                        .background(Color.Theme.potBg, in: Capsule())
+                        .fixedSize()
+                    if let total {
+                        Text("\(total) réunis · \(count) participant\(count > 1 ? "s" : "")")
+                            .font(Font.Theme.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(Color.Theme.textSecondary)
+                    }
+                }
+                .padding(.top, 2)
+                if contribution.owned {
+                    ownedNotice(eventDate: contribution.eventDate)
+                        .padding(.top, Spacing.xs)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .fcCard(padding: Spacing.m)
+        .accessibilityElement(children: .combine)
+        .accessibilityAction(named: "Quitter la cagnotte") { leavingPot = contribution }
+    }
+
+    /// Cadeau noté possédé : reçu si la fête est passée, sinon alerte de doublon.
+    @ViewBuilder
+    private func ownedNotice(eventDate: DayDate?) -> some View {
+        if ReceiptRules.isReceived(owned: true, eventDate: eventDate) {
+            Label("Bien reçu !", systemImage: "gift.fill")
+                .font(Font.Theme.captionBold)
+                .foregroundStyle(Color.Theme.availableFg)
+        } else {
+            FCNotice(systemImage: "exclamationmark.triangle",
+                     text: "Les parents l'ont noté comme déjà possédé", tone: .warning)
+        }
+    }
+
+    private func leave(_ contribution: MyContribution) async {
+        do {
+            try await appState.repository.leavePot(itemId: contribution.itemId)
+            appState.itemsChanged()
+        } catch {
+            appState.report(error)
+        }
+    }
+
     private func bestLink(_ itemId: UUID) -> ItemLink? {
         StoreCatalog.sorted(links[itemId] ?? [], preferredCountry: appState.profile?.country).first
     }
 
     private func load() async {
         do {
+            async let pots = appState.repository.myContributions()
             reservations = try await appState.repository.myReservations()
+            contributions = try await pots
             let fetched = try await appState.repository.links(itemIds: reservations.map(\.itemId))
             links = Dictionary(grouping: fetched, by: \.itemId)
             await NotificationService.shared.scheduleReminders(reservations: reservations, events: appState.events)

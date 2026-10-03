@@ -9,6 +9,8 @@ enum GiftStatus: Equatable, CaseIterable {
     case taken
     case mine
     case owned
+    /// Cadeau financé à plusieurs (#35).
+    case pot
 
     var label: String {
         switch self {
@@ -16,6 +18,7 @@ enum GiftStatus: Equatable, CaseIterable {
         case .taken: "Déjà pris"
         case .mine: "Je l'offre"
         case .owned: "Possède déjà"
+        case .pot: "Cagnotte"
         }
     }
 
@@ -25,6 +28,7 @@ enum GiftStatus: Equatable, CaseIterable {
         case .taken: Color.Theme.takenBg
         case .mine: Color.Theme.mineBg
         case .owned: Color.Theme.ownedBg
+        case .pot: Color.Theme.potBg
         }
     }
 
@@ -34,6 +38,7 @@ enum GiftStatus: Equatable, CaseIterable {
         case .taken: Color.Theme.takenFg
         case .mine: Color.Theme.mineFg
         case .owned: Color.Theme.ownedFg
+        case .pot: Color.Theme.potFg
         }
     }
 }

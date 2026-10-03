@@ -13,6 +13,10 @@ struct GiftDetailView: View {
     @State private var editing = false
     @State private var confirmDelete = false
     @State private var celebrate = false
+    @State private var celebration = Celebration.reserved
+    @State private var joiningPot = false
+    @State private var confirmLeavePot = false
+    @State private var participants: [PotParticipant] = []
 
     private var child: Child { model.child }
     private var isParent: Bool { appState.isParent(of: child) }
@@ -121,9 +125,20 @@ struct GiftDetailView: View {
         .confirmationDialog("Supprimer « \(item.title) » ?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Supprimer", role: .destructive) { Task { await delete() } }
         }
+        .confirmationDialog("Quitter la cagnotte ?", isPresented: $confirmLeavePot, titleVisibility: .visible) {
+            Button("Quitter la cagnotte", role: .destructive) { Task { await leavePot() } }
+        } message: {
+            Text("Ta part sera retirée. Si tu étais seul·e, le cadeau redevient disponible.")
+        }
+        .sheet(isPresented: $joiningPot) {
+            JoinPotView(item: item, childName: child.firstName, links: links) {
+                Task { await refreshAfterPot(celebrating: true) }
+            }
+        }
+        .task(id: item.myContribution) { await loadParticipants() }
         .overlay {
             if celebrate {
-                CelebrationOverlay { celebrate = false }
+                CelebrationOverlay(celebration: celebration) { celebrate = false }
             }
         }
     }
@@ -140,11 +155,16 @@ struct GiftDetailView: View {
                 SecondaryButton(title: "Je l'offre", systemImage: "gift.fill", isLoading: isWorking) {
                     Task { await reserve() }
                 }
+                TextLinkButton(title: "Participer à une cagnotte") { joiningPot = true }
+                    .frame(maxWidth: .infinity)
+                    .accessibilityHint("Offrir ce cadeau à plusieurs, chacun avec sa part")
                 Label("Personne ne saura que c'est toi, et les parents ne verront rien.", systemImage: "lock.fill")
                     .font(Font.Theme.caption)
                     .foregroundStyle(Color.Theme.textSecondary)
                     .frame(maxWidth: .infinity)
                     .multilineTextAlignment(.center)
+            case .pot:
+                potActions
             case .mine:
                 mineActions
             case .taken:
@@ -177,6 +197,66 @@ struct GiftDetailView: View {
             .frame(maxWidth: .infinity)
     }
 
+    /// Cagnotte en cours : progression pour tous les non-parents, détail pour les participants.
+    @ViewBuilder
+    private var potActions: some View {
+        if let progress = PotProgress.make(item: item, links: links) {
+            PotProgressCard(progress: progress,
+                            myShareText: item.myContribution.flatMap { Money.format($0, currency: progress.currency) })
+        }
+        if item.isInMyPot {
+            if !participants.isEmpty {
+                participantsList
+            }
+            PrimaryButton(title: "Modifier ma part", systemImage: "pencil") { joiningPot = true }
+            TextLinkButton(title: "Quitter la cagnotte") { confirmLeavePot = true }
+                .frame(maxWidth: .infinity)
+        } else {
+            SecondaryButton(title: "Participer à la cagnotte", systemImage: "person.3.fill", isLoading: isWorking) {
+                joiningPot = true
+            }
+        }
+        Label(item.isInMyPot ? "Les parents ne voient ni la cagnotte ni ses participants."
+                             : "Les participants restent secrets : les parents ne verront rien.",
+              systemImage: "lock.fill")
+            .font(Font.Theme.caption)
+            .foregroundStyle(Color.Theme.textSecondary)
+            .frame(maxWidth: .infinity)
+            .multilineTextAlignment(.center)
+    }
+
+    /// Liste visible uniquement des participants (le serveur ne la renvoie qu'à eux).
+    private var participantsList: some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            Text("Participants")
+                .font(Font.Theme.headline)
+                .foregroundStyle(Color.Theme.textPrimary)
+                .accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) {
+                ForEach(Array(participants.enumerated()), id: \.offset) { index, participant in
+                    if index > 0 {
+                        Divider().overlay(Color.Theme.separator)
+                    }
+                    HStack(spacing: Spacing.m) {
+                        ChildAvatar(name: participant.displayName, emoji: nil, colorName: nil, size: 32)
+                            .accessibilityHidden(true)
+                        Text(participant.isMe ? "Moi" : participant.displayName)
+                            .font(Font.Theme.callout.weight(participant.isMe ? .semibold : .regular))
+                            .foregroundStyle(Color.Theme.textPrimary)
+                        Spacer(minLength: Spacing.s)
+                        Text(participant.amountText)
+                            .font(Font.Theme.callout)
+                            .monospacedDigit()
+                            .foregroundStyle(Color.Theme.textSecondary)
+                    }
+                    .frame(minHeight: HitTarget.minimum)
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .fcCard(padding: Spacing.m)
+        }
+    }
+
     @ViewBuilder
     private var parentActions: some View {
         VStack(alignment: .leading, spacing: Spacing.m) {
@@ -203,6 +283,7 @@ struct GiftDetailView: View {
             try await appState.repository.reserve(itemId: item.id)
             item.status = isParent ? nil : .mine
             item.myReservation = .reserved
+            celebration = .reserved
             celebrate = true
         }
     }
@@ -219,6 +300,41 @@ struct GiftDetailView: View {
         await perform {
             try await appState.repository.setPurchased(itemId: item.id, purchased: purchased)
             item.myReservation = purchased ? .purchased : .reserved
+        }
+    }
+
+    private func leavePot() async {
+        await perform {
+            try await appState.repository.leavePot(itemId: item.id)
+            try await reloadItem()
+        }
+    }
+
+    /// Recharge le cadeau après une participation (montant total, nombre de participants).
+    private func refreshAfterPot(celebrating: Bool) async {
+        await perform {
+            try await reloadItem()
+            if celebrating {
+                celebration = .pot
+                celebrate = true
+            }
+        }
+    }
+
+    private func reloadItem() async throws {
+        try await model.load(appState.repository)
+        if let fresh = model.items.first(where: { $0.id == item.id }) { item = fresh }
+    }
+
+    private func loadParticipants() async {
+        guard item.isInMyPot, !isParent else {
+            participants = []
+            return
+        }
+        do {
+            participants = try await appState.repository.potParticipants(itemId: item.id)
+        } catch {
+            appState.report(error)
         }
     }
 
@@ -260,8 +376,28 @@ struct GiftDetailView: View {
     }
 }
 
-/// Petite célébration après une réservation.
+/// Message de la célébration, selon l'action.
+enum Celebration {
+    case reserved, pot
+
+    var title: String {
+        switch self {
+        case .reserved: "Réservé !"
+        case .pot: "Tu participes !"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .reserved: "Ton secret est bien gardé."
+        case .pot: "Les parents n'en sauront rien."
+        }
+    }
+}
+
+/// Petite célébration après une réservation ou une participation.
 private struct CelebrationOverlay: View {
+    let celebration: Celebration
     let onFinish: () -> Void
     @State private var appear = false
 
@@ -272,10 +408,10 @@ private struct CelebrationOverlay: View {
                 .scaledToFit()
                 .frame(width: 180)
                 .accessibilityHidden(true)
-            Text("Réservé !")
+            Text(celebration.title)
                 .font(Font.Theme.title)
                 .foregroundStyle(Color.Theme.textPrimary)
-            Text("Ton secret est bien gardé.")
+            Text(celebration.message)
                 .font(Font.Theme.body)
                 .foregroundStyle(Color.Theme.textSecondary)
         }
