@@ -18,8 +18,14 @@ enum BudgetMath {
         var whole = Decimal()
         NSDecimalRound(&whole, &input, 0, .plain)
         let digits = whole == value ? 0 : 2
-        return value.formatted(.number.locale(Locale(identifier: "fr_CH")).precision(.fractionLength(digits)))
-            .replacingOccurrences(of: "’", with: "\u{202F}")
+        // Séparateurs fixés : ceux de « fr_CH » changent selon la version d'iOS (’, ', espace fine).
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = "\u{202F}"
+        formatter.decimalSeparator = ","
+        formatter.minimumFractionDigits = digits
+        formatter.maximumFractionDigits = digits
+        return formatter.string(from: value as NSDecimalNumber) ?? "\(value)"
     }
 
     static func symbol(_ currency: String) -> String {
