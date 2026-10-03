@@ -42,6 +42,7 @@ struct MainTabView: View {
             }
         }
         .tint(Color.Theme.primary)
+        .modifier(PriceAlertPresenter())
         .sheet(isPresented: $showAddGift) {
             QuickAddGiftView()
         }

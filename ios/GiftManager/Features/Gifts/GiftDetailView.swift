@@ -95,6 +95,8 @@ struct GiftDetailView: View {
                     }
                 }
 
+                if item.myReservation != nil { PriceHistorySection(itemId: item.id) }
+
                 if readOnly {
                     if canMarkReceived || canSendThanks {
                         VStack(alignment: .leading, spacing: Spacing.m) { receiptActions }

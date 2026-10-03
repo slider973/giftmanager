@@ -82,6 +82,15 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
         async -> UNNotificationPresentationOptions {
         [.banner, .sound]
     }
+
+    /// Toucher une alerte de prix ouvre la fiche du cadeau (#39).
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse) async {
+        let content = response.notification.request.content
+        let threadId = content.threadIdentifier
+        guard let itemId = NotificationRouter.itemId(threadId: threadId, userInfo: content.userInfo) else { return }
+        await MainActor.run { NotificationRouter.shared.pendingItem = .init(id: itemId) }
+    }
 }
 
 /// Reçoit le jeton APNs.
