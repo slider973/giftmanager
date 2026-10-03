@@ -398,7 +398,10 @@ struct GiftRepository: Sendable {
 
 /// Erreurs métier renvoyées par les fonctions SQL, traduites pour l'utilisateur.
 enum GiftError: LocalizedError {
-    case unavailable, owned, notFound, invalidInvite, alreadyInHousehold, currencyMismatch, other(String)
+    case unavailable, owned, notFound, invalidInvite, alreadyInHousehold, currencyMismatch
+    /// L'app parle à un schéma plus récent qu'elle : seule une mise à jour peut résoudre ça.
+    case outdatedApp
+    case other(String)
 
     init(_ error: Error) {
         let message = String(describing: error)
@@ -408,6 +411,10 @@ enum GiftError: LocalizedError {
         else if message.contains("INVALID_INVITE_CODE") { self = .invalidInvite }
         else if message.contains("ALREADY_IN_HOUSEHOLD") { self = .alreadyInHousehold }
         else if message.contains("CURRENCY_MISMATCH") { self = .currencyMismatch }
+        // 42703 : colonne absente, 42883 : fonction absente, PGRST202 : RPC introuvable.
+        // Signe d'une app plus ancienne que la base : un message SQL brut n'aiderait personne.
+        else if message.contains("42703") || message.contains("42883") || message.contains("PGRST202")
+                    || message.contains("does not exist") { self = .outdatedApp }
         else { self = .other(error.localizedDescription) }
     }
 
@@ -419,6 +426,7 @@ enum GiftError: LocalizedError {
         case .invalidInvite: "Ce code d'invitation n'est pas valide."
         case .alreadyInHousehold: "Tu fais déjà partie d'un foyer dans cette famille."
         case .currencyMismatch: "Cette cagnotte est tenue dans une autre devise : participe dans la même devise."
+        case .outdatedApp: "Cette version de l'app est trop ancienne. Mets-la à jour depuis TestFlight pour continuer."
         case .other(let message): message
         }
     }
