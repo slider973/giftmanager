@@ -73,6 +73,10 @@ struct MyPurchasesView: View {
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .listRowInsets(rowInsets(top: Spacing.s, bottom: Spacing.s))
+                    BudgetsSection()
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(rowInsets(top: Spacing.s, bottom: Spacing.s))
                 }
                 ForEach(groups) { group in
                     Section {
