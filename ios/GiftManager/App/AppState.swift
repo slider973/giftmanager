@@ -79,6 +79,7 @@ final class AppState {
     }
 
     private func reset() {
+        NotificationRouter.shared.reset()
         userId = nil
         profile = nil
         groups = []

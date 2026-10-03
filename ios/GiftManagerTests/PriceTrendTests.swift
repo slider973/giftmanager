@@ -58,3 +58,26 @@ final class PriceTrendTests: XCTestCase {
         XCTAssertNil(NotificationRouter.itemId(threadId: "price-pas-un-uuid", userInfo: [:]))
     }
 }
+
+@MainActor
+final class NotificationRouterTests: XCTestCase {
+    func testAlertWaitsForChildModeExit() {
+        let router = NotificationRouter()
+        let item = UUID()
+        router.suspended = true
+        router.open(threadId: "price-\(item.uuidString)", userInfo: [:])
+        XCTAssertNil(router.presentedItem, "Aucune fiche pendant le mode enfant")
+        XCTAssertEqual(router.pendingItem?.id, item)
+        router.suspended = false
+        XCTAssertEqual(router.presentedItem?.id, item, "L'alerte s'ouvre à la sortie")
+    }
+
+    func testResetOnSignOut() {
+        let router = NotificationRouter()
+        router.open(threadId: "price-\(UUID().uuidString)", userInfo: [:])
+        router.suspended = true
+        router.reset()
+        XCTAssertNil(router.pendingItem)
+        XCTAssertFalse(router.suspended)
+    }
+}

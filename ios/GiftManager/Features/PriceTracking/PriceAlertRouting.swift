@@ -17,6 +17,18 @@ final class NotificationRouter {
     /// Cadeau à ouvrir dès que l'interface principale est prête.
     var pendingItem: PendingItem?
 
+    /// Vrai pendant le mode enfant : l'alerte attend la sortie pour s'ouvrir.
+    var suspended = false
+
+    /// Fiche à présenter maintenant (rien tant que l'affichage est suspendu).
+    var presentedItem: PendingItem? { suspended ? nil : pendingItem }
+
+    /// À la déconnexion : aucune fiche d'un compte précédent ne doit s'ouvrir.
+    func reset() {
+        pendingItem = nil
+        suspended = false
+    }
+
     nonisolated static func itemId(threadId: String?, userInfo: [AnyHashable: Any]) -> UUID? {
         if let raw = userInfo["item_id"] as? String, let id = UUID(uuidString: raw) { return id }
         guard let threadId, threadId.hasPrefix("price-") else { return nil }
@@ -31,10 +43,10 @@ final class NotificationRouter {
 
 /// Présente la fiche du cadeau demandé par une notification, au-dessus de l'onglet courant.
 struct PriceAlertPresenter: ViewModifier {
-    @Bindable private var router = NotificationRouter.shared
+    private let router = NotificationRouter.shared
 
     func body(content: Content) -> some View {
-        content.sheet(item: $router.pendingItem) { pending in
+        content.sheet(item: Binding(get: { router.presentedItem }, set: { router.pendingItem = $0 })) { pending in
             NavigationStack {
                 ReservedGiftLoader(itemId: pending.id)
                     .toolbar {
