@@ -38,6 +38,9 @@ create app-store-connect --category "API Credential" \
   "key_id[text]=$P" "issuer_id[text]=$P" "private_key[concealed]=$P" \
   "notesPlain=Clé API App Store Connect (rôle App Manager) pour l'upload TestFlight. private_key = contenu du fichier AuthKey_XXXX.p8."
 
+create cron --category Password --generate-password='letters,digits,40' \
+  "notesPlain=Secret partagé pg_cron -> fonctions Edge planifiées (CRON_SECRET et secret Vault cron_secret)."
+
 create github --category "API Credential" \
   "project_token[concealed]=$P" \
   "notesPlain=PAT classique scopes repo + project, utilisé par la GitHub Action project-sync."

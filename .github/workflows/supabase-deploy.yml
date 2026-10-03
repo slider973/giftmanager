@@ -24,4 +24,4 @@ jobs:
           version: latest
       - run: supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
       - run: supabase db push --include-all
-      - run: supabase functions deploy notify-new-items --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+      - run: supabase functions deploy --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"

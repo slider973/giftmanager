@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Pousse les secrets de la fonction Edge notify-new-items (clé APNs) depuis 1Password vers Supabase.
-# Prérequis : item 1Password giftmanager/apns avec key_id, private_key (contenu du .p8).
+# Pousse les secrets de la fonction Edge notify-new-items (clé APNs, CRON_SECRET) depuis 1Password vers Supabase.
+# Prérequis : item 1Password giftmanager/apns avec key_id, private_key (contenu du .p8) et giftmanager/cron avec secret.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -12,7 +12,8 @@ ENV_FILE=$(mktemp); chmod 600 "$ENV_FILE"; trap 'rm -f "$ENV_FILE"' EXIT
   echo "APNS_KEY_ID=$(op read op://giftmanager/apns/key_id)"
   echo "APNS_TEAM_ID=$(op read op://giftmanager/apple-developer/team_id)"
   echo "APNS_TOPIC=$(op read op://giftmanager/apple-developer/bundle_id)"
+  echo "CRON_SECRET=$(op read op://giftmanager/cron/secret)"
   printf 'APNS_PRIVATE_KEY="%s"\n' "$(op read op://giftmanager/apns/private_key)"
 } > "$ENV_FILE"
 supabase secrets set --project-ref "$REF" --env-file "$ENV_FILE"
-echo "✓ Secrets APNs envoyés à Supabase"
+echo "✓ Secrets (APNs, CRON_SECRET) envoyés à Supabase"

@@ -13,6 +13,7 @@ Tous les secrets du projet sont stockés dans **1Password**, coffre **`giftmanag
 | `github` | `project_token` | GitHub Action `project-sync` |
 | `apple-distribution` | `certificate_id`, `p12_password`, fichier `p12` | Signature des builds TestFlight (CI) |
 | `apns` | `key_id`, `private_key` (contenu du `.p8` APNs) | Notifications push (fonction Edge `notify-new-items`), via `scripts/secrets/sync-supabase.sh` |
+| `cron` | `secret` (généré) | Tâches planifiées (rappels d'anniversaires, suivi des prix) : secret `CRON_SECRET` des fonctions Edge + secret Vault `cron_secret` lu par pg_cron |
 
 Les valeurs pas encore connues valent `A_RENSEIGNER`.
 
@@ -52,6 +53,18 @@ rm ~/Downloads/AuthKey_XXXX.p8                # le fichier ne doit pas traîner 
 ```
 
 Puis relancer `scripts/secrets/inject.sh` et `scripts/secrets/sync-github.sh`.
+
+## Tâches planifiées (pg_cron)
+
+Les migrations planifient `birthday-reminders` (08:00 UTC) et `track-prices` (05:00 UTC). pg_cron appelle les fonctions Edge avec l'en-tête `x-cron-secret`. Deux secrets Vault sont à créer **une fois** sur la base de prod (sans eux l'appel est un no-op) :
+
+```sql
+-- éditeur SQL Supabase ; remplacer les deux valeurs (cron_secret : `op read op://giftmanager/cron/secret`)
+select vault.create_secret('https://<project_ref>.supabase.co/functions/v1', 'edge_functions_url');
+select vault.create_secret('<valeur de op://giftmanager/cron/secret>', 'cron_secret');
+```
+
+et le même secret côté fonctions : `scripts/secrets/sync-supabase.sh` pousse `CRON_SECRET` (item `cron`).
 
 ## Règles
 
