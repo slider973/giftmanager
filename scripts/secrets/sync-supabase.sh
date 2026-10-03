@@ -12,7 +12,7 @@ ENV_FILE=$(mktemp); chmod 600 "$ENV_FILE"; trap 'rm -f "$ENV_FILE"' EXIT
   echo "APNS_KEY_ID=$(op read op://giftmanager/apns/key_id)"
   echo "APNS_TEAM_ID=$(op read op://giftmanager/apple-developer/team_id)"
   echo "APNS_TOPIC=$(op read op://giftmanager/apple-developer/bundle_id)"
-  echo "CRON_SECRET=$(op read op://giftmanager/cron/secret)"
+  echo "CRON_SECRET=$(op read op://giftmanager/cron/password)"
   printf 'APNS_PRIVATE_KEY="%s"\n' "$(op read op://giftmanager/apns/private_key)"
 } > "$ENV_FILE"
 supabase secrets set --project-ref "$REF" --env-file "$ENV_FILE"
