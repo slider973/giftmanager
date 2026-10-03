@@ -5,6 +5,8 @@ struct EventDetailView: View {
     let event: GiftEvent
     @Environment(AppState.self) private var appState
     @State private var editing: EventEditorView.Mode?
+    /// Compteurs anonymes par liste (#41) ; jamais renvoyés pour mon foyer.
+    @State private var counts: [UUID: ReservationCounts] = [:]
 
     var body: some View {
         ScrollView {
@@ -70,12 +72,44 @@ struct EventDetailView: View {
             }
         }
         .sheet(item: $editing) { EventEditorView(mode: $0) }
+        .task(id: appState.itemsRevision) { await loadCounts() }
+    }
+
+    private func loadCounts() async {
+        guard !event.isPast else { return }
+        do {
+            let rows = try await appState.repository.reservationCounts(eventId: event.id)
+            counts = Dictionary(rows.map { ($0.childId, $0) }, uniquingKeysWith: { first, _ in first })
+        } catch {
+            appState.report(error)
+        }
+    }
+
+    /// Indicateur d'équilibre discret : rien pour mes propres listes, ni sans compteur du serveur.
+    @ViewBuilder
+    private func balance(for child: Child) -> some View {
+        if !appState.isParent(of: child), let count = counts[child.id] {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
+                Image(systemName: count.total > 0 ? "gift" : "hourglass")
+                    .accessibilityHidden(true)
+                Text(count.summaryText)
+                    .monospacedDigit()
+            }
+            .font(Font.Theme.caption.weight(count.total > 0 ? .regular : .medium))
+            // Aucun cadeau prévu : ambre doux (4,5:1 sur surface) pour qu'aucun enfant ne soit oublié.
+            .foregroundStyle(count.total > 0 ? Color.Theme.textSecondary : Color.Theme.accentAmber)
+            .padding(.leading, 40 + Spacing.m)
+            .accessibilityLabel("Équilibre : \(count.accessibilityText)")
+        }
     }
 
     private func childLink(_ child: Child) -> some View {
         NavigationLink(value: ChildDestination(child: child, eventId: event.id, readOnly: event.isPast)) {
             HStack {
-                ChildRow(child: child)
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    ChildRow(child: child)
+                    balance(for: child)
+                }
                 Spacer(minLength: Spacing.s)
                 Image(systemName: "chevron.right")
                     .font(Font.Theme.callout.weight(.semibold))
@@ -83,6 +117,7 @@ struct EventDetailView: View {
                     .accessibilityHidden(true)
             }
             .fcCard(padding: Spacing.m)
+            .accessibilityElement(children: .combine)
         }
         .buttonStyle(FCPressableStyle())
     }
