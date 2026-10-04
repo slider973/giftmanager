@@ -259,9 +259,67 @@ private struct MembersSection: View {
 
 // MARK: - Paramètres
 
+/// État du champ « Nom de la famille », isolé de la vue pour être testable.
+///
+/// Le nom part toujours de la famille affichée : si on initialisait le champ après le premier
+/// rendu (`onAppear`, `onChange`), l'ancien nom resterait visible une image au changement de
+/// famille, faisant clignoter le bouton « Renommer » — et un appui renommerait la nouvelle
+/// famille avec le nom de la précédente.
+struct RenameGroupState {
+    let originalName: String
+    var name: String
+
+    init(group: FamilyGroup) {
+        originalName = group.name
+        name = group.name
+    }
+
+    /// Vrai seulement si l'utilisateur a réellement saisi un autre nom.
+    var canRename: Bool {
+        let trimmed = name.trimmed
+        return !trimmed.isEmpty && trimmed != originalName
+    }
+}
+
+/// Carte « Nom de la famille ».
+///
+/// L'état est construit dans `init` ; combiné au `.id(group.id)` posé par l'appelant, le champ
+/// est juste dès la première image affichée.
+private struct RenameGroupCard: View {
+    @Environment(AppState.self) private var appState
+    let group: FamilyGroup
+    @State private var state: RenameGroupState
+
+    init(group: FamilyGroup) {
+        self.group = group
+        _state = State(initialValue: RenameGroupState(group: group))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.m) {
+            FCTextField(title: "Nom de la famille", text: $state.name, systemImage: "person.3")
+            // Le bouton n'apparaît qu'une fois le nom modifié : pas de pilule grisée en permanence.
+            if state.canRename {
+                SecondaryButton(title: "Renommer", systemImage: "pencil") {
+                    Task {
+                        do {
+                            try await appState.repository.renameGroup(group.id, name: state.name.trimmed)
+                            await appState.refreshAll()
+                        } catch {
+                            appState.report(error)
+                        }
+                    }
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: state.canRename)
+        .fcCard()
+    }
+}
+
 private struct GroupSettingsSection: View {
     @Environment(AppState.self) private var appState
-    @State private var groupName = ""
     @State private var showJoin = false
     @State private var showCreate = false
 
@@ -292,29 +350,12 @@ private struct GroupSettingsSection: View {
                 }
                 .fcCard()
 
-                VStack(alignment: .leading, spacing: Spacing.m) {
-                    FCTextField(title: "Nom de la famille", text: $groupName, systemImage: "person.3")
-                    // Le bouton n'apparaît qu'une fois le nom modifié : pas de pilule grisée en permanence.
-                    if !groupName.trimmed.isEmpty && groupName.trimmed != group.name {
-                        SecondaryButton(title: "Renommer", systemImage: "pencil") {
-                            Task {
-                                do {
-                                    try await appState.repository.renameGroup(group.id, name: groupName.trimmed)
-                                    await appState.refreshAll()
-                                } catch {
-                                    appState.report(error)
-                                }
-                            }
-                        }
-                        .transition(.opacity)
-                    }
-                }
-                .animation(.easeOut(duration: 0.2), value: groupName)
-                .fcCard()
-                .onAppear { groupName = group.name }
-                // Sans ceci, changer de famille laisse le nom de la précédente dans le champ :
-                // le bouton « Renommer » surgit seul et un tap écrase le nom de la nouvelle.
-                .onChange(of: group.id) { groupName = group.name }
+                // `.id(group.id)` recrée la carte à chaque changement de famille : son état
+                // interne repart de zéro dès la première image affichée. Avec un simple
+                // `onChange`, la remise à jour arrivait après le rendu et le bouton
+                // « Renommer » clignotait une demi-seconde.
+                RenameGroupCard(group: group)
+                    .id(group.id)
             }
 
             if appState.groups.count > 1 {
