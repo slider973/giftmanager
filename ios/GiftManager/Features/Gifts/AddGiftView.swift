@@ -28,7 +28,6 @@ struct AddGiftView: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var isFetching = false
     @State private var previewFailed = false
-    @State private var isSaving = false
     @State private var showAddLink = false
     @State private var fetchTask: Task<Void, Never>?
     /// Cadeau déjà présent pour cet enfant, détecté avant l'enregistrement (#61).
@@ -37,6 +36,11 @@ struct AddGiftView: View {
     @State private var submitToParents = true
     /// Nombre de membres qui verraient l'idée si elle n'est pas soumise.
     @State private var audience: Int?
+    /// Logique d'enregistrement, testée sans réseau (voir `AddGiftModelTests`).
+    @State private var saveModel: AddGiftModel?
+
+    /// Enregistrement en cours : piloté par le modèle, pas par la vue.
+    private var isSaving: Bool { saveModel?.isSaving ?? false }
 
     private var isEditing: Bool { existing != nil }
 
@@ -124,8 +128,10 @@ struct AddGiftView: View {
         .onAppear(perform: load)
         .task {
             // Sert à prévenir quand une idée non soumise n'atteindrait personne (#57).
-            guard kind == .idea, !isEditing else { return }
-            audience = try? await appState.repository.ideaAudience(childId: child.id)
+            guard !isEditing else { return }
+            let model = giftModel()
+            await model.loadAudience()
+            audience = model.audience
         }
     }
 
@@ -443,71 +449,48 @@ struct AddGiftView: View {
                          price: LinkPreviewService.parsePrice(priceText), currency: currency)
     }
 
-    /// Avant d'enregistrer un nouveau cadeau, cherche un doublon tous événements confondus (#61).
-    private func saveChecked() async {
-        guard !isEditing else {
-            await save()
-            return
-        }
-        if let existing = await findDuplicate() {
-            duplicate = existing
-            return
-        }
-        await save()
+    /// Rassemble les champs du formulaire pour le modèle.
+    private func currentDraft() -> AddGiftModel.Draft {
+        AddGiftModel.Draft(title: title, notes: notes, imageURL: imageURL, imageData: imageData,
+                           isFavorite: isFavorite, eventId: selectedEvent,
+                           links: [mainLink].compactMap { $0 } + otherLinks,
+                           submitToParents: submitToParents)
     }
 
-    /// Doublon = même enfant et titre identique (casse et espaces ignorés), ou même lien d'achat.
-    private func findDuplicate() async -> WishItem? {
-        let needle = DuplicateMatch.normalize(title)
-        guard !needle.isEmpty else { return nil }
-        let link = mainLink?.url
-        do {
-            // p_event omis : on regarde toute la liste, pas seulement l'événement affiché.
-            let all = try await appState.repository.childItems(childId: child.id)
-            if let byTitle = all.first(where: { DuplicateMatch.normalize($0.title) == needle }) { return byTitle }
-            guard let link else { return nil }
-            let links = try await appState.repository.links(itemIds: all.map(\.id))
-            guard let match = links.first(where: { DuplicateMatch.sameURL($0.url, link) }) else { return nil }
-            return all.first { $0.id == match.itemId }
-        } catch {
-            // La détection est un confort : en cas d'échec réseau, on laisse enregistrer.
-            return nil
-        }
+    /// Modèle d'enregistrement, créé à la première utilisation (il dépend de l'environnement).
+    private func giftModel() -> AddGiftModel {
+        if let saveModel { return saveModel }
+        let created = AddGiftModel(actions: appState.repository, child: child, kind: kind,
+                                   existing: existing, owned: owned)
+        saveModel = created
+        return created
+    }
+
+    /// Avant d'enregistrer un nouveau cadeau, cherche un doublon tous événements confondus (#61).
+    private func saveChecked() async {
+        guard let userId = appState.userId else { return }
+        let model = giftModel()
+        let closed = await model.saveChecked(currentDraft(), userId: userId)
+        duplicate = model.duplicate
+        finish(model, closed: closed)
     }
 
     private func save() async {
         guard let userId = appState.userId else { return }
-        isSaving = true
-        defer { isSaving = false }
-        do {
-            var finalImage = imageURL?.absoluteString
-            if let imageData {
-                finalImage = try await appState.repository.uploadImage(imageData, userId: userId).absoluteString
-            }
-            let links = [mainLink].compactMap { $0 } + otherLinks
-            let note = notes.trimmed.isEmpty ? nil : notes.trimmed
-            if let existing {
-                try await appState.repository.updateItem(id: existing.id, title: title.trimmed, notes: note,
-                                                         imageUrl: finalImage, priority: isFavorite ? 1 : 0,
-                                                         eventId: selectedEvent)
-                try await appState.repository.replaceLinks(itemId: existing.id, links: links)
-            } else {
-                let item = GiftRepository.NewItem(child_id: child.id, event_id: owned ? nil : selectedEvent,
-                                                  kind: kind.rawValue, title: title.trimmed, notes: note,
-                                                  image_url: finalImage, priority: isFavorite ? 1 : 0,
-                                                  owned: owned, created_by: userId,
-                                                  review_status: (kind == .idea && submitToParents
-                                                                  ? IdeaReview.pending : IdeaReview.none).rawValue)
-                let newId = try await appState.repository.addItem(item, links: links)
-                if !owned {
-                    let repository = appState.repository
-                    Task.detached { await repository.notifyNewItems([newId]) }
-                }
-            }
+        let model = giftModel()
+        let closed = await model.save(currentDraft(), userId: userId)
+        finish(model, closed: closed)
+    }
+
+    /// Remonte l'erreur éventuelle et ferme l'écran si l'enregistrement a abouti.
+    private func finish(_ model: AddGiftModel, closed: Bool) {
+        if let error = model.lastError {
+            appState.report(error)
+            model.lastError = nil
+        }
+        if closed {
             appState.itemsChanged()
             onDone()
-        } catch {
-            appState.report(error)
         }
     }
 }
