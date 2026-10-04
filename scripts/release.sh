@@ -41,6 +41,8 @@ REMOTE="$(git rev-parse @{u})"
 [ "$LOCAL" = "$REMOTE" ] \
   || die "main local et distant divergent : fais « git pull » (ou « git push ») avant de publier."
 
+# `main` est protégée : tout y arrive par pull request, donc le code tagué a été relu
+# et a passé la CI. Un commit non poussé signalerait qu'on a contourné la protection.
 git rev-parse "$TAG" >/dev/null 2>&1 && die "Le tag $TAG existe déjà. Choisis une version supérieure."
 
 # Une version doit être supérieure à la précédente, sinon TestFlight affiche un historique incohérent.

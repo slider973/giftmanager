@@ -14,16 +14,36 @@ Lancer `/ship-ticket <numéro-issue>`. L'orchestrateur enchaîne :
 
 ## Publier une version (GitLab Flow)
 
-`main` est toujours déployable ; une version est un **tag**, jamais un commit particulier.
+Trois lignes, chacune avec son rôle :
+
+| Branche | Rôle |
+|---|---|
+| `<type>/<N>-<slug>` | une fonctionnalité ou un correctif, rattaché à un ticket |
+| `main` | ligne de développement, toujours déployable — **protégée** |
+| `production` | ce qui tourne réellement chez les utilisateurs, point de retour |
+
+`main` est protégée sur GitHub : commits directs refusés (y compris pour un administrateur),
+force-push et suppression interdits, et la CI doit passer avant toute fusion. Le seul chemin
+vers `main` est la pull request — c'est la règle « jamais de commit direct sur `main` »,
+appliquée par le serveur et non par la discipline.
 
 ```bash
+# 1. développer sur une branche de ticket, puis ouvrir une PR vers main
+# 2. publier une version depuis main
 scripts/release.sh 1.1.0 --dry-run   # ce qui serait publié, sans rien modifier
-scripts/release.sh 1.1.0             # pose le tag v1.1.0 et lance le build TestFlight
+scripts/release.sh 1.1.0             # pose le tag v1.1.0 → build TestFlight
+
+# 3. une fois la version validée à l'usage par la famille
+scripts/promote.sh 1.1.0             # avance production sur ce tag
 ```
 
-Le script refuse de publier si : on n'est pas sur `main`, des modifications locales
+`release.sh` refuse de publier si : on n'est pas sur `main`, des modifications locales
 traînent, `main` diverge de `origin`, le tag existe déjà, ou la version est inférieure à la
 précédente. Les notes de version sont les commits depuis le tag précédent.
+
+`promote.sh` refuse une promotion qui ferait **reculer** `production` : elle ne peut avancer
+que vers un descendant. En cas de problème sur une version suivante, `production` reste le
+dernier état connu comme fonctionnel.
 
 Le tag `v1.1.0` fixe la version marketing de l'app (`MARKETING_VERSION`) : le dépôt et App
 Store Connect ne peuvent plus diverger. Le numéro de build reste un horodatage, toujours
