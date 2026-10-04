@@ -9,7 +9,6 @@ struct GiftDetailView: View {
     @State var item: WishItem
     let model: GiftListModel
     var readOnly = false
-    @State private var isWorking = false
     @State private var editing = false
     @State private var confirmDelete = false
     @State private var celebrate = false
@@ -19,6 +18,11 @@ struct GiftDetailView: View {
     @State private var participants: [PotParticipant] = []
     @State private var thanking = false
     @State private var donors: [ItemDonor] = []
+    /// Logique des actions distantes, testée sans réseau (voir `GiftDetailModelTests`).
+    /// Créée à la première apparition : `isParent` dépend de l'environnement.
+    @State private var detailState: GiftDetailModel?
+
+    private var isWorking: Bool { detailState?.isWorking ?? false }
 
     private var child: Child { model.child }
     private var isParent: Bool { appState.isParent(of: child) }
@@ -347,119 +351,118 @@ struct GiftDetailView: View {
     }
 
     // MARK: - Appels
+    //
+    // La logique vit dans `GiftDetailModel` (testée sans réseau) ; la vue se contente de
+    // l'appeler, de remonter les erreurs à `AppState` et de piloter ses feuilles.
+
+    /// Le modèle d'actions, créé à la première utilisation.
+    ///
+    /// Il ne peut pas l'être dans `init` : `isParent` se déduit de l'environnement, qui n'y est
+    /// pas encore disponible. Appelé uniquement depuis des contextes asynchrones (`.task`,
+    /// gestes), jamais pendant le rendu — donc aucune mutation d'état en cours d'affichage.
+    @discardableResult
+    private func detailModel() -> GiftDetailModel {
+        if let detailState { return detailState }
+        let created = GiftDetailModel(item: item, actions: appState.repository, isParent: isParent)
+        detailState = created
+        return created
+    }
+
+    /// Transmet une erreur du modèle à l'alerte globale, puis la consomme.
+    private func drainError() {
+        if let error = detailModel().lastError {
+            appState.report(error)
+            detailModel().lastError = nil
+        }
+    }
+
+    /// Applique au modèle de liste l'état du cadeau mis à jour par le modèle de fiche.
+    private func syncList() {
+        item = detailModel().item
+        model.update(item)
+        appState.itemsChanged()
+    }
+
+    private func after(_ work: () async -> Void) async {
+        await work()
+        drainError()
+        syncList()
+        if let celebration = detailModel().celebration {
+            self.celebration = celebration
+            celebrate = true
+            detailModel().celebration = nil
+        }
+    }
 
     private func markReceived() async {
-        await perform {
-            try await appState.repository.setOwned(itemId: item.id, owned: true)
-            item.owned = true
-        }
-        if item.owned { thanking = true }
+        var shouldThank = false
+        await after { shouldThank = await detailModel().markReceived() }
+        if shouldThank { thanking = true }
     }
 
     private func loadDonors() async {
-        guard isParent, item.owned else { return }
-        // Seuls les donateurs qui ont choisi de se faire connaître sont renvoyés.
-        donors = (try? await appState.repository.itemDonors(itemId: item.id)) ?? []
+        await detailModel().loadDonors()
+        donors = detailModel().donors
     }
 
     private func reserve() async {
-        await perform {
-            try await appState.repository.reserve(itemId: item.id)
-            item.status = isParent ? nil : .mine
-            item.myReservation = .reserved
-            celebration = .reserved
-            celebrate = true
-            // #58 : prévient anonymement les autres, pour éviter un second achat.
-            let repository = appState.repository
-            let itemId = item.id
-            Task.detached { await repository.notifyReservation(itemId: itemId) }
-        }
+        await after { await detailModel().reserve() }
     }
 
     private func cancel() async {
-        await perform {
-            try await appState.repository.cancelReservation(itemId: item.id)
-            item.status = isParent ? nil : .available
-            item.myReservation = nil
-        }
+        await after { await detailModel().cancelReservation() }
     }
 
     private func setPurchased(_ purchased: Bool) async {
-        await perform {
-            try await appState.repository.setPurchased(itemId: item.id, purchased: purchased)
-            item.myReservation = purchased ? .purchased : .reserved
-        }
+        await after { await detailModel().setPurchased(purchased) }
     }
 
     private func leavePot() async {
-        await perform {
-            try await appState.repository.leavePot(itemId: item.id)
-            try await reloadItem()
-        }
+        await after { await detailModel().leavePot() }
+        try? await reloadItem()
     }
 
     /// Recharge le cadeau après une participation (montant total, nombre de participants).
     private func refreshAfterPot(celebrating: Bool) async {
-        await perform {
+        do {
             try await reloadItem()
             if celebrating {
                 celebration = .pot
                 celebrate = true
             }
+        } catch {
+            appState.report(error)
         }
     }
 
     private func reloadItem() async throws {
         try await model.load(appState.repository)
-        if let fresh = model.items.first(where: { $0.id == item.id }) { item = fresh }
+        if let fresh = model.items.first(where: { $0.id == item.id }) {
+            item = fresh
+            detailModel().replace(with: fresh)
+        }
     }
 
     private func loadParticipants() async {
-        guard item.isInMyPot, !isParent else {
-            participants = []
-            return
-        }
-        do {
-            participants = try await appState.repository.potParticipants(itemId: item.id)
-        } catch {
-            appState.report(error)
-        }
+        await detailModel().loadParticipants()
+        participants = detailModel().participants
+        drainError()
     }
 
     private func toggleFavorite() {
-        Task {
-            await perform {
-                try await appState.repository.setPriority(itemId: item.id, favorite: !item.isFavorite)
-                item.priority = item.isFavorite ? 0 : 1
-            }
-        }
+        Task { await after { await detailModel().toggleFavorite() } }
     }
 
     private func toggleOwned() async {
-        await perform {
-            try await appState.repository.setOwned(itemId: item.id, owned: !item.owned)
-            item.owned.toggle()
-        }
+        await after { await detailModel().toggleOwned() }
     }
 
     private func delete() async {
-        await perform {
-            try await appState.repository.deleteItem(item.id)
+        var deleted = false
+        await after { deleted = await detailModel().delete() }
+        if deleted {
             model.remove(item.id)
             dismiss()
-        }
-    }
-
-    private func perform(_ action: () async throws -> Void) async {
-        isWorking = true
-        defer { isWorking = false }
-        do {
-            try await action()
-            model.update(item)
-            appState.itemsChanged()
-        } catch {
-            appState.report(error)
-            if case .unavailable = GiftError(error) { item.status = isParent ? nil : .taken }
         }
     }
 }
