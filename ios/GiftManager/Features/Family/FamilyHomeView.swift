@@ -312,6 +312,9 @@ private struct GroupSettingsSection: View {
                 .animation(.easeOut(duration: 0.2), value: groupName)
                 .fcCard()
                 .onAppear { groupName = group.name }
+                // Sans ceci, changer de famille laisse le nom de la précédente dans le champ :
+                // le bouton « Renommer » surgit seul et un tap écrase le nom de la nouvelle.
+                .onChange(of: group.id) { groupName = group.name }
             }
 
             if appState.groups.count > 1 {
