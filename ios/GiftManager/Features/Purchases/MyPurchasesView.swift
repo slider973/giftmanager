@@ -5,53 +5,21 @@ import SwiftUI
 struct MyPurchasesView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.openURL) private var openURL
-    @State private var reservations: [MyReservation] = []
-    @State private var contributions: [MyContribution] = []
     @State private var leavingPot: MyContribution?
-    @State private var thanksCount = 0
-    @State private var links: [UUID: [ItemLink]] = [:]
-    @State private var hasLoaded = false
+    /// Données et calculs, testés sans réseau (voir `MyPurchasesModelTests`).
+    @State private var model: MyPurchasesModel?
 
-    private struct EventGroup: Identifiable {
-        let id: String
-        let title: String
-        let date: DayDate?
-        let children: [(name: String, items: [MyReservation])]
-    }
+    private typealias EventGroup = MyPurchasesModel.EventGroup
 
-    private var groups: [EventGroup] {
-        let byEvent = Dictionary(grouping: reservations) { $0.eventId?.uuidString ?? "none" }
-        return byEvent.map { key, items in
-            let byChild = Dictionary(grouping: items, by: \.childName)
-                .sorted { $0.key < $1.key }
-                .map { (name: $0.key, items: $0.value.sorted { $0.title < $1.title }) }
-            return EventGroup(id: key, title: items.first?.eventTitle ?? "Sans événement",
-                              date: items.first?.eventDate, children: byChild)
-        }
-        .sorted { ($0.date?.date ?? .distantFuture) < ($1.date?.date ?? .distantFuture) }
-    }
-
-    private var remainingCount: Int { reservations.filter { $0.status == .reserved }.count }
-
-    /// Sans réservation, le résumé compte les cagnottes.
-    private var summaryCountLabel: String {
-        if reservations.isEmpty { return contributions.count > 1 ? "cagnottes" : "cagnotte" }
-        return remainingCount > 1 ? "cadeaux à acheter" : "cadeau à acheter"
-    }
-
-    /// Total par devise, à partir du lien le plus pertinent de chaque cadeau.
-    private var totals: [(currency: String, amount: Decimal)] {
-        var sums: [String: Decimal] = [:]
-        for reservation in reservations {
-            guard let link = bestLink(reservation.itemId), let price = link.price else { continue }
-            sums[link.currency ?? "EUR", default: 0] += price
-        }
-        // Cagnottes : seule ma part compte dans mon budget.
-        for contribution in contributions {
-            sums[contribution.currency, default: 0] += contribution.amount
-        }
-        return sums.sorted { $0.key < $1.key }.map { (currency: $0.key, amount: $0.value) }
-    }
+    private var reservations: [MyReservation] { model?.reservations ?? [] }
+    private var contributions: [MyContribution] { model?.contributions ?? [] }
+    private var links: [UUID: [ItemLink]] { model?.links ?? [:] }
+    private var thanksCount: Int { model?.thanksCount ?? 0 }
+    private var hasLoaded: Bool { model?.hasLoaded ?? false }
+    private var groups: [EventGroup] { model?.groups ?? [] }
+    private var remainingCount: Int { model?.remainingCount ?? 0 }
+    private var summaryCountLabel: String { model?.summaryCountLabel ?? "cadeau à acheter" }
+    private var totals: [(currency: String, amount: Decimal)] { model?.totals ?? [] }
 
     var body: some View {
         NavigationStack {
@@ -386,49 +354,52 @@ struct MyPurchasesView: View {
         }
     }
 
-    private func leave(_ contribution: MyContribution) async {
-        do {
-            try await appState.repository.leavePot(itemId: contribution.itemId)
-            appState.itemsChanged()
-        } catch {
+    /// Le modèle, créé à la première utilisation (il dépend du profil).
+    private func purchasesModel() -> MyPurchasesModel {
+        if let model { return model }
+        let created = MyPurchasesModel(actions: appState.repository,
+                                       preferredCountry: appState.profile?.country)
+        model = created
+        return created
+    }
+
+    /// Remonte l'erreur éventuelle du modèle à l'alerte globale.
+    private func drainError(_ model: MyPurchasesModel) {
+        if let error = model.lastError {
             appState.report(error)
+            model.lastError = nil
         }
     }
 
     private func bestLink(_ itemId: UUID) -> ItemLink? {
-        StoreCatalog.sorted(links[itemId] ?? [], preferredCountry: appState.profile?.country).first
+        model?.bestLink(itemId)
     }
 
     private func load() async {
-        do {
-            async let pots = appState.repository.myContributions()
-            reservations = try await appState.repository.myReservations()
-            contributions = try await pots
-            thanksCount = (try? await appState.repository.myThanks().count) ?? thanksCount
-            let fetched = try await appState.repository.links(itemIds: reservations.map(\.itemId))
-            links = Dictionary(grouping: fetched, by: \.itemId)
-            await NotificationService.shared.scheduleReminders(reservations: reservations, events: appState.events)
-        } catch {
-            appState.report(error)
-        }
-        hasLoaded = true
+        let model = purchasesModel()
+        await model.load()
+        drainError(model)
+        await NotificationService.shared.scheduleReminders(reservations: model.reservations,
+                                                           events: appState.events)
     }
 
     private func toggle(_ reservation: MyReservation) async {
-        do {
-            try await appState.repository.setPurchased(itemId: reservation.itemId, purchased: reservation.status != .purchased)
-            await load()
-        } catch {
-            appState.report(error)
-        }
+        let model = purchasesModel()
+        await model.togglePurchased(reservation)
+        drainError(model)
     }
 
     private func cancel(_ reservation: MyReservation) async {
-        do {
-            try await appState.repository.cancelReservation(itemId: reservation.itemId)
-            appState.itemsChanged()
-        } catch {
-            appState.report(error)
-        }
+        let model = purchasesModel()
+        await model.cancel(reservation)
+        drainError(model)
+        appState.itemsChanged()
+    }
+
+    private func leave(_ contribution: MyContribution) async {
+        let model = purchasesModel()
+        await model.leavePot(contribution)
+        drainError(model)
+        appState.itemsChanged()
     }
 }
