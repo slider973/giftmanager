@@ -19,3 +19,7 @@ ios/GiftManager.xcodeproj/xcuserdata/
 ios/GiftManager.xcodeproj/
 .claude/worktrees/
 __pycache__/
+
+# graphify : graphe de code régénérable (graphify extract .), 5-6 Mo
+graphify-out/
+graph.json
