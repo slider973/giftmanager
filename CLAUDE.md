@@ -12,6 +12,28 @@ Lancer `/ship-ticket <numéro-issue>`. L'orchestrateur enchaîne :
 | 4. Review | `code-reviewer` | — (boucle jusqu'à APPROVE, 3 cycles max) |
 | 5. PR | `pr-manager` | PR créée avec `Closes #N` → ticket **Done** |
 
+## Publier une version (GitLab Flow)
+
+`main` est toujours déployable ; une version est un **tag**, jamais un commit particulier.
+
+```bash
+scripts/release.sh 1.1.0 --dry-run   # ce qui serait publié, sans rien modifier
+scripts/release.sh 1.1.0             # pose le tag v1.1.0 et lance le build TestFlight
+```
+
+Le script refuse de publier si : on n'est pas sur `main`, des modifications locales
+traînent, `main` diverge de `origin`, le tag existe déjà, ou la version est inférieure à la
+précédente. Les notes de version sont les commits depuis le tag précédent.
+
+Le tag `v1.1.0` fixe la version marketing de l'app (`MARKETING_VERSION`) : le dépôt et App
+Store Connect ne peuvent plus diverger. Le numéro de build reste un horodatage, toujours
+croissant comme l'exige Apple.
+
+Numérotation : `PATCH` pour un correctif, `MINOR` pour une fonctionnalité, `MAJOR` pour une
+rupture. Un push sur `main` ne déclenche **aucun** build — seul un tag le fait.
+
+Rejouer un build sans créer de version : `gh workflow run ios-release.yml`.
+
 ## Conventions
 
 - Branches : `<type>/<N>-<slug>` (`feat`, `fix`, `chore`, `docs`, `design`), toujours depuis `main`.

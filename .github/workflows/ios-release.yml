@@ -1,8 +1,17 @@
 # Build iOS signé + envoi TestFlight (Xcode 26 requis par Apple, indisponible sur macOS 14).
-# Déclenchement : manuel (gh workflow run ios-release.yml) ou via scripts/apple/release.sh.
+#
+# Déclenchement (GitLab Flow) :
+#   - automatique sur tag `v*` (ex. `git tag -a v1.1.0 -m "..." && git push origin v1.1.0`),
+#     via scripts/release.sh qui vérifie l'état du dépôt avant de poser le tag ;
+#   - manuel (gh workflow run ios-release.yml) pour rejouer un build sans créer de version.
+#
+# La version marketing provient du tag : `v1.1.0` → MARKETING_VERSION 1.1.0. Elle est donc
+# toujours cohérente entre le dépôt et App Store Connect, sans édition manuelle de project.yml.
 name: iOS release (TestFlight)
 
 on:
+  push:
+    tags: ["v*"]
   workflow_dispatch:
 
 concurrency:
@@ -25,9 +34,20 @@ jobs:
       - name: Outils
         run: brew install xcodegen
 
+      # Un tag `v1.1.0` fixe la version marketing ; un lancement manuel garde celle de project.yml.
+      - name: Version depuis le tag
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "marketing=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "marketing=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Archive et envoi TestFlight
         id: release
         env:
+          MARKETING_VERSION: ${{ steps.version.outputs.marketing }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}

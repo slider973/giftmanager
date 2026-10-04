@@ -3,6 +3,9 @@
 # Variables attendues (secrets GitHub, synchronisés depuis 1Password par scripts/secrets/sync-github.sh) :
 #   SUPABASE_PROJECT_REF, SUPABASE_PUBLISHABLE_KEY, APPLE_TEAM_ID, APP_BUNDLE_ID,
 #   ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY, DIST_P12_BASE64, DIST_P12_PASSWORD
+# Optionnel :
+#   MARKETING_VERSION — version marketing issue du tag (`v1.1.0` → `1.1.0`). Si vide,
+#                       celle de ios/project.yml est conservée.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -10,6 +13,19 @@ IOS="$ROOT/ios"
 WORK="${RUNNER_TEMP:-$(mktemp -d)}/release"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date -u +%Y%m%d%H%M)}"
 mkdir -p "$WORK"
+
+# Version marketing imposée par le tag : une release ne peut pas mentir sur son numéro.
+# Le numéro de build (horodatage) reste indépendant et toujours croissant, comme l'exige Apple.
+MARKETING_VERSION="${MARKETING_VERSION:-}"
+if [ -n "$MARKETING_VERSION" ]; then
+  if ! printf '%s' "$MARKETING_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+    echo "✗ MARKETING_VERSION invalide : « $MARKETING_VERSION » (attendu X.Y.Z)" >&2
+    exit 1
+  fi
+  echo "▶ Version marketing imposée par le tag : $MARKETING_VERSION"
+  /usr/bin/sed -i '' -E "s/^(    MARKETING_VERSION: ).*/\1\"$MARKETING_VERSION\"/" "$IOS/project.yml"
+  grep -n 'MARKETING_VERSION' "$IOS/project.yml" | head -1
+fi
 
 # Config iOS (valeurs publiques côté client uniquement)
 cat > "$IOS/Config/Secrets.xcconfig" <<EOF
