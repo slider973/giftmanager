@@ -74,6 +74,21 @@ struct SantaScript: Decodable, Equatable {
         let data = try Data(contentsOf: url)
         return try JSONDecoder().decode(SantaScript.self, from: data)
     }
+
+    /// Script vide, pour le seul cas où le fichier livré serait introuvable :
+    /// la session affichera alors un écran « impossible » plutôt que de planter.
+    static let empty = SantaScript(
+        voix: Voice(nom: "", voiceID: "", modelID: ""),
+        repliques: []
+    )
+}
+
+/// Identifie la session à lancer depuis la fiche d'un enfant.
+struct SantaLaunch: Identifiable {
+    let childID: UUID
+    let childName: String
+
+    var id: UUID { childID }
 }
 
 enum SantaScriptError: LocalizedError {

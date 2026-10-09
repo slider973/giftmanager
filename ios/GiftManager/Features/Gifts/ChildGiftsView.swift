@@ -8,6 +8,8 @@ struct ChildGiftsView: View {
     @State private var adding: AddMode?
     @State private var isReordering = false
     @State private var isChildMode = false
+    /// Session du Père Noël en cours, lancée depuis l'espace parent.
+    @State private var santaSession: SantaLaunch?
     /// Événement dont la liste est filtrée ; `nil` = tous les cadeaux de l'enfant (#61).
     @State private var selectedEvent: UUID?
 
@@ -109,6 +111,24 @@ struct ChildGiftsView: View {
             NavigationStack {
                 AddGiftView(child: child, kind: mode.kind, eventId: model.eventId, owned: mode.owned) { adding = nil }
             }
+        }
+        .sheet(item: $santaSession) { launch in
+            // Le pays vient du foyer de l'enfant, jamais de la locale de
+            // l'appareil : un parent en voyage garde ses boutiques habituelles.
+            SantaSessionView(
+                model: SantaSessionModel(
+                    script: (try? SantaScript.load()) ?? SantaScript.empty,
+                    actions: LiveSantaSessionActions(
+                        repository: appState.repository,
+                        createdBy: appState.userId ?? launch.childID
+                    ),
+                    childID: launch.childID,
+                    householdCountry: appState.household(of: child)?.country,
+                    childModeActive: isChildMode
+                ),
+                childName: launch.childName
+            )
+            .onDisappear { Task { await load() } }
         }
         .fullScreenCover(isPresented: $isChildMode) {
             ChildModeView(child: child, wishes: model.wishes, repository: appState.repository) { didChange in
@@ -249,6 +269,17 @@ struct ChildGiftsView: View {
                     .foregroundStyle(Color.Theme.textSecondary)
             } else if isParent && tab == 0 && model.wishes.count > 1 {
                 Button(isReordering ? "OK" : "Ordonner") { withAnimation { isReordering.toggle() } }
+            }
+            // Le Père Noël ne se déclenche que depuis l'espace parent, jamais
+            // en mode enfant : un enfant ne doit pas pouvoir lancer la session
+            // seul. Le modèle de session refuse aussi de démarrer dans ce cas.
+            if !readOnly && isParent && !isChildMode {
+                Button {
+                    santaSession = SantaLaunch(childID: child.id, childName: child.firstName)
+                } label: {
+                    Image(systemName: "gift.circle.fill").font(.title3)
+                }
+                .accessibilityLabel("Demander à \(child.firstName) avec le Père Noël")
             }
             if readOnly {
                 EmptyView()
