@@ -1,0 +1,83 @@
+{
+  "_commentaire": [
+    "Arbre de questions du Père Noël. Fermé et auditable à dessein :",
+    "aucune génération de texte à l'exécution, donc on sait exactement ce",
+    "que l'enfant va entendre. Le parent lit l'écran et saisit les réponses.",
+    "",
+    "Chaque réplique porte un identifiant stable qui sert de nom de fichier",
+    "audio (ex. accueil -> accueil.mp3). Changer un texte impose de",
+    "régénérer l'audio correspondant via scripts/generate_santa_voice.py."
+  ],
+  "voix": {
+    "nom": "Sylvestre",
+    "voice_id": "2vBkYF6XwnA9E7Osnt2m",
+    "model_id": "eleven_multilingual_v2",
+    "reglages": {
+      "stability": 0.35,
+      "similarity_boost": 0.8,
+      "style": 0.6,
+      "use_speaker_boost": true
+    }
+  },
+  "repliques": [
+    {
+      "id": "accueil",
+      "texte": "Ho ho ho ! Bonjour mon petit ! C'est le Père Noël qui te parle, depuis mon atelier tout là-haut dans le Grand Nord. Je suis très content de t'entendre !",
+      "attend_reponse": false
+    },
+    {
+      "id": "demande_prenom",
+      "texte": "Dis-moi d'abord, comment t'appelles-tu ?",
+      "attend_reponse": true,
+      "champ": "prenom",
+      "aide_parent": "Saisis le prénom que l'enfant vient de dire."
+    },
+    {
+      "id": "question_activite",
+      "texte": "Quel joli prénom ! Alors écoute-moi bien. Pour préparer ton cadeau, j'ai besoin de savoir ce que tu aimes faire. Est-ce que tu préfères construire des choses, jouer dehors, dessiner, écouter des histoires, ou bien jouer avec les autres ?",
+      "attend_reponse": true,
+      "champ": "activite",
+      "choix": [
+        { "cle": "construire", "libelle": "Construire, bricoler" },
+        { "cle": "dehors", "libelle": "Jouer dehors, bouger" },
+        { "cle": "creatif", "libelle": "Dessiner, créer" },
+        { "cle": "histoires", "libelle": "Histoires, livres" },
+        { "cle": "ensemble", "libelle": "Jouer avec les autres" },
+        { "cle": "imaginaire", "libelle": "Se déguiser, inventer" },
+        { "cle": "vehicules", "libelle": "Voitures, trains, avions" },
+        { "cle": "animaux", "libelle": "Animaux, peluches" },
+        { "cle": "musique", "libelle": "Musique, chanter" },
+        { "cle": "sciences", "libelle": "Expériences, découvrir" }
+      ],
+      "aide_parent": "Choisis ce qui correspond le mieux. Tu peux en sélectionner plusieurs."
+    },
+    {
+      "id": "question_envie",
+      "texte": "Très bien, je note tout ça sur mon grand carnet. Et maintenant, la question la plus importante : s'il y avait un cadeau, un seul, qui te ferait vraiment très plaisir cette année, ce serait quoi ?",
+      "attend_reponse": true,
+      "champ": "envie_principale",
+      "aide_parent": "Écris ce que l'enfant demande, avec ses mots à lui."
+    },
+    {
+      "id": "question_precision",
+      "texte": "Ho ho ! Voilà une bien belle idée. Dis-moi encore une chose : est-ce que tu as une couleur préférée, ou un personnage que tu aimes beaucoup ?",
+      "attend_reponse": true,
+      "champ": "preferences",
+      "aide_parent": "Couleur, héros, dessin animé… tout ce qui aide à choisir le bon modèle.",
+      "facultatif": true
+    },
+    {
+      "id": "question_seconde_envie",
+      "texte": "Et s'il te venait une deuxième envie, quelque chose d'autre que tu aimerais bien trouver sous le sapin ?",
+      "attend_reponse": true,
+      "champ": "envie_secondaire",
+      "aide_parent": "Facultatif — passe si l'enfant n'a rien d'autre en tête.",
+      "facultatif": true
+    },
+    {
+      "id": "cloture",
+      "texte": "Eh bien voilà, mon petit, j'ai tout écrit sur mon carnet. Les lutins vont se mettre au travail tout de suite ! Sois bien sage, et à très bientôt. Ho ho ho !",
+      "attend_reponse": false
+    }
+  ]
+}

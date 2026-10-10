@@ -90,4 +90,95 @@ enum StoreCatalog {
             return (a.store ?? "") < (b.store ?? "")
         }
     }
+
+    // MARK: - Recherche par pays
+
+    /// Boutique où lancer une recherche de jouet, avec le gabarit d'URL correspondant.
+    struct SearchableStore: Equatable, Identifiable {
+        let domain: String
+        let name: String
+        let country: String
+        /// Gabarit où `{q}` est remplacé par la requête, déjà échappée.
+        let searchTemplate: String
+
+        var id: String { domain }
+    }
+
+    /// Boutiques interrogeables, par pays du foyer.
+    ///
+    /// Le pays vient de `households.country`, jamais de la locale de l'appareil :
+    /// un parent suisse en voyage doit continuer à voir des boutiques suisses.
+    /// Les enseignes de jouets sont placées en tête — ce sont elles qui donnent
+    /// les résultats les plus pertinents pour une envie d'enfant.
+    private static let searchable: [String: [SearchableStore]] = [
+        "CH": [
+            SearchableStore(domain: "franz-carl-weber.ch", name: "Franz Carl Weber", country: "CH",
+                            searchTemplate: "https://www.franz-carl-weber.ch/fr/search?q={q}"),
+            SearchableStore(domain: "galaxus.ch", name: "Galaxus", country: "CH",
+                            searchTemplate: "https://www.galaxus.ch/fr/search?q={q}"),
+            SearchableStore(domain: "fnac.ch", name: "Fnac", country: "CH",
+                            searchTemplate: "https://www.fnac.ch/SearchResult/ResultList.aspx?Search={q}"),
+            SearchableStore(domain: "manor.ch", name: "Manor", country: "CH",
+                            searchTemplate: "https://www.manor.ch/fr/search?q={q}"),
+            SearchableStore(domain: "digitec.ch", name: "Digitec", country: "CH",
+                            searchTemplate: "https://www.digitec.ch/fr/search?q={q}"),
+        ],
+        "FR": [
+            SearchableStore(domain: "king-jouet.com", name: "King Jouet", country: "FR",
+                            searchTemplate: "https://www.king-jouet.com/recherche.htm?mot={q}"),
+            SearchableStore(domain: "joueclub.fr", name: "JouéClub", country: "FR",
+                            searchTemplate: "https://www.joueclub.fr/catalogsearch/result/?q={q}"),
+            SearchableStore(domain: "lagranderecre.fr", name: "La Grande Récré", country: "FR",
+                            searchTemplate: "https://www.lagranderecre.fr/catalogsearch/result/?q={q}"),
+            SearchableStore(domain: "fnac.com", name: "Fnac", country: "FR",
+                            searchTemplate: "https://www.fnac.com/SearchResult/ResultList.aspx?Search={q}"),
+            SearchableStore(domain: "amazon.fr", name: "Amazon", country: "FR",
+                            searchTemplate: "https://www.amazon.fr/s?k={q}"),
+        ],
+        "DE": [
+            SearchableStore(domain: "galaxus.de", name: "Galaxus", country: "DE",
+                            searchTemplate: "https://www.galaxus.de/search?q={q}"),
+            SearchableStore(domain: "amazon.de", name: "Amazon", country: "DE",
+                            searchTemplate: "https://www.amazon.de/s?k={q}"),
+            SearchableStore(domain: "mediamarkt.de", name: "MediaMarkt", country: "DE",
+                            searchTemplate: "https://www.mediamarkt.de/de/search.html?query={q}"),
+        ],
+        "BE": [
+            SearchableStore(domain: "amazon.com.be", name: "Amazon", country: "BE",
+                            searchTemplate: "https://www.amazon.com.be/s?k={q}"),
+            SearchableStore(domain: "fnac.com", name: "Fnac", country: "BE",
+                            searchTemplate: "https://www.fnac.com/SearchResult/ResultList.aspx?Search={q}"),
+        ],
+    ]
+
+    /// Boutiques à interroger pour un foyer donné.
+    ///
+    /// Un pays sans liste dédiée retombe sur Amazon de ce pays s'il existe dans
+    /// le catalogue, plutôt que de ne rien proposer.
+    static func searchableStores(for country: String?) -> [SearchableStore] {
+        guard let country, !country.isEmpty else { return [] }
+        if let liste = searchable[country] { return liste }
+
+        let domaineAmazon = "amazon." + country.lowercased()
+        if let store = known[domaineAmazon], let pays = store.country {
+            return [SearchableStore(domain: domaineAmazon, name: store.name, country: pays,
+                                    searchTemplate: "https://www.\(domaineAmazon)/s?k={q}")]
+        }
+        return []
+    }
+
+    /// URL de recherche pour une envie exprimée par l'enfant.
+    ///
+    /// Renvoie `nil` si la requête est vide ou si l'échappement échoue, pour ne
+    /// jamais ouvrir une page de recherche vide.
+    static func searchURL(for query: String, in store: SearchableStore) -> URL? {
+        let propre = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !propre.isEmpty else { return nil }
+        var autorises = CharacterSet.alphanumerics
+        autorises.insert(charactersIn: "-_.")
+        guard let echappee = propre.addingPercentEncoding(withAllowedCharacters: autorises) else {
+            return nil
+        }
+        return URL(string: store.searchTemplate.replacingOccurrences(of: "{q}", with: echappee))
+    }
 }
