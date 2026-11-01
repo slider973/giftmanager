@@ -2,3 +2,4 @@
 # Ne contient QUE des valeurs publiques côté client. Jamais la secret_key (service_role) Supabase.
 SUPABASE_URL={{ op://giftmanager/supabase/url }}
 SUPABASE_PUBLISHABLE_KEY={{ op://giftmanager/supabase/publishable_key }}
+GOOGLE_WEB_CLIENT_ID={{ op://giftmanager/google-oauth/web_client_id }}
