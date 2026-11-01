@@ -121,4 +121,8 @@ object GiftIcons {
     val OutOfStock: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_inventory)
     /** Alerte, notification (`bell`). */
     val Bell: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_notifications_none)
+    /** Réécouter une réplique du Père Noël (`arrow.counterclockwise`). */
+    val Replay: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_replay)
+    /** Voix du Père Noël, lecture audio (`speaker.wave.2`). */
+    val Speaker: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_volume_up)
 }
