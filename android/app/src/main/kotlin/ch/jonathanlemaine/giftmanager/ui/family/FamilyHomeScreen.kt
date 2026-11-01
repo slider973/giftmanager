@@ -77,6 +77,8 @@ import ch.jonathanlemaine.giftmanager.ui.components.CountryFlag
 import ch.jonathanlemaine.giftmanager.ui.components.EmptyStateView
 import ch.jonathanlemaine.giftmanager.ui.components.FCPillLabel
 import ch.jonathanlemaine.giftmanager.ui.components.FCTextField
+import ch.jonathanlemaine.giftmanager.ui.components.FCNotice
+import ch.jonathanlemaine.giftmanager.ui.components.FCNoticeTone
 import ch.jonathanlemaine.giftmanager.ui.components.GiftIcons
 import ch.jonathanlemaine.giftmanager.ui.components.GiftPreviews
 import ch.jonathanlemaine.giftmanager.ui.components.Illustration
@@ -139,6 +141,8 @@ data class FamilyHomeActions(
     val onEditChild: (UUID) -> Unit = {},
     val onAddChild: () -> Unit = {},
     val onAddAdult: () -> Unit = {},
+    /** Ouvre les idées en attente de mon verdict (bandeau « N idées attendent ton avis »). */
+    val onOpenPendingIdeas: () -> Unit = {},
 )
 
 private const val TAB_EVENTS = 0
@@ -187,6 +191,7 @@ fun FamilyHomeScreen(state: FamilyHomeUiState, actions: FamilyHomeActions, modif
                     .padding(start = spacing.xl, end = spacing.xl, top = spacing.l, bottom = spacing.xxl),
             ) {
                 Header(state)
+                if (state.pendingIdeasCount > 0) PendingIdeasBanner(state.pendingIdeasCount, actions.onOpenPendingIdeas)
                 SegmentedTabs(
                     selectedIndex = state.tab,
                     onSelect = actions.onSelectTab,
@@ -224,6 +229,17 @@ private fun Header(state: FamilyHomeUiState) {
             )
         }
     }
+}
+
+/** Bandeau « N idées attendent ton avis » : mène aux idées proposées pour mes enfants (#57). */
+@Composable
+private fun PendingIdeasBanner(count: Int, onClick: () -> Unit) {
+    FCNotice(
+        icon = GiftIcons.Gift,
+        text = pluralStringResource(R.plurals.family_pending_ideas, count, count),
+        tone = FCNoticeTone.WARNING,
+        modifier = Modifier.fcClickable(onClick = onClick, shape = GiftTheme.radius.fieldShape, pressedScale = 1f),
+    )
 }
 
 // region Événements

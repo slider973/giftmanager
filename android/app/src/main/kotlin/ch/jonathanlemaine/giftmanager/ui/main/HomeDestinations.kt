@@ -3,7 +3,15 @@ package ch.jonathanlemaine.giftmanager.ui.main
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.HasDefaultViewModelProviderFactory
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.CreationExtras
+import androidx.lifecycle.viewmodel.MutableCreationExtras
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorActions
@@ -25,6 +33,12 @@ import ch.jonathanlemaine.giftmanager.ui.gifts.ChildGiftsViewModel
 import ch.jonathanlemaine.giftmanager.ui.gifts.GiftDetailActions
 import ch.jonathanlemaine.giftmanager.ui.gifts.GiftDetailScreen
 import ch.jonathanlemaine.giftmanager.ui.gifts.GiftDetailViewModel
+import ch.jonathanlemaine.giftmanager.ui.gifts.JoinPotActions
+import ch.jonathanlemaine.giftmanager.ui.gifts.JoinPotSheet
+import ch.jonathanlemaine.giftmanager.ui.gifts.JoinPotViewModel
+import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasActions
+import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasScreen
+import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasViewModel
 import java.util.UUID
 
 // Raccord entre les routes plein écran du graphe Accueil (#72) et leurs ViewModel. Les ViewModel lisent leur
@@ -133,7 +147,8 @@ fun ChildGiftsDestination(
 
 /**
  * Fiche d'un cadeau, chargée par son seul identifiant ; se ferme si le cadeau n'existe plus ou vient d'être
- * supprimé. La participation à une cagnotte ([onJoinPot]) est branchée avec les cagnottes.
+ * supprimé. « Participer à une cagnotte » ouvre [JoinPotSheet] ; une fois la part enregistrée, la fiche se recharge
+ * et célèbre ([GiftDetailViewModel.onPotJoined]).
  */
 @Composable
 fun GiftDetailDestination(
@@ -141,9 +156,11 @@ fun GiftDetailDestination(
     onBack: () -> Unit,
     /** Ouvre le formulaire de modification : enfant, type, événement, cadeau. */
     onEdit: (childId: UUID, kind: WishKind, eventId: UUID?, itemId: UUID) -> Unit,
-    onJoinPot: (itemId: UUID) -> Unit = {},
 ) {
     val viewModel: GiftDetailViewModel = viewModel(factory = viewModelFactory)
+    // Chaque ouverture de la feuille a son ViewModel (clé distincte) : une feuille fermée ne revient pas « terminée ».
+    var joinPotSession by rememberSaveable { mutableIntStateOf(0) }
+    var joinPotOpen by rememberSaveable { mutableStateOf(false) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.isClosed) { if (state.isClosed) onBack() }
     // La célébration (« Réservé ! ») est consommée dès qu'elle est affichée.
@@ -159,8 +176,70 @@ fun GiftDetailDestination(
             onToggleOwned = viewModel::toggleOwned,
             onMarkReceived = viewModel::markReceived,
             onDelete = viewModel::delete,
-            onJoinPot = { state.item?.let { onJoinPot(it.id) } },
+            onJoinPot = {
+                joinPotSession++
+                joinPotOpen = true
+            },
             onLeavePot = viewModel::leavePot,
+            onDismissError = viewModel::dismissError,
+        ),
+    )
+    val itemId = state.item?.id
+    if (joinPotOpen && itemId != null) {
+        JoinPotDestination(
+            viewModelFactory = viewModelFactory,
+            itemId = itemId,
+            session = joinPotSession,
+            onDismiss = { joinPotOpen = false },
+            onJoined = {
+                joinPotOpen = false
+                viewModel.onPotJoined()
+            },
+        )
+    }
+}
+
+/** Feuille de participation à une cagnotte : se ferme (et appelle [onJoined]) une fois la part enregistrée. */
+@Composable
+private fun JoinPotDestination(
+    viewModelFactory: ViewModelProvider.Factory,
+    itemId: UUID,
+    session: Int,
+    onDismiss: () -> Unit,
+    onJoined: () -> Unit,
+) {
+    val owner = checkNotNull(LocalViewModelStoreOwner.current)
+    val extras = MutableCreationExtras((owner as? HasDefaultViewModelProviderFactory)?.defaultViewModelCreationExtras ?: CreationExtras.Empty)
+        .apply { set(JoinPotViewModel.ITEM_ID_KEY, itemId) }
+    val viewModel: JoinPotViewModel = viewModel(key = "join-pot-$itemId-$session", factory = viewModelFactory, extras = extras)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(state.finished) { if (state.finished) onJoined() }
+    JoinPotSheet(
+        state = state,
+        actions = JoinPotActions(
+            onDismiss = onDismiss,
+            onAmountChange = viewModel::onAmountChange,
+            onCurrencyChange = viewModel::onCurrencyChange,
+            onSuggestion = viewModel::onSuggestion,
+            onSave = viewModel::save,
+            onDismissError = viewModel::dismissError,
+        ),
+    )
+}
+
+/** Idées en attente de mon verdict (#57). */
+@Composable
+fun PendingIdeasDestination(viewModelFactory: ViewModelProvider.Factory, onBack: () -> Unit) {
+    val viewModel: PendingIdeasViewModel = viewModel(factory = viewModelFactory)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    PendingIdeasScreen(
+        state = state,
+        actions = PendingIdeasActions(
+            onBack = onBack,
+            onAccept = viewModel::accept,
+            onOwnedAlready = viewModel::ownedAlready,
+            onReject = viewModel::reject,
+            onRefresh = viewModel::refresh,
             onDismissError = viewModel::dismissError,
         ),
     )

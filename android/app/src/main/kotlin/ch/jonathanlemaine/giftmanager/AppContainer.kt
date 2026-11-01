@@ -58,6 +58,8 @@ import ch.jonathanlemaine.giftmanager.ui.family.FamilyHomeViewModel
 import ch.jonathanlemaine.giftmanager.ui.gifts.AddGiftViewModel
 import ch.jonathanlemaine.giftmanager.ui.gifts.ChildGiftsViewModel
 import ch.jonathanlemaine.giftmanager.ui.gifts.GiftDetailViewModel
+import ch.jonathanlemaine.giftmanager.ui.gifts.JoinPotViewModel
+import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasViewModel
 import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddViewModel
 import ch.jonathanlemaine.giftmanager.ui.navigation.AddGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildEditorRoute
@@ -164,6 +166,10 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
                         previews = linkPreviewService,
                     )
                 }
+                modelClass.isAssignableFrom(JoinPotViewModel::class.java) -> {
+                    val itemId = checkNotNull(extras[JoinPotViewModel.ITEM_ID_KEY]) { "JoinPotViewModel sans cadeau" }
+                    JoinPotViewModel(itemId, session, itemRepository, potRepository)
+                }
                 modelClass.isAssignableFrom(ChildEditorViewModel::class.java) -> {
                     val route = extras.route<ChildEditorRoute>()
                     val mode = when {
@@ -192,10 +198,12 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
                 modelClass.isAssignableFrom(RootViewModel::class.java) -> RootViewModel(session)
                 modelClass.isAssignableFrom(ProfileSetupViewModel::class.java) -> ProfileSetupViewModel(session)
                 modelClass.isAssignableFrom(GroupSetupViewModel::class.java) -> GroupSetupViewModel(session)
-                modelClass.isAssignableFrom(FamilyHomeViewModel::class.java) -> FamilyHomeViewModel(session)
+                modelClass.isAssignableFrom(FamilyHomeViewModel::class.java) -> FamilyHomeViewModel(session, itemRepository)
                 modelClass.isAssignableFrom(ProfileViewModel::class.java) -> ProfileViewModel(session, localPrefs)
                 modelClass.isAssignableFrom(MainViewModel::class.java) -> MainViewModel(session)
                 modelClass.isAssignableFrom(QuickAddViewModel::class.java) -> QuickAddViewModel(session)
+                modelClass.isAssignableFrom(PendingIdeasViewModel::class.java) ->
+                    PendingIdeasViewModel(session, itemRepository, itemNotifier)
                 else -> throw IllegalArgumentException("ViewModel inconnu : ${modelClass.name}")
             } as T
     }

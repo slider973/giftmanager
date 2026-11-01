@@ -74,6 +74,7 @@ import ch.jonathanlemaine.giftmanager.ui.navigation.EventEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.FamilyHome
 import ch.jonathanlemaine.giftmanager.ui.navigation.GiftDetailRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.HomeGraph
+import ch.jonathanlemaine.giftmanager.ui.navigation.PendingIdeasRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ProfileTab
 import ch.jonathanlemaine.giftmanager.ui.navigation.Purchases
 import ch.jonathanlemaine.giftmanager.ui.navigation.Search
@@ -143,7 +144,11 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
                         onEditChild = { navController.navigate(ChildEditorRoute(childId = it.toString())) },
                         onAddChild = { navController.navigate(ChildEditorRoute()) },
                         onAddAdult = { navController.navigate(ChildEditorRoute(adult = true)) },
+                        onOpenPendingIdeas = { navController.navigate(PendingIdeasRoute) },
                     )
+                }
+                composable<PendingIdeasRoute> {
+                    PendingIdeasDestination(viewModelFactory, onBack = { navController.popBackStack() })
                 }
                 composable<EventDetailRoute> {
                     EventDetailDestination(
@@ -280,6 +285,7 @@ private fun FamilyHomeRoute(
     onEditChild: (UUID) -> Unit,
     onAddChild: () -> Unit,
     onAddAdult: () -> Unit,
+    onOpenPendingIdeas: () -> Unit,
 ) {
     val viewModel: FamilyHomeViewModel = viewModel(factory = viewModelFactory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -309,6 +315,7 @@ private fun FamilyHomeRoute(
             onEditChild = onEditChild,
             onAddChild = onAddChild,
             onAddAdult = onAddAdult,
+            onOpenPendingIdeas = onOpenPendingIdeas,
         ),
     )
 }

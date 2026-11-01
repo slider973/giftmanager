@@ -342,4 +342,35 @@
     <string name="image_loading">Image en cours de chargement</string>
     <string name="image_missing">Pas d\'image</string>
     <string name="image_failed">Image indisponible</string>
+
+    <!-- Cagnotte et idées en attente (#73) -->
+    <string name="join_pot_title_new">Participer à une cagnotte</string>
+    <string name="join_pot_title_update">Ma part</string>
+    <string name="join_pot_for_child">Pour %1$s</string>
+    <string name="join_pot_amount_label_new">Ma participation</string>
+    <string name="join_pot_amount_label_update">Ma nouvelle part</string>
+    <string name="join_pot_amount_hint">Ex. 30</string>
+    <string name="join_pot_invalid">Saisis un montant supérieur à zéro, par exemple 25 ou 12,50.</string>
+    <string name="join_pot_locked_currency">La cagnotte est en %1$s : toutes les parts sont dans cette devise.</string>
+    <string name="join_pot_currency">Devise</string>
+    <string name="join_pot_rest">Le reste : %1$s</string>
+    <string name="join_pot_privacy">Les parents de %1$s ne verront rien. Les autres participants verront ton prénom et ta part.</string>
+    <string name="join_pot_privacy_unknown_child">Les parents de l\'enfant ne verront rien. Les autres participants verront ton prénom et ta part.</string>
+    <string name="join_pot_submit_new">Participer</string>
+    <string name="join_pot_submit_update">Mettre à jour ma part</string>
+    <string name="pending_ideas_title">Propositions</string>
+    <string name="pending_ideas_empty_title">Aucune proposition</string>
+    <string name="pending_ideas_empty_message">Quand la famille proposera un cadeau pour tes enfants, tu le verras ici avant qu\'il ne rejoigne leur liste.</string>
+    <string name="pending_ideas_by">%1$s propose ce cadeau pour %2$s</string>
+    <string name="pending_ideas_accept">Accepter</string>
+    <string name="pending_ideas_owned_already">Il l\'a déjà</string>
+    <string name="pending_ideas_reject">Refuser</string>
+    <string name="pending_ideas_reject_title">Refuser cette idée ?</string>
+    <string name="pending_ideas_reject_message">L\'idée ne rejoindra pas la liste. Son auteur en sera informé, sans savoir ce que tu as prévu.</string>
+    <string name="pending_ideas_reject_note">Un mot pour l\'auteur (facultatif)</string>
+    <string name="pending_ideas_never_know">Tu ne sauras jamais qui offre ce cadeau.</string>
+    <plurals name="family_pending_ideas">
+        <item quantity="one">%d idée attend ton avis</item>
+        <item quantity="other">%d idées attendent ton avis</item>
+    </plurals>
 </resources>

@@ -72,4 +72,8 @@ data class AddGiftRoute(
     }
 }
 
+/** Idées proposées pour mes enfants, en attente de mon verdict (#57, #73). */
+@Serializable
+data object PendingIdeasRoute
+
 // endregion
