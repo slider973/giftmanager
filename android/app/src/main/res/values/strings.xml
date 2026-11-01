@@ -24,6 +24,19 @@
 
     <string name="sign_out">Se déconnecter</string>
 
+    <!-- Notifications push (#76) : canaux visibles dans les réglages du système. -->
+    <string name="channel_purchases_name">Achats et prix</string>
+    <string name="channel_purchases_description">Rappels avant un événement et alertes de baisse de prix sur tes cadeaux.</string>
+    <string name="channel_birthdays_name">Anniversaires</string>
+    <string name="channel_birthdays_description">Rappels des anniversaires à venir.</string>
+    <string name="channel_family_name">Famille</string>
+    <string name="channel_family_description">Nouvelles envies, réponses à tes idées, remerciements et réservations.</string>
+    <!-- Feuille d'explication avant la demande d'autorisation (câblage minimal, à habiller par le design). -->
+    <string name="notif_prompt_title">Activer les notifications ?</string>
+    <string name="notif_prompt_message">Pour être prévenu d\'un anniversaire, d\'une baisse de prix ou de la réponse à une idée. Aucune notification ne dit qui a réservé quoi.</string>
+    <string name="notif_prompt_enable">Activer</string>
+    <string name="notif_prompt_later">Plus tard</string>
+
     <!-- Connexion Google -->
     <string name="sign_in_title">La surprise\nest garantie</string>
     <string name="sign_in_message">Les autres voient « déjà pris » sans savoir par qui. Les parents ne voient rien.</string>

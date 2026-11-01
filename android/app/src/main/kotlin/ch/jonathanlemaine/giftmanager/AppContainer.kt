@@ -66,6 +66,18 @@ import ch.jonathanlemaine.giftmanager.data.widget.DataStoreWidgetSnapshotStore
 import ch.jonathanlemaine.giftmanager.data.widget.WidgetSnapshotStore
 import ch.jonathanlemaine.giftmanager.widget.CountdownWidget
 import androidx.glance.appwidget.updateAll
+import ch.jonathanlemaine.giftmanager.data.DeviceTokenBackend
+import ch.jonathanlemaine.giftmanager.data.SupabaseDeviceTokenBackend
+import ch.jonathanlemaine.giftmanager.push.AndroidNotificationPermissionEnvironment
+import ch.jonathanlemaine.giftmanager.push.DataStorePushPrefs
+import ch.jonathanlemaine.giftmanager.push.DeviceTokenRegistrar
+import ch.jonathanlemaine.giftmanager.push.FirebaseConfig
+import ch.jonathanlemaine.giftmanager.push.NotificationPermissionController
+import ch.jonathanlemaine.giftmanager.push.NotificationPresenter
+import ch.jonathanlemaine.giftmanager.push.PendingNavigation
+import ch.jonathanlemaine.giftmanager.push.PushPrefs
+import ch.jonathanlemaine.giftmanager.push.PushRuntime
+import ch.jonathanlemaine.giftmanager.ui.notifications.NotificationsViewModel
 import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorMode
 import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorViewModel
 import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetsViewModel
@@ -190,8 +202,52 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
         AppSession(
             authRepository, profileRepository, familyRepository, householdRepository, childRepository, eventRepository,
             currentGroupStore, appScope,
+            // Le jeton push part avant la fin de la session : la suppression côté serveur exige encore un utilisateur connecté.
+            beforeSignOut = { deviceTokenRegistrar.unregister() },
         ).also(AppSession::start)
     }
+
+    // region Notifications push (#76)
+
+    /** Firebase, initialisé depuis BuildConfig ; désactivé (aucun appel) tant que la configuration est factice. */
+    val pushRuntime: PushRuntime by lazy { PushRuntime(context, FirebaseConfig.fromBuildConfig()) }
+
+    val pushPrefs: PushPrefs by lazy { DataStorePushPrefs(giftDataStore(context)) }
+
+    val notificationPresenter: NotificationPresenter by lazy { NotificationPresenter(context) }
+
+    /** Destination d'une notification touchée, en attente d'être ouverte par `MainScaffold`. */
+    val pendingNavigation: PendingNavigation by lazy { PendingNavigation(childModeLock) }
+
+    /** Permission `POST_NOTIFICATIONS` : `MainActivity` y branche son lanceur de résultat (`permissionEnvironment.launcher`). */
+    val permissionEnvironment: AndroidNotificationPermissionEnvironment by lazy {
+        AndroidNotificationPermissionEnvironment(context) { activityRef?.get() }
+    }
+
+    val notificationPermission: NotificationPermissionController by lazy {
+        NotificationPermissionController(permissionEnvironment, pushPrefs)
+    }
+
+    private val deviceTokenBackend: DeviceTokenBackend by lazy { SupabaseDeviceTokenBackend(supabase) }
+
+    val deviceTokenRegistrar: DeviceTokenRegistrar by lazy {
+        DeviceTokenRegistrar(authRepository.state, notificationPermission.permission, pushRuntime, deviceTokenBackend, pushPrefs)
+    }
+
+    /** Appelé une fois au lancement de l'app : canaux, suivi du jeton et de la déconnexion. */
+    fun startPush() {
+        notificationPresenter.ensureChannels()
+        appScope.launch { notificationPermission.refresh() }
+        deviceTokenRegistrar.start(appScope)
+        appScope.launch { authRepository.state.collect(pendingNavigation::onAuthState) }
+    }
+
+    /** Firebase a renouvelé le jeton de l'appareil (`GiftFirebaseMessagingService.onNewToken`). */
+    fun onPushTokenRefreshed(token: String) {
+        appScope.launch { deviceTokenRegistrar.onNewToken(token) }
+    }
+
+    // endregion
 
     val widgetSnapshotStore: WidgetSnapshotStore by lazy { DataStoreWidgetSnapshotStore(context) }
 
@@ -331,6 +387,8 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
                 modelClass.isAssignableFrom(FamilyHomeViewModel::class.java) -> FamilyHomeViewModel(session, itemRepository)
                 modelClass.isAssignableFrom(ProfileViewModel::class.java) -> ProfileViewModel(session, localPrefs)
                 modelClass.isAssignableFrom(MainViewModel::class.java) -> MainViewModel(session, childModeLock)
+                modelClass.isAssignableFrom(NotificationsViewModel::class.java) ->
+                    NotificationsViewModel(pendingNavigation, notificationPermission, childModeLock)
                 modelClass.isAssignableFrom(QuickAddViewModel::class.java) -> QuickAddViewModel(session)
                 modelClass.isAssignableFrom(PurchasesViewModel::class.java) ->
                     PurchasesViewModel(

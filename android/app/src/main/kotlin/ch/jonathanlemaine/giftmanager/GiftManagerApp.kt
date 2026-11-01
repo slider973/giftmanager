@@ -11,5 +11,6 @@ class GiftManagerApp : Application() {
         super.onCreate()
         container = AppContainer(AppConfig.fromBuildConfig(), this)
         container.startWidgetSync()
+        container.startPush()
     }
 }

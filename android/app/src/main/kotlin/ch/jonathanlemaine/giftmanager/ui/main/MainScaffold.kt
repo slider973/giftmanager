@@ -69,6 +69,8 @@ import ch.jonathanlemaine.giftmanager.core.gifts.ShareTargets
 import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddSheet
 import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddTarget
 import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddViewModel
+import ch.jonathanlemaine.giftmanager.push.NotificationTarget
+import ch.jonathanlemaine.giftmanager.ui.notifications.NotificationsViewModel
 import ch.jonathanlemaine.giftmanager.ui.navigation.AddGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildGiftsRoute
@@ -128,6 +130,18 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
     var shareNotice by rememberSaveable { mutableStateOf<ShareNotice?>(null) }
     val quickAdd: QuickAddViewModel = viewModel(factory = viewModelFactory)
     val quickAddState by quickAdd.uiState.collectAsStateWithLifecycle()
+
+    // Notifications push (#76) : destination d'une notification touchée, et feuille d'explication de l'autorisation.
+    val notifications: NotificationsViewModel = viewModel(factory = viewModelFactory)
+    val notificationTarget by notifications.pendingTarget.collectAsStateWithLifecycle()
+    val notificationPromptVisible by notifications.promptVisible.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { notifications.onMainScreenReached() }
+    // MainScaffold n'existe qu'en phase Ready, et le modèle ne publie rien pendant le mode enfant : la destination attend.
+    LaunchedEffect(notificationTarget) {
+        val target = notificationTarget ?: return@LaunchedEffect
+        navController.openNotificationTarget(target)
+        notifications.consumeTarget(target)
+    }
 
     // MainScaffold n'existe qu'en phase Ready, et le modèle ne publie rien pendant le mode enfant : le lien attend.
     LaunchedEffect(pendingLink) {
@@ -311,6 +325,18 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
         )
     }
 
+    // Câblage minimal : le design remplace cette boîte par une feuille d'explication.
+    if (notificationPromptVisible) {
+        GiftAlertDialog(
+            title = stringResource(R.string.notif_prompt_title),
+            message = stringResource(R.string.notif_prompt_message),
+            confirmLabel = stringResource(R.string.notif_prompt_enable),
+            onConfirm = notifications::requestPermission,
+            onDismiss = notifications::dismissPrompt,
+            dismissLabel = stringResource(R.string.notif_prompt_later),
+        )
+    }
+
     shareNotice?.let { notice ->
         GiftAlertDialog(
             title = stringResource(notice.title),
@@ -380,6 +406,33 @@ private fun NavController.openAddGift(target: QuickAddTarget, eventId: UUID?, ur
             url = url,
         ),
     )
+}
+
+/**
+ * Ouvre l'écran visé par une notification (#76), dans l'onglet qui le contient. Un cadeau, un événement ou un enfant
+ * devenu introuvable ferme son écran de lui-même (voir les destinations), on retombe alors sur l'onglet.
+ */
+private fun NavController.openNotificationTarget(target: NotificationTarget) {
+    when (target) {
+        NotificationTarget.Home -> switchTab(HomeGraph)
+        NotificationTarget.MyPurchases -> switchTab(PurchasesGraph)
+        NotificationTarget.ThanksInbox -> {
+            switchTab(PurchasesGraph)
+            navigate(ThanksInboxRoute)
+        }
+        is NotificationTarget.GiftDetail -> {
+            switchTab(HomeGraph)
+            navigate(GiftDetailRoute(target.itemId.toString()))
+        }
+        is NotificationTarget.Event -> {
+            switchTab(HomeGraph)
+            navigate(EventDetailRoute(target.eventId.toString()))
+        }
+        is NotificationTarget.ChildList -> {
+            switchTab(HomeGraph)
+            navigate(ChildGiftsRoute(target.childId.toString(), eventId = null, readOnly = false))
+        }
+    }
 }
 
 /** Change d'onglet en sauvegardant l'état de celui qu'on quitte et en restaurant celui qu'on rejoint. */
