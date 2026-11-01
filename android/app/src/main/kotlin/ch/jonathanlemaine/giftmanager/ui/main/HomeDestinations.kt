@@ -328,6 +328,10 @@ fun PurchasesDestination(
                 purchases.dismissError()
                 budgets.dismissError()
             },
+            onRefresh = {
+                purchases.refresh()
+                budgets.refresh()
+            },
         ),
     )
 }

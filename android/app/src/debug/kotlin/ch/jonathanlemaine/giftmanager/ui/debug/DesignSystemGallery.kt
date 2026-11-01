@@ -75,6 +75,9 @@ import ch.jonathanlemaine.giftmanager.ui.components.GiftStatus
 import ch.jonathanlemaine.giftmanager.ui.components.Illustration
 import ch.jonathanlemaine.giftmanager.ui.components.IndicativeRateNote
 import ch.jonathanlemaine.giftmanager.ui.components.PotProgressCard
+import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetCard
+import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetInvitation
+import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetPreviewData
 import ch.jonathanlemaine.giftmanager.ui.components.PrimaryButton
 import ch.jonathanlemaine.giftmanager.ui.components.PriorityHeart
 import ch.jonathanlemaine.giftmanager.ui.components.SecondaryButton
@@ -205,6 +208,7 @@ private fun GalleryContent() {
         TypographySection()
         GiftCardsSection()
         PotSection()
+        BudgetsSection()
         EventsSection()
         StoreLinksSection()
         ButtonsSection()
@@ -309,6 +313,12 @@ private fun PotSection() = GallerySection(stringResource(R.string.gallery_sectio
     PotProgressCard(PotProgress(BigDecimal(120), "CHF", BigDecimal(199), 3), myShareText = "CHF 40.00")
     PotProgressCard(PotProgress(BigDecimal(210), "CHF", BigDecimal(199), 5))
     PotProgressCard(PotProgress(BigDecimal(60), "EUR", null, 2))
+}
+
+@Composable
+private fun BudgetsSection() = GallerySection(stringResource(R.string.gallery_section_budgets)) {
+    BudgetPreviewData.all.forEach { BudgetCard(it) }
+    BudgetInvitation(onClick = {})
 }
 
 @Composable

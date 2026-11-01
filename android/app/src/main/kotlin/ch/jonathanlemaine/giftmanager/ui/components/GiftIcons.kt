@@ -99,4 +99,10 @@ object GiftIcons {
     val Undo: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_undo)
     /** « Il l'a déjà » (`checkmark.seal`). */
     val Verified: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_verified)
+    /** Budgets (`chart.bar.fill`). */
+    val BarChart: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_bar_chart)
+    /** Budget presque atteint (`gauge.with.dots.needle.67percent`). */
+    val Gauge: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_speed)
+    /** Case ronde vide (`circle`) : bascule « acheté » décochée. */
+    val CircleOutline: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_radio_unchecked)
 }

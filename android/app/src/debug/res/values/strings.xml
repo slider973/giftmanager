@@ -12,6 +12,7 @@
     <string name="gallery_section_type">Typographie</string>
     <string name="gallery_section_cards">Cartes cadeau</string>
     <string name="gallery_section_pot">Cagnotte</string>
+    <string name="gallery_section_budgets">Budgets</string>
     <string name="gallery_section_events">Événements à venir</string>
     <string name="gallery_section_links">Liens par pays</string>
     <string name="gallery_section_buttons">Boutons</string>
