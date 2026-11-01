@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Thème système provisoire ; l'habillage Compose est dans ui/theme (remplacé par #69). -->
-    <style name="Theme.GiftManager" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+        Fenêtre native : seul le fond compte (pas de flash blanc au lancement), tout le reste est dessiné
+        par Compose (ui/theme). Couleurs = token `background` (DESIGN.md).
+    -->
+    <style name="Theme.GiftManager" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:colorBackground">@color/window_background</item>
+    </style>
 </resources>
