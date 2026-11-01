@@ -47,6 +47,12 @@ object Rpc {
     // Suivi des prix (#77).
     const val MY_PRICE_HISTORY = "my_price_history"
 
+    // Notifications push (#76) : jeton FCM de l'appareil.
+    const val REGISTER_DEVICE = "register_device"
+    const val DEVICE_TOKENS_TABLE = "device_tokens"
+    const val PLATFORM_ANDROID = "android"
+    const val ENVIRONMENT_PRODUCTION = "production"
+
     const val P_NAME = "p_name"
     const val P_HOUSEHOLD_NAME = "p_household_name"
     const val P_COUNTRY = "p_country"
@@ -64,6 +70,9 @@ object Rpc {
     const val P_MESSAGE = "p_message"
     const val P_PHOTO_URL = "p_photo_url"
     const val P_REVEAL = "p_reveal"
+    const val P_TOKEN = "p_token"
+    const val P_ENVIRONMENT = "p_environment"
+    const val P_PLATFORM = "p_platform"
 }
 
 /** Réponse d'une RPC qui renvoie un `uuid` : PostgREST le sérialise en chaîne JSON (`"3f2a…"`). */

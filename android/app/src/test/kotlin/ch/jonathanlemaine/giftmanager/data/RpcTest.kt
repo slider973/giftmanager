@@ -1,5 +1,6 @@
 package ch.jonathanlemaine.giftmanager.data
 
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.UUID
@@ -35,6 +36,7 @@ class RpcTest {
         assertEquals("reveal_myself", Rpc.REVEAL_MYSELF)
         assertEquals("item_donors", Rpc.ITEM_DONORS)
         assertEquals("my_price_history", Rpc.MY_PRICE_HISTORY)
+        assertEquals("register_device", Rpc.REGISTER_DEVICE)
     }
 
     @Test fun parameterNames() {
@@ -55,6 +57,19 @@ class RpcTest {
         assertEquals("p_message", Rpc.P_MESSAGE)
         assertEquals("p_photo_url", Rpc.P_PHOTO_URL)
         assertEquals("p_reveal", Rpc.P_REVEAL)
+        assertEquals("p_token", Rpc.P_TOKEN)
+        assertEquals("p_environment", Rpc.P_ENVIRONMENT)
+        assertEquals("p_platform", Rpc.P_PLATFORM)
+    }
+
+    @Test fun registerDeviceParametersAndValues() {
+        val params = SupabaseDeviceTokenBackend.registerParams("fcm-token-value")
+        assertEquals(setOf("p_token", "p_environment", "p_platform"), params.keys)
+        assertEquals("fcm-token-value", params.getValue("p_token").jsonPrimitive.content)
+        // FCM n'a pas de sandbox ; la plateforme aiguille l'envoi côté serveur (android -> FCM).
+        assertEquals("production", params.getValue("p_environment").jsonPrimitive.content)
+        assertEquals("android", params.getValue("p_platform").jsonPrimitive.content)
+        assertEquals("device_tokens", Rpc.DEVICE_TOKENS_TABLE)
     }
 
     @Test fun everyNameExistsInTheMigrations() {
@@ -68,12 +83,12 @@ class RpcTest {
             Rpc.SET_RESERVATION_PURCHASED, Rpc.JOIN_POT, Rpc.LEAVE_POT, Rpc.POT_PARTICIPANTS, Rpc.REVIEW_IDEA,
             Rpc.PENDING_IDEAS, Rpc.IDEA_AUDIENCE, Rpc.MY_RESERVATIONS, Rpc.MY_CONTRIBUTIONS, Rpc.MY_BUDGETS, Rpc.SET_BUDGET,
             Rpc.SEND_THANKS, Rpc.MY_THANKS, Rpc.REVEAL_MYSELF, Rpc.ITEM_DONORS,
-            Rpc.MY_PRICE_HISTORY,
+            Rpc.MY_PRICE_HISTORY, Rpc.REGISTER_DEVICE,
         ).forEach { assert("function public.$it(" in sql) { it }; }
         listOf(
             Rpc.P_NAME, Rpc.P_HOUSEHOLD_NAME, Rpc.P_COUNTRY, Rpc.P_CODE, Rpc.P_GROUP, Rpc.P_EVENT, Rpc.P_CHILD, Rpc.P_KIND,
             Rpc.P_ITEM, Rpc.P_PURCHASED, Rpc.P_AMOUNT, Rpc.P_CURRENCY, Rpc.P_DECISION, Rpc.P_NOTE,
-            Rpc.P_MESSAGE, Rpc.P_PHOTO_URL, Rpc.P_REVEAL,
+            Rpc.P_MESSAGE, Rpc.P_PHOTO_URL, Rpc.P_REVEAL, Rpc.P_TOKEN, Rpc.P_ENVIRONMENT, Rpc.P_PLATFORM,
         ).forEach { assert(it in sql) { it } }
     }
 
@@ -103,6 +118,7 @@ class RpcTest {
         assertParams(signature(Rpc.REVEAL_MYSELF), Rpc.P_ITEM, Rpc.P_REVEAL)
         assertParams(signature(Rpc.ITEM_DONORS), Rpc.P_ITEM)
         assertParams(signature(Rpc.MY_PRICE_HISTORY), Rpc.P_ITEM)
+        assertParams(signature(Rpc.REGISTER_DEVICE), Rpc.P_TOKEN, Rpc.P_ENVIRONMENT, Rpc.P_PLATFORM)
     }
 
     private fun assertParams(signature: String, vararg expected: String) {

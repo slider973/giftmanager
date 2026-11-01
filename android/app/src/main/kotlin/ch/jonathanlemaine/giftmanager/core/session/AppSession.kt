@@ -44,6 +44,11 @@ class AppSession(
     private val eventRepo: EventRepository,
     private val currentGroupStore: CurrentGroupStore,
     private val scope: CoroutineScope,
+    /**
+     * Appelé à la déconnexion, tant que la session est encore valide (retrait du jeton de notifications push, #76).
+     * Ses échecs sont ignorés : rien ne doit empêcher de se déconnecter.
+     */
+    private val beforeSignOut: suspend () -> Unit = {},
 ) {
     private val _state = MutableStateFlow(SessionState())
     val state: StateFlow<SessionState> = _state.asStateFlow()
@@ -286,6 +291,7 @@ class AppSession(
     // region Compte
 
     suspend fun signOut() {
+        runCatchingCancellable { beforeSignOut() }
         runCatchingCancellable { auth.signOut() }
         // Le lien partagé appartenait à la session qui se ferme.
         clearPendingSharedLink()
