@@ -6,7 +6,11 @@
 !.env.op
 ios/Config/Secrets.xcconfig
 ios/Config/Local.xcconfig
+android/app/secrets.properties
+android/local.properties
 *.p8
+*.jks
+*.keystore
 *.p12
 *.mobileprovision
 *.cer
@@ -15,6 +19,8 @@ supabase/.env
 
 # Builds locaux
 .build/
+android/.gradle/
+android/**/build/
 ios/GiftManager.xcodeproj/xcuserdata/
 ios/GiftManager.xcodeproj/
 .claude/worktrees/

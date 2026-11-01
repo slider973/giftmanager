@@ -6,7 +6,7 @@ Tous les secrets du projet sont stockés dans **1Password**, coffre **`giftmanag
 
 | Item | Champs | Où c'est utilisé |
 |---|---|---|
-| `supabase` | `project_ref`, `url`, `publishable_key`, `secret_key`, `access_token` | App iOS (url + publishable_key uniquement), CLI Supabase, CI |
+| `supabase` | `project_ref`, `url`, `publishable_key`, `secret_key`, `access_token` | Apps iOS et Android (url + publishable_key uniquement), CLI Supabase, CI |
 | `supabase-db` | `password` (généré), `host`, `port`, `username` (pooler session) | Création du projet Supabase, `supabase db push` |
 | `apple-developer` | `team_id`, `bundle_id` | Signature Xcode, provider Apple dans Supabase |
 | `app-store-connect` | `key_id`, `issuer_id`, `private_key` (contenu du `.p8`) | Upload TestFlight (CI / fastlane) |
@@ -24,6 +24,9 @@ Les valeurs pas encore connues valent `A_RENSEIGNER`.
 | `.env.op` | oui | Variables d'environnement → références `op://` |
 | `ios/Config/Secrets.xcconfig.tpl` | oui | Modèle de config iOS avec références `op://` |
 | `ios/Config/Secrets.xcconfig` | **non** | Généré par `scripts/secrets/inject.sh` |
+| `android/secrets.properties.tpl` | oui | Modèle de config Android avec références `op://` |
+| `android/app/secrets.properties` | **non** | Généré par `scripts/secrets/inject.sh` ; lu par `android/app/build.gradle.kts` |
+| `*.jks`, `*.keystore` | **non** | Clés de signature Android : ne jamais commiter |
 | `*.p8`, `.env`, `.env.*` | **non** | Ne jamais commiter |
 
 ## Commandes
@@ -31,7 +34,7 @@ Les valeurs pas encore connues valent `A_RENSEIGNER`.
 ```bash
 op signin                                   # une fois par session
 scripts/secrets/setup-1password.sh          # crée le coffre et les items manquants (idempotent)
-scripts/secrets/inject.sh                   # génère ios/Config/Secrets.xcconfig
+scripts/secrets/inject.sh                   # génère ios/Config/Secrets.xcconfig et android/app/secrets.properties
 scripts/secrets/sync-github.sh              # pousse les secrets CI vers GitHub Actions
 scripts/secrets/sync-supabase.sh            # pousse la clé APNs vers les secrets de la fonction Edge
 op run --env-file=.env.op -- <commande>     # lance une commande avec les secrets en variables d'env
@@ -54,6 +57,21 @@ rm ~/Downloads/AuthKey_XXXX.p8                # le fichier ne doit pas traîner 
 
 Puis relancer `scripts/secrets/inject.sh` et `scripts/secrets/sync-github.sh`.
 
+## App Android
+
+`android/app/build.gradle.kts` injecte `SUPABASE_URL` et `SUPABASE_PUBLISHABLE_KEY` dans `BuildConfig`, dans cet ordre de priorité :
+
+1. `android/app/secrets.properties` (généré par `scripts/secrets/inject.sh`, ignoré par git) ;
+2. les variables d'environnement `SUPABASE_URL` et `SUPABASE_PUBLISHABLE_KEY` ;
+3. des valeurs factices (`https://example.invalid`, `sb_publishable_dummy`).
+
+Les valeurs factices permettent de compiler, tester et passer le lint sans aucun secret : c'est ce que fait la CI (job « Android », avec `https://ci.invalid`). Elles sont refusées pour une diffusion : `assembleRelease` et `bundleRelease` échouent tant que la configuration est factice.
+
+```bash
+scripts/secrets/inject.sh                                  # une fois, après op signin
+cd android && ./gradlew assembleDebug                      # build avec les vraies valeurs
+```
+
 ## Tâches planifiées (pg_cron)
 
 Les migrations planifient `birthday-reminders` (08:00 UTC), `track-prices` (05:00 UTC) et `purchase-reminders` (toutes les heures : seuls les profils pour qui il est 18 h localement sont servis). pg_cron appelle les fonctions Edge avec l'en-tête `x-cron-secret`. Deux secrets Vault sont à créer **une fois** sur la base de prod (sans eux l'appel est un no-op) :
@@ -68,7 +86,7 @@ et le même secret côté fonctions : `scripts/secrets/sync-supabase.sh` pousse 
 
 ## Règles
 
-- La `secret_key` (service_role) Supabase ne va **jamais** dans l'app iOS : uniquement en CI et dans les Edge Functions.
+- La `secret_key` (service_role) Supabase ne va **jamais** dans les apps iOS et Android : uniquement en CI et dans les Edge Functions.
 - Les secrets passent par stdin ou par `op run`, jamais en argument de commande ni dans les logs.
 - Supabase local (`supabase start`) utilise les clés de démo publiques de la CLI : rien à stocker.
 - La CI exécute gitleaks sur chaque PR.
