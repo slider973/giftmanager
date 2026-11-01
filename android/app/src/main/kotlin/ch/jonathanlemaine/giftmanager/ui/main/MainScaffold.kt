@@ -62,12 +62,17 @@ import ch.jonathanlemaine.giftmanager.ui.debug.DebugEntryPoints
 import ch.jonathanlemaine.giftmanager.ui.family.FamilyHomeActions
 import ch.jonathanlemaine.giftmanager.ui.family.FamilyHomeScreen
 import ch.jonathanlemaine.giftmanager.ui.family.FamilyHomeViewModel
+import ch.jonathanlemaine.giftmanager.core.model.WishKind
+import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddSheet
+import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddViewModel
+import ch.jonathanlemaine.giftmanager.ui.navigation.AddGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildGiftsRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.DebugGallery
 import ch.jonathanlemaine.giftmanager.ui.navigation.EventDetailRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.EventEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.FamilyHome
+import ch.jonathanlemaine.giftmanager.ui.navigation.GiftDetailRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.HomeGraph
 import ch.jonathanlemaine.giftmanager.ui.navigation.ProfileTab
 import ch.jonathanlemaine.giftmanager.ui.navigation.Purchases
@@ -82,10 +87,10 @@ import java.util.UUID
 /**
  * Écran principal (iOS : `MainTabView`) : barre d'onglets Accueil · Recherche · « + » · Mes achats · Profil
  * ([MainNavigationBar]). L'état de chaque onglet est conservé quand on en change. « + » n'est pas une
- * destination : il ouvre une feuille (provisoire jusqu'à #73).
+ * destination : il ouvre la feuille d'ajout rapide ([QuickAddSheet], #73).
  *
  * La barre reste affichée sur les écrans poussés de consultation (fiche d'un événement, liste d'un enfant),
- * comme sur iOS, et s'efface sur les formulaires plein écran (éditeurs d'enfant et d'événement).
+ * comme sur iOS, et s'efface sur les formulaires plein écran (éditeurs d'enfant et d'événement, ajout d'un cadeau).
  *
  * Bord à bord : le `Scaffold` réserve la barre d'état et la barre d'onglets, et **consomme** ces marges ;
  * les écrans posent `safeDrawing` sans les compter deux fois (seul le clavier reste à leur charge).
@@ -152,7 +157,26 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
                 }
                 composable<ChildEditorRoute> { ChildEditorDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
                 composable<EventEditorRoute> { EventEditorDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
-                composable<ChildGiftsRoute> { ChildGiftsDestination(viewModelFactory, onBack = { navController.popBackStack() }) }
+                composable<ChildGiftsRoute> {
+                    ChildGiftsDestination(
+                        viewModelFactory,
+                        onBack = { navController.popBackStack() },
+                        onOpenItem = { navController.navigate(GiftDetailRoute(it.toString())) },
+                        onAdd = { childId, kind, eventId, owned ->
+                            navController.navigate(AddGiftRoute(childId.toString(), kind.routeValue(), eventId?.toString(), owned, null))
+                        },
+                    )
+                }
+                composable<GiftDetailRoute> {
+                    GiftDetailDestination(
+                        viewModelFactory,
+                        onBack = { navController.popBackStack() },
+                        onEdit = { childId, kind, eventId, itemId ->
+                            navController.navigate(AddGiftRoute(childId.toString(), kind.routeValue(), eventId?.toString(), false, itemId.toString()))
+                        },
+                    )
+                }
+                composable<AddGiftRoute> { AddGiftDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
             }
             composable<Search> {
                 ComingSoonScreen(Illustration.MASCOT_THINKING, stringResource(R.string.tab_search), stringResource(R.string.search_coming_soon))
@@ -178,7 +202,28 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
         }
     }
 
-    if (showAddSheet) AddGiftSheet(onDismiss = { showAddSheet = false })
+    if (showAddSheet) {
+        val quickAdd: QuickAddViewModel = viewModel(factory = viewModelFactory)
+        val quickAddState by quickAdd.uiState.collectAsStateWithLifecycle()
+        QuickAddSheet(
+            state = quickAddState,
+            onPick = { target ->
+                showAddSheet = false
+                // Le formulaire vit dans l'onglet Accueil : on y revient avant de l'ouvrir.
+                navController.switchTab(HomeGraph)
+                navController.navigate(
+                    AddGiftRoute(
+                        childId = target.child.id.toString(),
+                        kind = if (target.kind == WishKind.IDEA) AddGiftRoute.KIND_IDEA else AddGiftRoute.KIND_WISH,
+                        eventId = quickAddState.defaultEventId?.toString(),
+                        owned = false,
+                        itemId = null,
+                    ),
+                )
+            },
+            onDismiss = { showAddSheet = false },
+        )
+    }
 
     pendingInvite?.let { code ->
         GiftAlertDialog(
@@ -211,7 +256,10 @@ private fun NavDestination.mainTab(): MainTab? = when {
 }
 
 /** Formulaire plein écran (création / modification) : la barre d'onglets s'efface (Material : full-screen dialog). */
-private fun NavDestination.isFullScreenForm(): Boolean = hasRoute(ChildEditorRoute::class) || hasRoute(EventEditorRoute::class)
+private fun NavDestination.isFullScreenForm(): Boolean =
+    hasRoute(ChildEditorRoute::class) || hasRoute(EventEditorRoute::class) || hasRoute(AddGiftRoute::class)
+
+private fun WishKind.routeValue(): String = if (this == WishKind.IDEA) AddGiftRoute.KIND_IDEA else AddGiftRoute.KIND_WISH
 
 /** Change d'onglet en sauvegardant l'état de celui qu'on quitte et en restaurant celui qu'on rejoint. */
 private fun NavController.switchTab(route: Any) {
@@ -219,60 +267,6 @@ private fun NavController.switchTab(route: Any) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
         restoreState = true
-    }
-}
-
-/**
- * Feuille « + » provisoire (#73) : loutre au cadeau, ce que le bouton permettra bientôt, rappel que les
- * idées restent cachées aux parents, et « Compris » qui referme la feuille (glisser vers le bas aussi).
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddGiftSheet(onDismiss: () -> Unit) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = GiftTheme.colors.background,
-        contentColor = GiftTheme.colors.textPrimary,
-    ) {
-        AddGiftSheetContent(
-            onClose = {
-                scope.launch { sheetState.hide() }.invokeOnCompletion { if (!sheetState.isVisible) onDismiss() }
-            },
-        )
-    }
-}
-
-@Composable
-private fun AddGiftSheetContent(onClose: () -> Unit) {
-    val spacing = GiftTheme.spacing
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(spacing.l),
-        modifier = Modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(start = spacing.xl, end = spacing.xl, bottom = spacing.xl),
-    ) {
-        Text(
-            text = stringResource(R.string.add_sheet_title),
-            style = GiftTheme.type.title,
-            color = GiftTheme.colors.textPrimary,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.semantics { heading() },
-        )
-        EmptyStateView(
-            illustration = Illustration.MASCOT_GIFT,
-            title = stringResource(R.string.coming_soon_title),
-            message = stringResource(R.string.add_sheet_message),
-            modifier = Modifier.widthIn(max = ScreenContentMaxWidth),
-        )
-        Column(verticalArrangement = Arrangement.spacedBy(spacing.l), modifier = Modifier.widthIn(max = ScreenContentMaxWidth)) {
-            FCNotice(GiftIcons.EyeSlash, stringResource(R.string.add_sheet_notice), tone = FCNoticeTone.SURPRISE)
-            PrimaryButton(text = stringResource(R.string.add_sheet_close), onClick = onClose)
-        }
     }
 }
 
@@ -345,7 +339,3 @@ private fun ProfileRoute(viewModelFactory: ViewModelProvider.Factory, onOpenGall
         onOpenGallery = onOpenGallery,
     )
 }
-
-@GiftPreviews
-@Composable
-private fun AddGiftSheetPreview() = PreviewFrame { AddGiftSheetContent(onClose = {}) }
