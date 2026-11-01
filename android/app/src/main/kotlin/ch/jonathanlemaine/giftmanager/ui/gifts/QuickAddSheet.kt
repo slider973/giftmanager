@@ -1,6 +1,7 @@
 package ch.jonathanlemaine.giftmanager.ui.gifts
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,10 +21,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.jonathanlemaine.giftmanager.R
+import ch.jonathanlemaine.giftmanager.core.gifts.ShareTargets
 import ch.jonathanlemaine.giftmanager.core.model.WishKind
 import ch.jonathanlemaine.giftmanager.ui.children.ChildRow
 import ch.jonathanlemaine.giftmanager.ui.common.TopBarTextAction
@@ -46,20 +52,26 @@ import ch.jonathanlemaine.giftmanager.ui.theme.GiftTheme
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun QuickAddSheet(state: QuickAddUiState, onPick: (QuickAddTarget) -> Unit, onDismiss: () -> Unit) {
+fun QuickAddSheet(
+    state: QuickAddUiState,
+    onPick: (QuickAddTarget) -> Unit,
+    onDismiss: () -> Unit,
+    /** Mode partage (#79) : lien reçu d'une autre app ; titre « Ajouter ce lien à… » et domaine en sous-titre. */
+    sharedLink: String? = null,
+) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = GiftTheme.colors.background,
         contentColor = GiftTheme.colors.textPrimary,
     ) {
-        QuickAddContent(state, onPick, onDismiss)
+        QuickAddContent(state, onPick, onDismiss, sharedLink)
     }
 }
 
 /** Contenu de la feuille, séparé pour les aperçus (une `ModalBottomSheet` ne s'affiche pas en aperçu). */
 @Composable
-internal fun QuickAddContent(state: QuickAddUiState, onPick: (QuickAddTarget) -> Unit, onDismiss: () -> Unit) {
+internal fun QuickAddContent(state: QuickAddUiState, onPick: (QuickAddTarget) -> Unit, onDismiss: () -> Unit, sharedLink: String? = null) {
     val spacing = GiftTheme.spacing
     Column(
         verticalArrangement = Arrangement.spacedBy(spacing.l),
@@ -70,13 +82,14 @@ internal fun QuickAddContent(state: QuickAddUiState, onPick: (QuickAddTarget) ->
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = stringResource(R.string.add_sheet_title),
+                text = stringResource(if (sharedLink != null) R.string.share_sheet_title else R.string.add_sheet_title),
                 style = GiftTheme.type.title,
                 color = GiftTheme.colors.textPrimary,
                 modifier = Modifier.weight(1f).semantics { heading() },
             )
             TopBarTextAction(stringResource(R.string.add_sheet_close), onClick = onDismiss)
         }
+        sharedLink?.let { SharedLinkCard(it) }
         if (state.isEmpty) {
             EmptyStateView(
                 illustration = Illustration.EMPTY_BOX,
@@ -90,6 +103,49 @@ internal fun QuickAddContent(state: QuickAddUiState, onPick: (QuickAddTarget) ->
         if (state.otherLists.isNotEmpty()) {
             TargetSection(stringResource(R.string.add_sheet_idea_for), state.otherLists, onPick)
             FCNotice(GiftIcons.EyeSlash, stringResource(R.string.add_sheet_notice), tone = FCNoticeTone.SURPRISE)
+        }
+    }
+}
+
+/**
+ * Rappel du lien partagé (#79, iOS : aperçu de `ShareView`) : carte compacte bordée au rayon `field`, comme
+ * [ch.jonathanlemaine.giftmanager.ui.components.StoreLinkRow] mais non cliquable — icône de lien `primary`,
+ * « Lien partagé » en légende puis le domaine (`amazon.fr`). TalkBack : « Lien partagé : amazon.fr ».
+ */
+@Composable
+private fun SharedLinkCard(link: String) {
+    val colors = GiftTheme.colors
+    val type = GiftTheme.type
+    val spacing = GiftTheme.spacing
+    val shape = GiftTheme.radius.fieldShape
+    val label = stringResource(R.string.share_sheet_link_label)
+    val domain = ShareTargets.domain(link) ?: link
+    val spoken = stringResource(R.string.share_sheet_link_spoken, domain)
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(spacing.m),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.surface, shape)
+            .border(1.dp, colors.separator, shape)
+            .padding(horizontal = spacing.l, vertical = spacing.m)
+            .clearAndSetSemantics { contentDescription = spoken },
+    ) {
+        Icon(
+            imageVector = GiftIcons.Link,
+            contentDescription = null,
+            tint = colors.primary,
+            modifier = Modifier.size(type.callout.glyphSize(1.3f)),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = label, style = type.caption, color = colors.textSecondary)
+            Text(
+                text = domain,
+                style = type.callout.copy(fontWeight = FontWeight.SemiBold),
+                color = colors.textPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -145,6 +201,22 @@ private fun QuickAddPreview() = GiftManagerTheme {
             ),
             onPick = {},
             onDismiss = {},
+        )
+    }
+}
+
+@GiftPreviews
+@Composable
+private fun QuickAddSharePreview() = GiftManagerTheme {
+    Column(Modifier.fillMaxWidth().padding(top = GiftTheme.spacing.l).background(GiftTheme.colors.background)) {
+        QuickAddContent(
+            QuickAddUiState(
+                myLists = listOf(QuickAddTarget(GiftPreviewData.leo, WishKind.WISH)),
+                otherLists = listOf(QuickAddTarget(GiftPreviewData.zoe, WishKind.IDEA)),
+            ),
+            onPick = {},
+            onDismiss = {},
+            sharedLink = "https://www.galaxus.ch/fr/s1/product/lego-technic-42151-bugatti-bolide",
         )
     }
 }

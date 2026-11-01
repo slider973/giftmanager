@@ -228,6 +228,7 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
                         images = imageUploader,
                         notifier = itemNotifier,
                         previews = linkPreviewService,
+                        initialUrl = route.url,
                     )
                 }
                 modelClass.isAssignableFrom(JoinPotViewModel::class.java) -> {

@@ -88,4 +88,47 @@ class MainViewModelTest {
         lock.release()
         assertFalse(vm.childModeActive.value)
     }
+
+    @Test fun sharedLinkIsConsumedOnce() = runTest {
+        val f = SessionFixture(backgroundScope, AuthState.SignedIn(uuid(1)))
+        f.seedReady(1)
+        f.session.start()
+        runCurrent()
+        val vm = MainViewModel(f.session, ChildModeLock())
+        f.session.handleSharedLink("https://shop.example/velo")
+        assertEquals("https://shop.example/velo", vm.pendingSharedLink.value)
+        vm.consumeSharedLink()
+        assertNull(vm.pendingSharedLink.value)
+        assertNull(f.session.pendingSharedLink.value)
+    }
+
+    @Test fun sharedLinkWaitsForChildModeToEnd() = runTest {
+        val f = SessionFixture(backgroundScope, AuthState.SignedIn(uuid(1)))
+        f.seedReady(1)
+        f.session.start()
+        runCurrent()
+        val lock = ChildModeLock()
+        val vm = MainViewModel(f.session, lock)
+        lock.activate()
+        f.session.handleSharedLink("https://shop.example/velo")
+        f.session.handleShareWithoutLink()
+        assertNull("rien devant l'enfant", vm.pendingSharedLink.value)
+        assertFalse(vm.shareWithoutLink.value)
+        lock.release()
+        assertTrue(vm.shareWithoutLink.value)
+    }
+
+    @Test fun sharedLinkAppearsAfterChildModeEnds() = runTest {
+        val f = SessionFixture(backgroundScope, AuthState.SignedIn(uuid(1)))
+        f.seedReady(1)
+        f.session.start()
+        runCurrent()
+        val lock = ChildModeLock()
+        val vm = MainViewModel(f.session, lock)
+        lock.activate()
+        f.session.handleSharedLink("https://shop.example/velo")
+        assertNull(vm.pendingSharedLink.value)
+        lock.release()
+        assertEquals("https://shop.example/velo", vm.pendingSharedLink.value)
+    }
 }

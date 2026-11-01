@@ -53,6 +53,16 @@ class AppSession(
     /** Code reçu par lien, utilisé par l'écran « Rejoindre » ou la confirmation de l'écran principal. */
     val pendingInviteCode: StateFlow<String?> = _pendingInviteCode.asStateFlow()
 
+    private val _pendingSharedLink = MutableStateFlow<String?>(null)
+
+    /** Lien partagé depuis une autre app, en attente d'être ouvert dans l'ajout de cadeau (survit à la connexion). */
+    val pendingSharedLink: StateFlow<String?> = _pendingSharedLink.asStateFlow()
+
+    private val _shareWithoutLink = MutableStateFlow(false)
+
+    /** Un partage de texte sans lien est arrivé : l'écran principal l'annonce. */
+    val shareWithoutLink: StateFlow<Boolean> = _shareWithoutLink.asStateFlow()
+
     private val _itemsRevision = MutableStateFlow(0)
 
     /**
@@ -277,6 +287,9 @@ class AppSession(
 
     suspend fun signOut() {
         runCatchingCancellable { auth.signOut() }
+        // Le lien partagé appartenait à la session qui se ferme.
+        clearPendingSharedLink()
+        clearShareWithoutLink()
         reset()
     }
 
@@ -297,6 +310,30 @@ class AppSession(
 
     fun clearPendingInviteCode() {
         _pendingInviteCode.value = null
+    }
+
+    // endregion
+
+    // region Partage
+
+    /** Mémorise un lien http(s) partagé ; un nouveau partage remplace le précédent. */
+    fun handleSharedLink(url: String) {
+        _shareWithoutLink.value = false
+        _pendingSharedLink.value = url
+    }
+
+    /** Partage de texte sans lien : pas de formulaire vide, seulement une alerte. */
+    fun handleShareWithoutLink() {
+        _pendingSharedLink.value = null
+        _shareWithoutLink.value = true
+    }
+
+    fun clearPendingSharedLink() {
+        _pendingSharedLink.value = null
+    }
+
+    fun clearShareWithoutLink() {
+        _shareWithoutLink.value = false
     }
 
     // endregion

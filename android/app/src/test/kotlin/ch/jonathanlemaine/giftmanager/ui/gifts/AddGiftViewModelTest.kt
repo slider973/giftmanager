@@ -49,7 +49,8 @@ class AddGiftViewModelTest {
         owned: Boolean = false,
         eventId: UUID? = null,
         itemId: UUID? = null,
-    ) = AddGiftViewModel(zoe, kind, owned, eventId, itemId, env.session, env.items, env.images, env.notifier, env.previews)
+        initialUrl: String? = null,
+    ) = AddGiftViewModel(zoe, kind, owned, eventId, itemId, env.session, env.items, env.images, env.notifier, env.previews, initialUrl = initialUrl)
         .also { runCurrent() }
 
     private fun AddGiftViewModel.fill(title: String = "Vélo rouge") = onTitleChange(title)
@@ -340,6 +341,33 @@ class AddGiftViewModelTest {
         runCurrent()
         assertEquals("", vm.state.priceText)
         assertEquals("EUR", vm.state.currency)
+    }
+
+    @Test fun initialUrlFillsTheFormAndStartsThePreview() = runTest {
+        val env = giftsEnv { previews.result = preview }
+        val vm = vm(env, initialUrl = "https://www.galaxus.ch/p/1")
+        assertEquals("https://www.galaxus.ch/p/1", vm.state.urlText)
+        advanceTimeBy(699)
+        runCurrent()
+        assertTrue("même délai que la saisie", env.previews.requests.isEmpty())
+        advanceTimeBy(2)
+        runCurrent()
+        assertEquals(listOf("https://www.galaxus.ch/p/1"), env.previews.requests)
+        assertEquals("LEGO Technic", vm.state.title)
+    }
+
+    @Test fun initialUrlIsIgnoredWhenEditing() = runTest {
+        val existing = wishItem(1, childN = 3, title = "Mon titre")
+        val env = giftsEnv {
+            items.items += existing
+            items.itemLinks += itemLink(1, 1, url = "https://www.galaxus.ch/p/1")
+            previews.result = preview
+        }
+        val vm = vm(env, itemId = existing.id, initialUrl = "https://shop.example/autre")
+        advanceTimeBy(701)
+        runCurrent()
+        assertEquals("https://www.galaxus.ch/p/1", vm.state.urlText)
+        assertTrue(env.previews.requests.isEmpty())
     }
 
     @Test fun textWithoutLinkStartsNoPreview() = runTest {

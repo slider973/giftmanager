@@ -20,7 +20,9 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,7 +64,10 @@ import ch.jonathanlemaine.giftmanager.ui.family.FamilyHomeActions
 import ch.jonathanlemaine.giftmanager.ui.family.FamilyHomeScreen
 import ch.jonathanlemaine.giftmanager.ui.family.FamilyHomeViewModel
 import ch.jonathanlemaine.giftmanager.core.model.WishKind
+import ch.jonathanlemaine.giftmanager.core.gifts.ShareResolution
+import ch.jonathanlemaine.giftmanager.core.gifts.ShareTargets
 import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddSheet
+import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddTarget
 import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddViewModel
 import ch.jonathanlemaine.giftmanager.ui.navigation.AddGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildEditorRoute
@@ -116,6 +121,29 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
     val pendingInvite by mainViewModel.pendingInviteCode.collectAsStateWithLifecycle()
     val mainError by mainViewModel.error.collectAsStateWithLifecycle()
     val childModeActive by mainViewModel.childModeActive.collectAsStateWithLifecycle()
+    val pendingLink by mainViewModel.pendingSharedLink.collectAsStateWithLifecycle()
+    val shareWithoutLink by mainViewModel.shareWithoutLink.collectAsStateWithLifecycle()
+    // Partage (#79) : lien dont l'enfant reste à choisir (feuille en mode partage) et message à afficher.
+    var shareSheetLink by rememberSaveable { mutableStateOf<String?>(null) }
+    var shareNotice by rememberSaveable { mutableStateOf<ShareNotice?>(null) }
+    val quickAdd: QuickAddViewModel = viewModel(factory = viewModelFactory)
+    val quickAddState by quickAdd.uiState.collectAsStateWithLifecycle()
+
+    // MainScaffold n'existe qu'en phase Ready, et le modèle ne publie rien pendant le mode enfant : le lien attend.
+    LaunchedEffect(pendingLink) {
+        val link = pendingLink ?: return@LaunchedEffect
+        when (val resolution = ShareTargets.resolve(quickAddState)) {
+            ShareResolution.NoList -> shareNotice = ShareNotice.NO_LIST
+            is ShareResolution.Single -> navController.openAddGift(resolution.target, quickAddState.defaultEventId, link)
+            ShareResolution.Choose -> shareSheetLink = link
+        }
+        mainViewModel.consumeSharedLink()
+    }
+    LaunchedEffect(shareWithoutLink) {
+        if (!shareWithoutLink) return@LaunchedEffect
+        shareNotice = ShareNotice.NO_LINK
+        mainViewModel.consumeShareWithoutLink()
+    }
 
     Scaffold(
         containerColor = GiftTheme.colors.background,
@@ -266,26 +294,30 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
         }
     }
 
-    if (showAddSheet) {
-        val quickAdd: QuickAddViewModel = viewModel(factory = viewModelFactory)
-        val quickAddState by quickAdd.uiState.collectAsStateWithLifecycle()
+    if (showAddSheet || shareSheetLink != null) {
         QuickAddSheet(
             state = quickAddState,
             onPick = { target ->
+                val link = shareSheetLink
                 showAddSheet = false
-                // Le formulaire vit dans l'onglet Accueil : on y revient avant de l'ouvrir.
-                navController.switchTab(HomeGraph)
-                navController.navigate(
-                    AddGiftRoute(
-                        childId = target.child.id.toString(),
-                        kind = if (target.kind == WishKind.IDEA) AddGiftRoute.KIND_IDEA else AddGiftRoute.KIND_WISH,
-                        eventId = quickAddState.defaultEventId?.toString(),
-                        owned = false,
-                        itemId = null,
-                    ),
-                )
+                shareSheetLink = null
+                navController.openAddGift(target, quickAddState.defaultEventId, link)
             },
-            onDismiss = { showAddSheet = false },
+            onDismiss = {
+                showAddSheet = false
+                shareSheetLink = null
+            },
+            sharedLink = shareSheetLink,
+        )
+    }
+
+    shareNotice?.let { notice ->
+        GiftAlertDialog(
+            title = stringResource(notice.title),
+            message = stringResource(notice.message),
+            confirmLabel = stringResource(R.string.share_notice_ok),
+            onConfirm = { shareNotice = null },
+            onDismiss = { shareNotice = null },
         )
     }
 
@@ -301,6 +333,12 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
         )
     }
     if (!childModeActive) GiftErrorDialog(mainError, mainViewModel::dismissError)
+}
+
+/** Message d'un partage qui n'ouvre aucun formulaire (#79). */
+private enum class ShareNotice(@StringRes val title: Int, @StringRes val message: Int) {
+    NO_LINK(R.string.share_no_link_title, R.string.share_no_link_message),
+    NO_LIST(R.string.share_no_list_title, R.string.share_no_list_message),
 }
 
 private val MainTab.route: Any
@@ -327,6 +365,22 @@ private fun NavDestination.isFullScreenForm(): Boolean =
         hasRoute(SantaRoute::class)
 
 private fun WishKind.routeValue(): String = if (this == WishKind.IDEA) AddGiftRoute.KIND_IDEA else AddGiftRoute.KIND_WISH
+
+/** Ouvre le formulaire d'ajout sur [target] (dans l'onglet Accueil), pré-rempli du lien [url] s'il vient d'un partage. */
+private fun NavController.openAddGift(target: QuickAddTarget, eventId: UUID?, url: String? = null) {
+    // Le formulaire vit dans l'onglet Accueil : on y revient avant de l'ouvrir.
+    switchTab(HomeGraph)
+    navigate(
+        AddGiftRoute(
+            childId = target.child.id.toString(),
+            kind = target.kind.routeValue(),
+            eventId = eventId?.toString(),
+            owned = false,
+            itemId = null,
+            url = url,
+        ),
+    )
+}
 
 /** Change d'onglet en sauvegardant l'état de celui qu'on quitte et en restaurant celui qu'on rejoint. */
 private fun NavController.switchTab(route: Any) {
