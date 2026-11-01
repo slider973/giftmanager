@@ -111,4 +111,14 @@ object GiftIcons {
     val Gauge: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_speed)
     /** Case ronde vide (`circle`) : bascule « acheté » décochée. */
     val CircleOutline: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_radio_unchecked)
+    /** Prix en baisse (`arrow.down.right`). */
+    val TrendDown: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_south_east)
+    /** Prix en hausse (`arrow.up.right`). */
+    val TrendUp: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_north_east)
+    /** Prix stable (`equal`). */
+    val TrendFlat: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_equal)
+    /** « Plus en stock » (`shippingbox`). */
+    val OutOfStock: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_inventory)
+    /** Alerte, notification (`bell`). */
+    val Bell: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_notifications_none)
 }

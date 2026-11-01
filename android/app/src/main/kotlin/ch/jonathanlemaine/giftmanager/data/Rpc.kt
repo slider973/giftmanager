@@ -44,6 +44,9 @@ object Rpc {
     const val REVEAL_MYSELF = "reveal_myself"
     const val ITEM_DONORS = "item_donors"
 
+    // Suivi des prix (#77).
+    const val MY_PRICE_HISTORY = "my_price_history"
+
     const val P_NAME = "p_name"
     const val P_HOUSEHOLD_NAME = "p_household_name"
     const val P_COUNTRY = "p_country"

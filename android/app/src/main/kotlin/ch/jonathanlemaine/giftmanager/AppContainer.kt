@@ -28,6 +28,7 @@ import ch.jonathanlemaine.giftmanager.data.ImageUploader
 import ch.jonathanlemaine.giftmanager.data.ItemNotifier
 import ch.jonathanlemaine.giftmanager.data.ItemRepository
 import ch.jonathanlemaine.giftmanager.data.PotRepository
+import ch.jonathanlemaine.giftmanager.data.PriceHistoryRepository
 import ch.jonathanlemaine.giftmanager.data.PurchaseRepository
 import ch.jonathanlemaine.giftmanager.data.ReservationRepository
 import ch.jonathanlemaine.giftmanager.data.ProfileRepository
@@ -41,6 +42,7 @@ import ch.jonathanlemaine.giftmanager.data.SupabaseImageUploader
 import ch.jonathanlemaine.giftmanager.data.SupabaseItemNotifier
 import ch.jonathanlemaine.giftmanager.data.SupabaseItemRepository
 import ch.jonathanlemaine.giftmanager.data.SupabasePotRepository
+import ch.jonathanlemaine.giftmanager.data.SupabasePriceHistoryRepository
 import ch.jonathanlemaine.giftmanager.data.SupabasePurchaseRepository
 import ch.jonathanlemaine.giftmanager.data.SupabaseReservationRepository
 import ch.jonathanlemaine.giftmanager.data.SupabaseThanksRepository
@@ -144,6 +146,7 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
     val purchaseRepository: PurchaseRepository by lazy { SupabasePurchaseRepository(supabase) }
     val budgetRepository: BudgetRepository by lazy { SupabaseBudgetRepository(supabase) }
     val thanksRepository: ThanksRepository by lazy { SupabaseThanksRepository(supabase) }
+    val priceHistoryRepository: PriceHistoryRepository by lazy { SupabasePriceHistoryRepository(supabase) }
     val imageUploader: ImageUploader by lazy { SupabaseImageUploader(supabase) }
 
     /** Notifications de la famille : envoyées sur le scope de l'app, sans qu'aucun écran n'attende. */
@@ -204,7 +207,7 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
                     val itemId = checkNotNull(extras.createSavedStateHandle().get<String>(GiftDetailRoute.ITEM_ID_ARG)) { "Fiche sans cadeau" }
                     GiftDetailViewModel(
                         UUID.fromString(itemId), session, itemRepository, reservationRepository, potRepository, itemNotifier,
-                        thanksRepository, rates = currencyService.rates,
+                        thanksRepository, priceHistoryRepository, rates = currencyService.rates,
                     )
                 }
                 modelClass.isAssignableFrom(AddGiftViewModel::class.java) -> {

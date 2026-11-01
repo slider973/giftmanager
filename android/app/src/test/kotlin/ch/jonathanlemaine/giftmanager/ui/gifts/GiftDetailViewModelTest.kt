@@ -7,6 +7,7 @@ import ch.jonathanlemaine.giftmanager.core.model.ItemDonor
 import ch.jonathanlemaine.giftmanager.core.model.ItemStatus
 import ch.jonathanlemaine.giftmanager.core.model.PotParticipant
 import ch.jonathanlemaine.giftmanager.core.model.ReservationState
+import ch.jonathanlemaine.giftmanager.core.model.PriceCheck
 import ch.jonathanlemaine.giftmanager.core.model.WishItem
 import ch.jonathanlemaine.giftmanager.core.session.uuid
 import ch.jonathanlemaine.giftmanager.data.itemLink
@@ -48,7 +49,7 @@ class GiftDetailViewModelTest {
     private val leaItem = 2 // cadeau de Léa (mon enfant) : vue parent
 
     private fun TestScope.vm(env: GiftsEnv, n: Int) =
-        GiftDetailViewModel(uuid(700 + n), env.session, env.items, env.reservations, env.pots, env.notifier, env.thanks, Fixtures.clock)
+        GiftDetailViewModel(uuid(700 + n), env.session, env.items, env.reservations, env.pots, env.notifier, env.thanks, env.priceHistory, Fixtures.clock)
             .also { runCurrent() }
 
     private suspend fun TestScope.member(item: (Int) -> WishItem = { wishItem(it, childN = 3) }, setup: GiftsEnv.() -> Unit = {}): Pair<GiftsEnv, GiftDetailViewModel> {
@@ -247,6 +248,49 @@ class GiftDetailViewModelTest {
 
     // endregion
 
+    // region Suivi des prix (#77)
+
+    private fun check(daysAgo: Long, price: String) = PriceCheck(
+        uuid(800), "https://www.galaxus.ch/p/1", BigDecimal(price), "CHF", true, Instant.parse("2026-10-10T00:00:00Z").minusSeconds(daysAgo * 86_400),
+    )
+
+    private val reserved = { n: Int -> wishItem(n, childN = 3, status = ItemStatus.MINE, myReservation = ReservationState.RESERVED) }
+
+    @Test fun reserverSeesThePriceTrend() = runTest {
+        val (env, vm) = member(item = reserved) { priceHistory.checks = listOf(check(0, "169"), check(5, "199")) }
+        val trend = vm.uiState.value.trends.single()
+        assertEquals(BigDecimal("-30"), trend.change)
+        assertEquals(1, env.priceHistory.calls)
+    }
+
+    @Test fun noPriceHistoryCallWithoutMyReservation() = runTest {
+        val (env, vm) = member { priceHistory.checks = listOf(check(0, "169")) }
+        assertTrue(vm.uiState.value.trends.isEmpty())
+        assertEquals(0, env.priceHistory.calls)
+    }
+
+    @Test fun priceHistoryFailureGivesNoTrendAndNoError() = runTest {
+        val (_, vm) = member(item = reserved) { priceHistory.failure = IOException() }
+        assertTrue(vm.uiState.value.trends.isEmpty())
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test fun emptyPriceHistoryGivesNoTrend() = runTest {
+        val (env, vm) = member(item = reserved)
+        assertTrue(vm.uiState.value.trends.isEmpty())
+        assertEquals(1, env.priceHistory.calls)
+    }
+
+    @Test fun trendsReloadWithTheItem() = runTest {
+        val (env, vm) = member(item = reserved)
+        env.priceHistory.checks = listOf(check(0, "169"))
+        vm.load()
+        assertEquals(1, vm.uiState.value.trends.size)
+        assertEquals(2, env.priceHistory.calls)
+    }
+
+    // endregion
+
     // region Suppression
 
     @Test fun deletingClosesTheSheet() = runTest {
@@ -364,7 +408,7 @@ class GiftDetailViewModelTest {
         }
         val flow = MutableStateFlow<ExchangeRates?>(null)
         val vm = GiftDetailViewModel(
-            uuid(700 + zoeItem), env.session, env.items, env.reservations, env.pots, env.notifier, env.thanks, Fixtures.clock, flow,
+            uuid(700 + zoeItem), env.session, env.items, env.reservations, env.pots, env.notifier, env.thanks, env.priceHistory, Fixtures.clock, flow,
         ).also { runCurrent() }
         val link = vm.uiState.value.links.single()
         assertEquals("CHF", vm.uiState.value.profileCurrency)

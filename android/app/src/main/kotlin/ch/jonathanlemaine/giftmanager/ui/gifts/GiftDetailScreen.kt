@@ -154,6 +154,7 @@ fun GiftDetailScreen(state: GiftDetailUiState, actions: GiftDetailActions, modif
                 item != null -> ScreenColumn(scrollState = scrollState, spacing = GiftTheme.spacing.xl) {
                     DetailHeader(state, item, imageHeight, actions)
                     LinksSection(state)
+                    PriceHistorySection(state.trends)
                     if (state.readOnly) {
                         ReceiptActions(state, actions)
                         FCNotice(GiftIcons.Archive, stringResource(R.string.gift_detail_archived))
