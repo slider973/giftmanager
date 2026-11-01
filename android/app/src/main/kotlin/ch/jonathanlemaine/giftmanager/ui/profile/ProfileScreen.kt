@@ -32,6 +32,7 @@ import ch.jonathanlemaine.giftmanager.BuildConfig
 import ch.jonathanlemaine.giftmanager.R
 import ch.jonathanlemaine.giftmanager.core.error.GiftError
 import ch.jonathanlemaine.giftmanager.core.model.FamilyGroup
+import ch.jonathanlemaine.giftmanager.push.NotificationPermission
 import ch.jonathanlemaine.giftmanager.ui.common.GiftAlertDialog
 import ch.jonathanlemaine.giftmanager.ui.common.GiftErrorDialog
 import ch.jonathanlemaine.giftmanager.ui.common.ProfileFields
@@ -48,6 +49,7 @@ import ch.jonathanlemaine.giftmanager.ui.components.FCNotice
 import ch.jonathanlemaine.giftmanager.ui.components.FCNoticeTone
 import ch.jonathanlemaine.giftmanager.ui.components.GiftIcons
 import ch.jonathanlemaine.giftmanager.ui.components.GiftPreviews
+import ch.jonathanlemaine.giftmanager.ui.components.PreviewFrame
 import ch.jonathanlemaine.giftmanager.ui.components.PrimaryButton
 import ch.jonathanlemaine.giftmanager.ui.components.fcClickable
 import ch.jonathanlemaine.giftmanager.ui.theme.GiftTheme
@@ -78,6 +80,7 @@ data class ProfileActions(
  * notifications, rappel du mode surprise, déconnexion, puis suppression du compte, isolée tout en bas.
  *
  * [onOpenGallery] n'est fourni qu'en debug (galerie du design system) ; `null` → aucun lien.
+ * [notifications] : autorisation du système (#76), pour le bandeau « notifications désactivées ».
  */
 @Composable
 fun ProfileScreen(
@@ -85,6 +88,7 @@ fun ProfileScreen(
     actions: ProfileActions,
     modifier: Modifier = Modifier,
     onOpenGallery: (() -> Unit)? = null,
+    notifications: NotificationAccess = NotificationAccess(),
 ) {
     val colors = GiftTheme.colors
     val spacing = GiftTheme.spacing
@@ -93,7 +97,7 @@ fun ProfileScreen(
         Header(state)
         IdentitySection(state, actions)
         HouseholdSection(state, actions)
-        NotificationsSection(state, actions)
+        NotificationsSection(state, actions, notifications)
         FCNotice(GiftIcons.EyeSlash, stringResource(R.string.profile_surprise_notice), tone = FCNoticeTone.SURPRISE)
         SettingsSection(title = null) {
             SettingsActionRow(stringResource(R.string.sign_out), actions.onSignOut, icon = GiftIcons.SignOut)
@@ -238,12 +242,33 @@ private fun UnshareButton(onClick: () -> Unit) {
     }
 }
 
-/** Notifications : trois interrupteurs, libellés d'iOS ; la note rappelle que rien ne trahit la surprise. */
+/**
+ * Autorisation des notifications vue du Profil (#76) : [permission] et les deux issues possibles —
+ * [onRequest] (boîte du système, tant qu'elle peut encore s'afficher) et [onOpenSettings] (réglages d'Android).
+ */
+data class NotificationAccess(
+    val permission: NotificationPermission = NotificationPermission.Granted,
+    val onRequest: () -> Unit = {},
+    val onOpenSettings: () -> Unit = {},
+)
+
+/**
+ * Notifications : trois interrupteurs, libellés d'iOS ; la note rappelle que rien ne trahit la surprise.
+ * Si l'autorisation manque alors qu'un interrupteur est actif, un bandeau `WARNING` le dit sous le titre :
+ * « Activer » tant que le système peut encore demander, « Ouvrir les réglages » une fois la demande refusée.
+ */
 @Composable
-private fun NotificationsSection(state: ProfileUiState, actions: ProfileActions) {
+private fun NotificationsSection(state: ProfileUiState, actions: ProfileActions, access: NotificationAccess) {
+    val anyOn = state.purchaseReminders || state.familyNews || state.birthdayReminders
+    val blocked = access.permission == NotificationPermission.CanAsk || access.permission == NotificationPermission.PermanentlyDenied
     SettingsSection(
         title = stringResource(R.string.profile_notifications),
         footer = stringResource(R.string.profile_notifications_footer),
+        notice = if (anyOn && blocked) {
+            { NotificationsDisabledNotice(access) }
+        } else {
+            null
+        },
     ) {
         ToggleRow(GiftIcons.Calendar, stringResource(R.string.profile_notif_purchases), state.purchaseReminders, actions.onPurchaseReminders)
         SettingsDivider()
@@ -251,6 +276,18 @@ private fun NotificationsSection(state: ProfileUiState, actions: ProfileActions)
         SettingsDivider()
         ToggleRow(GiftIcons.Cake, stringResource(R.string.profile_notif_birthdays), state.birthdayReminders, actions.onBirthdayReminders)
     }
+}
+
+@Composable
+private fun NotificationsDisabledNotice(access: NotificationAccess) {
+    val canAsk = access.permission == NotificationPermission.CanAsk
+    FCNotice(
+        icon = GiftIcons.BellOff,
+        text = stringResource(R.string.profile_notif_disabled),
+        tone = FCNoticeTone.WARNING,
+        actionLabel = stringResource(if (canAsk) R.string.profile_notif_enable else R.string.profile_notif_open_settings),
+        onAction = if (canAsk) access.onRequest else access.onOpenSettings,
+    )
 }
 
 @Composable
@@ -293,6 +330,18 @@ private val previewActions = ProfileActions({}, {}, {}, {}, {}, {}, {}, {}, {}, 
 @Composable
 private fun ProfilePreview() = ScreenPreviewFrame(height = 1500.dp) {
     ProfileScreen(previewState, previewActions, onOpenGallery = {})
+}
+
+@GiftPreviews
+@Composable
+private fun ProfileNotificationsDeniedPreview() = ScreenPreviewFrame(height = 1600.dp) {
+    ProfileScreen(previewState, previewActions, notifications = NotificationAccess(NotificationPermission.PermanentlyDenied))
+}
+
+@GiftPreviews
+@Composable
+private fun ProfileNotificationsCanAskPreview() = PreviewFrame {
+    NotificationsSection(previewState, previewActions, NotificationAccess(NotificationPermission.CanAsk))
 }
 
 @GiftPreviews

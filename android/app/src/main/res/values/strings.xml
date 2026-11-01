@@ -107,6 +107,9 @@
     <string name="profile_notif_purchases">Rappels d\'achats (J-30, J-15, J-7, J-2)</string>
     <string name="profile_notif_family_news">Nouvelles envies dans la famille</string>
     <string name="profile_notif_birthdays">Rappels d\'anniversaire (J-30, J-7)</string>
+    <string name="profile_notif_disabled">Les notifications sont désactivées pour Gift Manager : tes rappels ne s\'afficheront pas.</string>
+    <string name="profile_notif_enable">Activer</string>
+    <string name="profile_notif_open_settings">Ouvrir les réglages</string>
     <string name="profile_notifications_footer">Aucune notification ne dit qui a réservé quoi. Les rappels d\'achats ne concernent que tes propres réservations, et ceux d\'anniversaire jamais tes propres listes.</string>
     <string name="profile_surprise_notice">Mode surprise : tu ne vois jamais ce qui a été réservé pour tes enfants, ni les idées proposées pour eux. Personne ne sait qui offre quoi.</string>
     <string name="profile_delete">Supprimer mon compte</string>

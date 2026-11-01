@@ -28,7 +28,7 @@ data class ProfileUiState(
     val sharedFamilies: List<FamilyGroup> = emptyList(),
     val purchaseReminders: Boolean = true,
     val birthdayReminders: Boolean = true,
-    /** Préférence locale, sans effet avant les notifications push (#76). */
+    /** Préférence locale : masque les notifications « Nouvelles envies » à leur arrivée (#76). */
     val familyNews: Boolean = true,
     /** Famille dont on s'apprête à retirer le partage du foyer (confirmation affichée). */
     val unsharing: FamilyGroup? = null,

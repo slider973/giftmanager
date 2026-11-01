@@ -96,6 +96,7 @@ import ch.jonathanlemaine.giftmanager.ui.navigation.SearchGiftDetailRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.SearchGraph
 import ch.jonathanlemaine.giftmanager.ui.navigation.ThanksComposerRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ThanksInboxRoute
+import ch.jonathanlemaine.giftmanager.ui.profile.NotificationAccess
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileActions
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileScreen
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileViewModel
@@ -497,6 +498,9 @@ private fun FamilyHomeRoute(
 private fun ProfileRoute(viewModelFactory: ViewModelProvider.Factory, onOpenGallery: (() -> Unit)?) {
     val viewModel: ProfileViewModel = viewModel(factory = viewModelFactory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val notifications: NotificationsViewModel = viewModel(factory = viewModelFactory)
+    val permission by notifications.permission.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     ProfileScreen(
         state = state,
         actions = ProfileActions(
@@ -517,5 +521,10 @@ private fun ProfileRoute(viewModelFactory: ViewModelProvider.Factory, onOpenGall
             onDismissError = viewModel::dismissError,
         ),
         onOpenGallery = onOpenGallery,
+        notifications = NotificationAccess(
+            permission = permission,
+            onRequest = notifications::requestPermission,
+            onOpenSettings = { context.startActivity(notificationSettingsIntent(context)) },
+        ),
     )
 }
