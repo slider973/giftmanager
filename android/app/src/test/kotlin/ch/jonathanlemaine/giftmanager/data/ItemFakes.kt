@@ -7,6 +7,7 @@ import ch.jonathanlemaine.giftmanager.core.gifts.NewItem
 import ch.jonathanlemaine.giftmanager.core.model.DayDate
 import ch.jonathanlemaine.giftmanager.core.model.DraftLink
 import ch.jonathanlemaine.giftmanager.core.model.IdeaReview
+import ch.jonathanlemaine.giftmanager.core.model.ItemDonor
 import ch.jonathanlemaine.giftmanager.core.model.ItemLink
 import ch.jonathanlemaine.giftmanager.core.model.ItemStatus
 import ch.jonathanlemaine.giftmanager.core.model.MyContribution
@@ -14,11 +15,13 @@ import ch.jonathanlemaine.giftmanager.core.model.MyReservation
 import ch.jonathanlemaine.giftmanager.core.model.PendingIdea
 import ch.jonathanlemaine.giftmanager.core.model.PotParticipant
 import ch.jonathanlemaine.giftmanager.core.model.ReservationState
+import ch.jonathanlemaine.giftmanager.core.model.ThanksNote
 import ch.jonathanlemaine.giftmanager.core.model.WishItem
 import ch.jonathanlemaine.giftmanager.core.model.WishKind
 import ch.jonathanlemaine.giftmanager.core.session.uuid
 import java.math.BigDecimal
 import java.util.UUID
+import kotlinx.coroutines.CompletableDeferred
 
 // Fakes en mémoire des dépôts de cadeaux, avec pannes injectables et journal des appels.
 
@@ -213,6 +216,7 @@ class FakeItemNotifier : ItemNotifier {
     val newItems = mutableListOf<List<UUID>>()
     val reservations = mutableListOf<UUID>()
     val reviews = mutableListOf<Pair<UUID, IdeaReview>>()
+    val thanks = mutableListOf<UUID>()
 
     override fun notifyNewItems(itemIds: List<UUID>) {
         newItems += itemIds
@@ -224,6 +228,10 @@ class FakeItemNotifier : ItemNotifier {
 
     override fun notifyIdeaReview(itemId: UUID, decision: IdeaReview) {
         reviews += itemId to decision
+    }
+
+    override fun notifyThanks(itemId: UUID) {
+        thanks += itemId
     }
 }
 
@@ -298,5 +306,52 @@ class FakeBudgetRepository : BudgetRepository {
     override suspend fun deleteBudget(id: UUID) {
         failure?.let { throw it }
         deleted += id
+    }
+}
+
+fun thanksNote(n: Int, itemN: Int = n, revealed: Boolean = false, message: String = "Merci $n !") = ThanksNote(
+    id = uuid(1000 + n), itemId = uuid(700 + itemN), title = "Cadeau $itemN", childName = "Léa", senderName = null,
+    message = message, photoUrl = null, createdAt = "2026-10-02T10:00:00Z", revealed = revealed,
+)
+
+class FakeThanksRepository : ThanksRepository {
+    var notes = listOf<ThanksNote>()
+    var donors = listOf<ItemDonor>()
+    var failure: Throwable? = null
+    var sendFailure: Throwable? = null
+    var revealFailure: Throwable? = null
+    var donorsFailure: Throwable? = null
+    var myThanksCalls = 0
+    var donorCalls = 0
+
+    /** Si renseigné, [revealMyself] attend ce signal : permet de tester un second appui pendant l'envoi. */
+    var revealGate: CompletableDeferred<Unit>? = null
+
+    /** Envois reçus : cadeau, message, photo. */
+    val sent = mutableListOf<Triple<UUID, String, String?>>()
+    val reveals = mutableListOf<Pair<UUID, Boolean>>()
+
+
+    override suspend fun sendThanks(itemId: UUID, message: String, photoUrl: String?) {
+        sendFailure?.let { throw it }
+        sent += Triple(itemId, message, photoUrl)
+    }
+
+    override suspend fun myThanks(): List<ThanksNote> {
+        myThanksCalls++
+        failure?.let { throw it }
+        return notes
+    }
+
+    override suspend fun revealMyself(itemId: UUID, reveal: Boolean) {
+        reveals += itemId to reveal
+        revealGate?.await()
+        revealFailure?.let { throw it }
+    }
+
+    override suspend fun itemDonors(itemId: UUID): List<ItemDonor> {
+        donorCalls++
+        donorsFailure?.let { throw it }
+        return donors
     }
 }
