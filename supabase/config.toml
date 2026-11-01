@@ -340,14 +340,7 @@ email_optional = false
 
 # Google (app Android, jeton d'identité obtenu via Credential Manager puis signInWithIdToken).
 # Désactivé en local : `supabase start` (et la CI) n'a pas besoin des variables ci-dessous.
-# En production, le fournisseur est activé dans # Apple : client_id = « bundle iOS,Services ID » ; secret = JWT généré depuis la clé .p8 (docs/SECRETS.md).
-[remotes.production.auth.external.apple]
-enabled = true
-client_id = "env(SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID)"
-secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
-skip_nonce_check = false
-
-[remotes.production.auth.external.google].
+# En production, le fournisseur est activé dans [remotes.production.auth.external.google].
 [auth.external.google]
 enabled = false
 # ID client OAuth « Web » : le même que serverClientId côté Android (voir docs/SECRETS.md).
@@ -460,6 +453,14 @@ otp_length = 8
 enabled = true
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+skip_nonce_check = false
+
+# Apple (web, app Android #83) : client_id = « bundle iOS,Services ID » ; secret = JWT généré depuis la clé .p8
+# (docs/SECRETS.md). Le bundle iOS reste en premier : la connexion Apple native d'iOS continue de fonctionner.
+[remotes.production.auth.external.apple]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
 skip_nonce_check = false
 
 [remotes.production.auth.mfa.totp]
