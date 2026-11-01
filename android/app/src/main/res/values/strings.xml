@@ -55,6 +55,8 @@
     <string name="profile_section_me">Mon profil</string>
     <string name="profile_save">Enregistrer</string>
     <string name="profile_household_visible_in">« %1$s » est visible dans</string>
+    <string name="profile_version">Gift Manager %1$s (%2$d)</string>
+    <string name="picker_choose">choisir</string>
     <string name="profile_household_footer">Rejoins une autre famille : ton foyer y sera proposé, sans rien ressaisir.</string>
     <string name="profile_unshare">Retirer</string>
     <string name="profile_unshare_title">Retirer ton foyer de « %1$s » ?</string>
@@ -88,6 +90,7 @@
     <string name="group_join_message">Saisis le code à 6 caractères reçu d\'un membre de ta famille.</string>
     <string name="group_join_code">Code d\'invitation</string>
     <string name="group_join_submit">Rejoindre</string>
+    <string name="group_join_code_prompt" translatable="false">ABC123</string>
     <string name="household_welcome">Bienvenue dans « %1$s »</string>
     <string name="household_intro">Un foyer regroupe un ou deux parents et leurs enfants.</string>
     <string name="household_share_title">Partager mon foyer</string>
@@ -117,9 +120,15 @@
         <item quantity="one">%d foyer</item>
         <item quantity="other">%d foyers</item>
     </plurals>
-    <string name="family_events_placeholder">Les événements arrivent bientôt.</string>
+    <string name="family_events_upcoming">Événements à venir</string>
+    <string name="family_events_soon_title">Bientôt ici</string>
+    <string name="family_events_placeholder">Anniversaires, Noël et fêtes de famille : tu pourras bientôt les préparer ici.</string>
+    <string name="family_members_empty_title">Aucun foyer pour l\'instant</string>
+    <string name="family_members_empty_message">Invite les autres foyers avec le code de la famille, dans Paramètres.</string>
     <string name="family_my_household">Mon foyer</string>
     <string name="family_household_code">Code du foyer pour mon conjoint : %1$s</string>
+    <string name="family_household_code_prefix">Code du foyer pour mon conjoint :</string>
+    <string name="family_household_share_hint">partager le code du foyer</string>
     <string name="family_household_share_message">Rejoins notre foyer « %1$s » sur Gift Manager avec le code : %2$s</string>
     <string name="family_invite_title">Inviter la famille</string>
     <string name="family_invite_message">Envoie ce code aux autres foyers (WhatsApp, SMS…).</string>
@@ -133,13 +142,21 @@
     <!-- Navigation principale -->
     <string name="tab_home">Accueil</string>
     <string name="tab_search">Recherche</string>
-    <string name="tab_add">Ajouter</string>
     <string name="tab_purchases">Mes achats</string>
     <string name="tab_profile">Profil</string>
+    <string name="tab_add">Ajouter</string>
     <string name="placeholder_coming_soon">Bientôt disponible.</string>
+    <string name="tab_add_description">Ajouter un cadeau</string>
+    <string name="coming_soon_title">Bientôt ici</string>
+    <string name="search_coming_soon">Tu pourras bientôt chercher un cadeau dans toutes les listes de la famille.</string>
+    <string name="purchases_coming_soon">Les cadeaux que tu réserves et tes participations aux cagnottes apparaîtront ici.</string>
     <string name="add_sheet_title">Ajouter un cadeau</string>
+    <string name="add_sheet_message">Tu pourras bientôt ajouter une envie pour tes enfants, ou proposer une idée pour ceux des autres, depuis n\'importe quelle boutique.</string>
+    <string name="add_sheet_notice">Les idées restent invisibles pour les parents de l\'enfant.</string>
+    <string name="add_sheet_close">Compris</string>
     <string name="invite_dialog_title">Rejoindre une famille ?</string>
     <string name="invite_dialog_message">Tu as ouvert une invitation avec le code %1$s. Tu pourras basculer entre tes familles dans Paramètres.</string>
+    <string name="load_failed_title">Chargement impossible</string>
     <string name="load_failed_message">Impossible de charger tes données. Vérifie ta connexion puis réessaie.</string>
     <string name="load_failed_retry">Réessayer</string>
 
