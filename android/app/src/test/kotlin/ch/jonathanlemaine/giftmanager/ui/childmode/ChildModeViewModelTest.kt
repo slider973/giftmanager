@@ -172,6 +172,23 @@ class ChildModeViewModelTest {
         assertTrue(s.state.exited)
     }
 
+    @Test fun aLostVerificationCanBeCancelledAndRequestedAgain() = runTest {
+        val s = setup()
+        s.auth.gate = CompletableDeferred() // l'invite ne répondra jamais (rotation)
+        s.vm.requestExit()
+        assertTrue(s.state.isAuthenticating)
+        s.vm.cancelAuthentication()
+        runCurrent()
+        assertFalse(s.state.isAuthenticating)
+        assertFalse(s.state.exited)
+        assertTrue(s.lock.active.value)
+        s.auth.gate = null
+        s.vm.requestExit()
+        runCurrent()
+        assertEquals(2, s.auth.calls)
+        assertTrue(s.state.exited)
+    }
+
     @Test fun exposesWhetherVerificationIsAvailable() = runTest {
         val s = setup()
         assertTrue(s.vm.isAuthenticationAvailable)

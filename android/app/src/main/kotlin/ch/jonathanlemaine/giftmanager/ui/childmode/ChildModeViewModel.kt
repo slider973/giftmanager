@@ -15,6 +15,7 @@ import ch.jonathanlemaine.giftmanager.core.session.SessionState
 import ch.jonathanlemaine.giftmanager.core.session.child
 import ch.jonathanlemaine.giftmanager.data.ItemRepository
 import java.util.UUID
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -107,11 +108,23 @@ class ChildModeViewModel(
     fun requestExit() {
         if (_local.value.isAuthenticating || _local.value.exited) return
         _local.update { it.copy(isAuthenticating = true) }
-        viewModelScope.launch {
+        authJob = viewModelScope.launch {
             val allowed = runCatchingCancellable { authenticator.authenticate() }.getOrDefault(false)
             _local.update { it.copy(isAuthenticating = false) }
             if (allowed) exit()
         }
+    }
+
+    private var authJob: Job? = null
+
+    /**
+     * Abandonne une vérification en cours sans sortir. Appelée quand l'écran est recréé (rotation) : l'invite système
+     * liée à l'ancienne activité ne répondra jamais, et l'adulte doit pouvoir recommencer. On reste en mode enfant.
+     */
+    fun cancelAuthentication() {
+        authJob?.cancel()
+        authJob = null
+        _local.update { it.copy(isAuthenticating = false) }
     }
 
     /** Sort du mode enfant : relâche le verrou et, si un cœur a changé, recharge les listes. */

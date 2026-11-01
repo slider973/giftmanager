@@ -1,6 +1,7 @@
 package ch.jonathanlemaine.giftmanager.ui.main
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -298,6 +299,9 @@ fun ChildModeDestination(viewModelFactory: ViewModelProvider.Factory, onClose: (
     val viewModel: ChildModeViewModel = viewModel(factory = viewModelFactory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.exited) { if (state.exited) onClose() }
+    // Écran recréé (rotation) : l'invite de vérification liée à l'ancienne activité est perdue, on l'abandonne
+    // pour que l'adulte puisse recommencer. L'écran du code de l'appareil, lui, ne détruit pas la composition.
+    DisposableEffect(viewModel) { onDispose { viewModel.cancelAuthentication() } }
     ChildModeEffects()
     ChildModeScreen(
         state = state,
