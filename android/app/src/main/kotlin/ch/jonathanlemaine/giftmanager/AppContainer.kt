@@ -61,6 +61,11 @@ import ch.jonathanlemaine.giftmanager.data.prefs.DataStoreLocalPrefs
 import ch.jonathanlemaine.giftmanager.data.prefs.LocalPrefs
 import ch.jonathanlemaine.giftmanager.data.prefs.giftDataStore
 import ch.jonathanlemaine.giftmanager.net.OkHttpLinkFetcher
+import ch.jonathanlemaine.giftmanager.core.widget.WidgetSnapshotBuilder
+import ch.jonathanlemaine.giftmanager.data.widget.DataStoreWidgetSnapshotStore
+import ch.jonathanlemaine.giftmanager.data.widget.WidgetSnapshotStore
+import ch.jonathanlemaine.giftmanager.widget.CountdownWidget
+import androidx.glance.appwidget.updateAll
 import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorMode
 import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorViewModel
 import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetsViewModel
@@ -105,6 +110,10 @@ import ch.jonathanlemaine.giftmanager.ui.root.RootViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import java.lang.ref.WeakReference
 import java.math.BigDecimal
@@ -182,6 +191,25 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
             authRepository, profileRepository, familyRepository, householdRepository, childRepository, eventRepository,
             currentGroupStore, appScope,
         ).also(AppSession::start)
+    }
+
+    val widgetSnapshotStore: WidgetSnapshotStore by lazy { DataStoreWidgetSnapshotStore(context) }
+
+    /**
+     * Widget d'écran d'accueil (#80) : à chaque changement utile de la session, l'instantané est écrit puis le widget redessiné.
+     * Déconnecté, l'instantané est vidé. Appelé une fois au lancement de l'app.
+     */
+    fun startWidgetSync() {
+        appScope.launch {
+            session.state
+                .map { WidgetSnapshotBuilder.build(it) }
+                .filterNotNull()
+                .distinctUntilChanged()
+                .collect { snapshot ->
+                    widgetSnapshotStore.write(snapshot)
+                    CountdownWidget().updateAll(context)
+                }
+        }
     }
 
     /**

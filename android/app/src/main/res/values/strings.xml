@@ -2,6 +2,13 @@
 <resources>
     <string name="app_name">Famille Cadeaux</string>
     <string name="home_gallery_link">Galerie du design system</string>
+    <!-- Widget d'écran d'accueil (#80) -->
+    <string name="widget_name">Compte à rebours</string>
+    <string name="widget_description">Le prochain événement et le nombre de jours restants.</string>
+    <string name="widget_preview">🎄 J-24</string>
+    <string name="widget_signed_out">Ouvre Gift Manager pour te connecter.</string>
+    <string name="widget_no_event">Aucun événement à venir.</string>
+
     <string name="sign_out">Se déconnecter</string>
 
     <!-- Connexion Google -->

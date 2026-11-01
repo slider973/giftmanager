@@ -10,5 +10,6 @@ class GiftManagerApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(AppConfig.fromBuildConfig(), this)
+        container.startWidgetSync()
     }
 }
