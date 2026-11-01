@@ -40,6 +40,8 @@ import ch.jonathanlemaine.giftmanager.data.SupabaseItemRepository
 import ch.jonathanlemaine.giftmanager.data.SupabasePotRepository
 import ch.jonathanlemaine.giftmanager.data.SupabasePurchaseRepository
 import ch.jonathanlemaine.giftmanager.data.SupabaseReservationRepository
+import ch.jonathanlemaine.giftmanager.data.SupabaseThanksRepository
+import ch.jonathanlemaine.giftmanager.data.ThanksRepository
 import ch.jonathanlemaine.giftmanager.data.SupabaseProfileRepository
 import ch.jonathanlemaine.giftmanager.data.SupabaseProvider
 import ch.jonathanlemaine.giftmanager.data.auth.AuthRepository
@@ -70,6 +72,8 @@ import ch.jonathanlemaine.giftmanager.ui.gifts.GiftDetailViewModel
 import ch.jonathanlemaine.giftmanager.ui.gifts.JoinPotViewModel
 import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasViewModel
 import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddViewModel
+import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksComposerViewModel
+import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksInboxViewModel
 import ch.jonathanlemaine.giftmanager.ui.navigation.AddGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.BudgetEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildEditorRoute
@@ -77,6 +81,7 @@ import ch.jonathanlemaine.giftmanager.ui.navigation.ChildGiftsRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.EventDetailRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.EventEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.GiftDetailRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.ThanksComposerRoute
 import ch.jonathanlemaine.giftmanager.ui.family.GroupSetupViewModel
 import ch.jonathanlemaine.giftmanager.ui.main.MainViewModel
 import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesViewModel
@@ -114,6 +119,7 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
     val potRepository: PotRepository by lazy { SupabasePotRepository(supabase) }
     val purchaseRepository: PurchaseRepository by lazy { SupabasePurchaseRepository(supabase) }
     val budgetRepository: BudgetRepository by lazy { SupabaseBudgetRepository(supabase) }
+    val thanksRepository: ThanksRepository by lazy { SupabaseThanksRepository(supabase) }
     val imageUploader: ImageUploader by lazy { SupabaseImageUploader(supabase) }
 
     /** Notifications de la famille : envoyées sur le scope de l'app, sans qu'aucun écran n'attende. */
@@ -174,7 +180,7 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
                     val itemId = checkNotNull(extras.createSavedStateHandle().get<String>(GiftDetailRoute.ITEM_ID_ARG)) { "Fiche sans cadeau" }
                     GiftDetailViewModel(
                         UUID.fromString(itemId), session, itemRepository, reservationRepository, potRepository, itemNotifier,
-                        rates = currencyService.rates,
+                        thanksRepository, rates = currencyService.rates,
                     )
                 }
                 modelClass.isAssignableFrom(AddGiftViewModel::class.java) -> {
@@ -222,6 +228,12 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
                     } ?: BudgetEditorMode.Create
                     BudgetEditorViewModel(mode, session, budgetRepository)
                 }
+                modelClass.isAssignableFrom(ThanksComposerViewModel::class.java) -> {
+                    val route = extras.route<ThanksComposerRoute>()
+                    ThanksComposerViewModel(
+                        UUID.fromString(route.itemId), session, itemRepository, thanksRepository, imageUploader, itemNotifier,
+                    )
+                }
                 modelClass.isAssignableFrom(EventEditorViewModel::class.java) -> {
                     val route = extras.route<EventEditorRoute>()
                     val mode = route.eventId?.let { EventEditorMode.Edit(UUID.fromString(it)) } ?: EventEditorMode.Create
@@ -248,7 +260,9 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
                 modelClass.isAssignableFrom(PurchasesViewModel::class.java) ->
                     PurchasesViewModel(
                         session, purchaseRepository, itemRepository, reservationRepository, potRepository, currencyService.rates,
+                        thanksRepository,
                     )
+                modelClass.isAssignableFrom(ThanksInboxViewModel::class.java) -> ThanksInboxViewModel(thanksRepository)
                 modelClass.isAssignableFrom(BudgetsViewModel::class.java) ->
                     BudgetsViewModel(session, budgetRepository, currencyService.rates)
                 modelClass.isAssignableFrom(PendingIdeasViewModel::class.java) ->

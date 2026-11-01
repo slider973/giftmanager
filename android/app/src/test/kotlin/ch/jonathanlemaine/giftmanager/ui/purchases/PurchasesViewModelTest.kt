@@ -8,6 +8,7 @@ import ch.jonathanlemaine.giftmanager.data.FakePurchaseRepository
 import ch.jonathanlemaine.giftmanager.data.itemLink
 import ch.jonathanlemaine.giftmanager.data.myContribution
 import ch.jonathanlemaine.giftmanager.data.myReservation
+import ch.jonathanlemaine.giftmanager.data.thanksNote
 import ch.jonathanlemaine.giftmanager.ui.gifts.GiftsEnv
 import ch.jonathanlemaine.giftmanager.ui.gifts.giftsEnv
 import java.io.IOException
@@ -50,7 +51,24 @@ class PurchasesViewModelTest {
     }
 
     private fun TestScope.vm(s: Setup) =
-        PurchasesViewModel(s.env.session, s.purchases, s.env.items, s.env.reservations, s.env.pots, s.rates).also { runCurrent() }
+        PurchasesViewModel(s.env.session, s.purchases, s.env.items, s.env.reservations, s.env.pots, s.rates, s.env.thanks).also { runCurrent() }
+
+    @Test fun countsTheThanksReceived() = runTest {
+        val s = setup()
+        s.env.thanks.notes = listOf(thanksNote(1), thanksNote(2))
+        val vm = vm(s)
+        assertEquals(2, vm.uiState.value.thanksCount)
+    }
+
+    @Test fun aFailedThanksCountKeepsTheLastKnownWithoutAnError() = runTest {
+        val s = setup()
+        s.env.thanks.notes = listOf(thanksNote(1))
+        val vm = vm(s)
+        s.env.thanks.failure = IOException()
+        vm.refresh()
+        assertEquals(1, vm.uiState.value.thanksCount)
+        assertNull(vm.uiState.value.error)
+    }
 
     @Test fun loadsReservationsContributionsAndLinks() = runTest {
         val s = setup {

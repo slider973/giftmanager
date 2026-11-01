@@ -3,6 +3,7 @@ package ch.jonathanlemaine.giftmanager.ui.gifts
 import ch.jonathanlemaine.giftmanager.core.Fixtures
 import ch.jonathanlemaine.giftmanager.core.currency.ExchangeRates
 import ch.jonathanlemaine.giftmanager.core.error.GiftError
+import ch.jonathanlemaine.giftmanager.core.model.ItemDonor
 import ch.jonathanlemaine.giftmanager.core.model.ItemStatus
 import ch.jonathanlemaine.giftmanager.core.model.PotParticipant
 import ch.jonathanlemaine.giftmanager.core.model.ReservationState
@@ -10,6 +11,7 @@ import ch.jonathanlemaine.giftmanager.core.model.WishItem
 import ch.jonathanlemaine.giftmanager.core.session.uuid
 import ch.jonathanlemaine.giftmanager.data.itemLink
 import ch.jonathanlemaine.giftmanager.data.wishItem
+import java.io.IOException
 import java.math.BigDecimal
 import java.time.Instant
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +48,7 @@ class GiftDetailViewModelTest {
     private val leaItem = 2 // cadeau de Léa (mon enfant) : vue parent
 
     private fun TestScope.vm(env: GiftsEnv, n: Int) =
-        GiftDetailViewModel(uuid(700 + n), env.session, env.items, env.reservations, env.pots, env.notifier, Fixtures.clock)
+        GiftDetailViewModel(uuid(700 + n), env.session, env.items, env.reservations, env.pots, env.notifier, env.thanks, Fixtures.clock)
             .also { runCurrent() }
 
     private suspend fun TestScope.member(item: (Int) -> WishItem = { wishItem(it, childN = 3) }, setup: GiftsEnv.() -> Unit = {}): Pair<GiftsEnv, GiftDetailViewModel> {
@@ -207,6 +209,44 @@ class GiftDetailViewModelTest {
 
     // endregion
 
+    // region Donateurs (#75)
+
+    @Test fun parentSeesTheDonorsWhoRevealedThemselvesOnAReceivedGift() = runTest {
+        val (env, vm) = parent(item = { wishItem(it, childN = 1, status = null, owned = true) }) {
+            thanks.donors = listOf(ItemDonor("Mamie"), ItemDonor("Paul"))
+        }
+        assertEquals(listOf("Mamie", "Paul"), vm.uiState.value.donors.map { it.displayName })
+        assertEquals("Mamie et Paul", vm.uiState.value.donorNames)
+        assertEquals(1, env.thanks.donorCalls)
+    }
+
+    @Test fun donorsAreNotLoadedBeforeTheGiftIsReceived() = runTest {
+        val (env, vm) = parent { thanks.donors = listOf(ItemDonor("Mamie")) }
+        assertTrue(vm.uiState.value.donors.isEmpty())
+        assertEquals(0, env.thanks.donorCalls)
+    }
+
+    @Test fun donorsAreNeverLoadedForAMember() = runTest {
+        val (env, vm) = member(item = { wishItem(it, childN = 3, owned = true) }) { thanks.donors = listOf(ItemDonor("Mamie")) }
+        assertTrue(vm.uiState.value.donors.isEmpty())
+        assertEquals(0, env.thanks.donorCalls)
+    }
+
+    @Test fun donorsLoadAfterMarkingReceived() = runTest {
+        val (env, vm) = parent { thanks.donors = listOf(ItemDonor("Mamie")) }
+        vm.markReceived()
+        assertEquals("Mamie", vm.uiState.value.donorNames)
+        assertEquals(1, env.thanks.donorCalls)
+    }
+
+    @Test fun donorsFailureIsSilent() = runTest {
+        val (_, vm) = parent(item = { wishItem(it, childN = 1, status = null, owned = true) }) { thanks.donorsFailure = IOException() }
+        assertTrue(vm.uiState.value.donors.isEmpty())
+        assertNull(vm.uiState.value.error)
+    }
+
+    // endregion
+
     // region Suppression
 
     @Test fun deletingClosesTheSheet() = runTest {
@@ -324,7 +364,7 @@ class GiftDetailViewModelTest {
         }
         val flow = MutableStateFlow<ExchangeRates?>(null)
         val vm = GiftDetailViewModel(
-            uuid(700 + zoeItem), env.session, env.items, env.reservations, env.pots, env.notifier, Fixtures.clock, flow,
+            uuid(700 + zoeItem), env.session, env.items, env.reservations, env.pots, env.notifier, env.thanks, Fixtures.clock, flow,
         ).also { runCurrent() }
         val link = vm.uiState.value.links.single()
         assertEquals("CHF", vm.uiState.value.profileCurrency)

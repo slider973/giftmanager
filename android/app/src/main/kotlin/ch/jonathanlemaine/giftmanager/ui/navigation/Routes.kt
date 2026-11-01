@@ -101,6 +101,17 @@ data class AddGiftRoute(
     }
 }
 
+/**
+ * Rédaction d'un merci pour un cadeau reçu (#42, #75). Au niveau racine du NavHost : formulaire plein écran, ouvert
+ * depuis la fiche d'un cadeau de n'importe quel onglet.
+ */
+@Serializable
+data class ThanksComposerRoute(val itemId: String)
+
+/** Remerciements reçus pour les cadeaux que j'ai offerts. Racine du NavHost, rattachée à l'onglet Mes achats. */
+@Serializable
+data object ThanksInboxRoute
+
 /** Idées proposées pour mes enfants, en attente de mon verdict (#57, #73). */
 @Serializable
 data object PendingIdeasRoute
