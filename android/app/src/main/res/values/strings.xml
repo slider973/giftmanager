@@ -20,6 +20,7 @@
     <string name="sign_in_error_unavailable">Les services Google ne sont pas disponibles sur cet appareil.</string>
     <string name="sign_in_error_generic">La connexion avec Google a échoué. Réessaie.</string>
     <string name="sign_in_error_dismiss">Fermer</string>
+    <string name="sign_in_in_progress">Connexion en cours</string>
 
     <!-- Statuts d'un cadeau (StatusBadge) -->
     <string name="status_available">Disponible</string>

@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import ch.jonathanlemaine.giftmanager.R
 import ch.jonathanlemaine.giftmanager.core.model.GiftEventKind
 import ch.jonathanlemaine.giftmanager.core.model.PotProgress
+import ch.jonathanlemaine.giftmanager.ui.auth.GoogleSignInButton
 import ch.jonathanlemaine.giftmanager.ui.components.AvatarStack
 import ch.jonathanlemaine.giftmanager.ui.components.ChildAvatar
 import ch.jonathanlemaine.giftmanager.ui.components.CountryFlag
@@ -343,6 +344,8 @@ private fun ButtonsSection() = GallerySection(stringResource(R.string.gallery_se
     SecondaryButton("Ajouter à la liste", onClick = {}, leadingIcon = GiftIcons.Gift)
     TextLinkButton("Modifier les informations", onClick = {}, modifier = Modifier.align(Alignment.CenterHorizontally))
     FCPillLabel("Partager l'invitation", icon = GiftIcons.Share, modifier = Modifier.fcClickable(onClick = {}))
+    GoogleSignInButton(onClick = {})
+    GoogleSignInButton(onClick = {}, isLoading = true)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
