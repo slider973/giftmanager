@@ -24,6 +24,10 @@ import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorActions
 import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorScreen
 import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorViewModel
 import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetsViewModel
+import ch.jonathanlemaine.giftmanager.ui.childmode.ChildModeActions
+import ch.jonathanlemaine.giftmanager.ui.childmode.ChildModeEffects
+import ch.jonathanlemaine.giftmanager.ui.childmode.ChildModeScreen
+import ch.jonathanlemaine.giftmanager.ui.childmode.ChildModeViewModel
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorActions
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorScreen
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorViewModel
@@ -139,6 +143,8 @@ fun ChildGiftsDestination(
     onOpenItem: (UUID) -> Unit,
     /** Ouvre le formulaire d'ajout : enfant, type, événement affiché, cadeau déjà possédé. */
     onAdd: (childId: UUID, kind: WishKind, eventId: UUID?, owned: Boolean) -> Unit,
+    /** Ouvre le mode enfant sur la liste affichée : enfant, événement filtré (#75). */
+    onStartChildMode: (childId: UUID, eventId: UUID?) -> Unit,
 ) {
     val viewModel: ChildGiftsViewModel = viewModel(factory = viewModelFactory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -161,6 +167,7 @@ fun ChildGiftsDestination(
             onMove = viewModel::move,
             onRefresh = viewModel::refresh,
             onDismissError = viewModel::dismissError,
+            onStartChildMode = { state.child?.let { onStartChildMode(it.id, state.eventId) } },
         ),
     )
 }
@@ -275,6 +282,27 @@ fun ThanksComposerDestination(viewModelFactory: ViewModelProvider.Factory, onClo
             onPhotoRemoved = viewModel::onPhotoRemoved,
             onSend = viewModel::send,
             onDismissError = viewModel::dismissError,
+        ),
+    )
+}
+
+/**
+ * Mode enfant (#75) : plein écran, sans barre d'onglets. La sortie passe par « Quitter » maintenu puis la vérification
+ * de l'adulte ; l'écran se ferme une fois validée. Le retour système est consommé par [ChildModeEffects].
+ */
+@Composable
+fun ChildModeDestination(viewModelFactory: ViewModelProvider.Factory, onClose: () -> Unit) {
+    val viewModel: ChildModeViewModel = viewModel(factory = viewModelFactory)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(state.exited) { if (state.exited) onClose() }
+    ChildModeEffects()
+    ChildModeScreen(
+        state = state,
+        isAuthenticationAvailable = viewModel.isAuthenticationAvailable,
+        actions = ChildModeActions(
+            onToggleFavorite = viewModel::toggleFavorite,
+            onUnlock = viewModel::requestExit,
+            onDismissSaveFailed = viewModel::dismissSaveFailed,
         ),
     )
 }

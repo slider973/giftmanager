@@ -68,6 +68,7 @@ import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddViewModel
 import ch.jonathanlemaine.giftmanager.ui.navigation.AddGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildGiftsRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.ChildModeRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.DebugGallery
 import ch.jonathanlemaine.giftmanager.ui.navigation.EventDetailRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.EventEditorRoute
@@ -111,6 +112,7 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
     val mainViewModel: MainViewModel = viewModel(factory = viewModelFactory)
     val pendingInvite by mainViewModel.pendingInviteCode.collectAsStateWithLifecycle()
     val mainError by mainViewModel.error.collectAsStateWithLifecycle()
+    val childModeActive by mainViewModel.childModeActive.collectAsStateWithLifecycle()
 
     Scaffold(
         containerColor = GiftTheme.colors.background,
@@ -175,6 +177,7 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
                         onAdd = { childId, kind, eventId, owned ->
                             navController.navigate(AddGiftRoute(childId.toString(), kind.routeValue(), eventId?.toString(), owned, null))
                         },
+                        onStartChildMode = { childId, eventId -> navController.navigate(ChildModeRoute(childId.toString(), eventId?.toString())) },
                     )
                 }
                 composable<GiftDetailRoute> {
@@ -225,6 +228,7 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
                 composable<BudgetEditorRoute> { BudgetEditorDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
             }
             // Remerciements (#75) : racine du NavHost, hors des graphes d'onglets, ouverts depuis plusieurs onglets.
+            composable<ChildModeRoute> { ChildModeDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
             composable<ThanksComposerRoute> { ThanksComposerDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
             composable<ThanksInboxRoute> { ThanksInboxDestination(viewModelFactory, onBack = { navController.popBackStack() }) }
             composable<ProfileTab> {
@@ -268,7 +272,8 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
         )
     }
 
-    pendingInvite?.let { code ->
+    // Mode enfant : rien ne s'affiche devant l'enfant ; l'invitation et l'erreur restent en attente jusqu'à la sortie.
+    if (!childModeActive) pendingInvite?.let { code ->
         GiftAlertDialog(
             title = stringResource(R.string.invite_dialog_title),
             message = stringResource(R.string.invite_dialog_message, code),
@@ -278,7 +283,7 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
             dismissLabel = stringResource(R.string.cancel),
         )
     }
-    GiftErrorDialog(mainError, mainViewModel::dismissError)
+    if (!childModeActive) GiftErrorDialog(mainError, mainViewModel::dismissError)
 }
 
 private val MainTab.route: Any
@@ -301,7 +306,7 @@ private fun NavDestination.mainTab(): MainTab? = when {
 /** Formulaire plein écran (création / modification) : la barre d'onglets s'efface (Material : full-screen dialog). */
 private fun NavDestination.isFullScreenForm(): Boolean =
     hasRoute(ChildEditorRoute::class) || hasRoute(EventEditorRoute::class) || hasRoute(AddGiftRoute::class) ||
-        hasRoute(BudgetEditorRoute::class) || hasRoute(ThanksComposerRoute::class)
+        hasRoute(BudgetEditorRoute::class) || hasRoute(ThanksComposerRoute::class) || hasRoute(ChildModeRoute::class)
 
 private fun WishKind.routeValue(): String = if (this == WishKind.IDEA) AddGiftRoute.KIND_IDEA else AddGiftRoute.KIND_WISH
 
