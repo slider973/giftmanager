@@ -14,7 +14,14 @@ data object FamilyHome
 @Serializable
 data object Search
 
-/** « Mes achats » à la place de « Notifications » : on suit iOS (#74). */
+/**
+ * Onglet « Mes achats » à la place de « Notifications » : on suit iOS (#74). Graphe imbriqué : la liste
+ * ([Purchases]), la fiche d'un cadeau ([PurchaseGiftRoute]) et l'éditeur de budget ([BudgetEditorRoute]).
+ */
+@Serializable
+data object PurchasesGraph
+
+/** Mes achats et mes budgets (départ du graphe [PurchasesGraph]). */
 @Serializable
 data object Purchases
 
@@ -52,7 +59,29 @@ data class ChildGiftsRoute(val childId: String, val eventId: String?, val readOn
  * courante) : c'est le point d'entrée des notifications (#76, #77).
  */
 @Serializable
-data class GiftDetailRoute(val itemId: String)
+data class GiftDetailRoute(val itemId: String) {
+    companion object {
+        /** Nom de l'argument partagé avec [PurchaseGiftRoute] : le ViewModel de la fiche le lit par ce nom. */
+        const val ITEM_ID_ARG = "itemId"
+    }
+}
+
+/** Fiche d'un cadeau ouverte depuis « Mes achats » (#74) : même écran que [GiftDetailRoute], dans l'onglet Mes achats. */
+@Serializable
+data class PurchaseGiftRoute(val itemId: String)
+
+/**
+ * Définir ([budgetId] `null`) ou modifier un budget (#74). Les autres champs décrivent le budget édité : périmètre,
+ * [amount] (texte décimal, « 200.50 ») et devise. Formulaire plein écran.
+ */
+@Serializable
+data class BudgetEditorRoute(
+    val budgetId: String? = null,
+    val childId: String? = null,
+    val eventId: String? = null,
+    val amount: String? = null,
+    val currency: String? = null,
+)
 
 /**
  * Ajout (`itemId == null`) ou modification d'un cadeau. [kind] vaut « wish » ou « idea » ([KIND_WISH], [KIND_IDEA]) ;

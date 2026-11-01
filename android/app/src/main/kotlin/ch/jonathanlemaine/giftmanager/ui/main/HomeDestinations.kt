@@ -14,9 +14,16 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.jonathanlemaine.giftmanager.GiftManagerApp
+import ch.jonathanlemaine.giftmanager.core.budgets.Budget
+import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorActions
+import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorScreen
+import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorViewModel
+import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetsViewModel
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorActions
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorScreen
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorViewModel
@@ -42,6 +49,9 @@ import ch.jonathanlemaine.giftmanager.ui.gifts.JoinPotViewModel
 import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasActions
 import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasScreen
 import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasViewModel
+import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesActions
+import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesScreen
+import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesViewModel
 import java.util.UUID
 import kotlinx.coroutines.launch
 
@@ -279,6 +289,68 @@ fun AddGiftDestination(viewModelFactory: ViewModelProvider.Factory, onClose: () 
             onPhotoPicked = { uri -> scope.launch { resizer.resizedJpeg(uri)?.let(viewModel::onImagePicked) } },
             onAddLink = viewModel::addLink,
             onRemoveLink = viewModel::removeLink,
+        ),
+    )
+}
+
+/**
+ * « Mes achats » et « Budgets » (#74) : deux ViewModel, un écran. Les données se rechargent quand l'écran revient au
+ * premier plan (une réservation peut changer hors de l'app) et à chaque changement de cadeaux de la session.
+ */
+@Composable
+fun PurchasesDestination(
+    viewModelFactory: ViewModelProvider.Factory,
+    onOpenItem: (UUID) -> Unit,
+    onNewBudget: () -> Unit,
+    onEditBudget: (Budget) -> Unit,
+) {
+    val purchases: PurchasesViewModel = viewModel(factory = viewModelFactory)
+    val budgets: BudgetsViewModel = viewModel(factory = viewModelFactory)
+    val state by purchases.uiState.collectAsStateWithLifecycle()
+    val budgetsState by budgets.uiState.collectAsStateWithLifecycle()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        purchases.refresh()
+        budgets.refresh()
+    }
+    PurchasesScreen(
+        state = state,
+        budgets = budgetsState,
+        actions = PurchasesActions(
+            onOpenItem = onOpenItem,
+            onTogglePurchased = purchases::togglePurchased,
+            onCancelReservation = purchases::cancel,
+            onRequestLeave = purchases::requestLeave,
+            onConfirmLeave = purchases::confirmLeave,
+            onCancelLeave = purchases::cancelLeave,
+            onNewBudget = onNewBudget,
+            onEditBudget = onEditBudget,
+            onDismissError = {
+                purchases.dismissError()
+                budgets.dismissError()
+            },
+        ),
+    )
+}
+
+/** Formulaire d'un budget ; se ferme une fois enregistré ou supprimé. */
+@Composable
+fun BudgetEditorDestination(viewModelFactory: ViewModelProvider.Factory, onClose: () -> Unit) {
+    val viewModel: BudgetEditorViewModel = viewModel(factory = viewModelFactory)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(state.finished) { if (state.finished) onClose() }
+    BudgetEditorScreen(
+        state = state,
+        actions = BudgetEditorActions(
+            onChildChange = viewModel::onChildChange,
+            onEventChange = viewModel::onEventChange,
+            onAmountChange = viewModel::onAmountChange,
+            onCurrencyChange = viewModel::onCurrencyChange,
+            onSave = viewModel::save,
+            onRequestDelete = viewModel::requestDelete,
+            onCancelDelete = viewModel::cancelDelete,
+            onDelete = viewModel::delete,
+            onDismissError = viewModel::dismissError,
+            onClose = onClose,
         ),
     )
 }

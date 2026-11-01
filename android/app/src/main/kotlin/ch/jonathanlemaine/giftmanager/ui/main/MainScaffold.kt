@@ -76,7 +76,10 @@ import ch.jonathanlemaine.giftmanager.ui.navigation.GiftDetailRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.HomeGraph
 import ch.jonathanlemaine.giftmanager.ui.navigation.PendingIdeasRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ProfileTab
+import ch.jonathanlemaine.giftmanager.ui.navigation.BudgetEditorRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.PurchaseGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.Purchases
+import ch.jonathanlemaine.giftmanager.ui.navigation.PurchasesGraph
 import ch.jonathanlemaine.giftmanager.ui.navigation.Search
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileActions
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileScreen
@@ -186,8 +189,35 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
             composable<Search> {
                 ComingSoonScreen(Illustration.MASCOT_THINKING, stringResource(R.string.tab_search), stringResource(R.string.search_coming_soon))
             }
-            composable<Purchases> {
-                ComingSoonScreen(Illustration.MASCOT_SLEEPING, stringResource(R.string.tab_purchases), stringResource(R.string.purchases_coming_soon))
+            navigation<PurchasesGraph>(startDestination = Purchases) {
+                composable<Purchases> {
+                    PurchasesDestination(
+                        viewModelFactory,
+                        onOpenItem = { navController.navigate(PurchaseGiftRoute(it.toString())) },
+                        onNewBudget = { navController.navigate(BudgetEditorRoute()) },
+                        onEditBudget = { budget ->
+                            navController.navigate(
+                                BudgetEditorRoute(
+                                    budgetId = budget.id.toString(),
+                                    childId = budget.childId?.toString(),
+                                    eventId = budget.eventId?.toString(),
+                                    amount = budget.amount.toPlainString(),
+                                    currency = budget.currency,
+                                ),
+                            )
+                        },
+                    )
+                }
+                composable<PurchaseGiftRoute> {
+                    GiftDetailDestination(
+                        viewModelFactory,
+                        onBack = { navController.popBackStack() },
+                        onEdit = { childId, kind, eventId, itemId ->
+                            navController.navigate(AddGiftRoute(childId.toString(), kind.routeValue(), eventId?.toString(), false, itemId.toString()))
+                        },
+                    )
+                }
+                composable<BudgetEditorRoute> { BudgetEditorDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
             }
             composable<ProfileTab> {
                 ProfileRoute(
@@ -247,7 +277,7 @@ private val MainTab.route: Any
     get() = when (this) {
         MainTab.Home -> HomeGraph
         MainTab.Search -> Search
-        MainTab.Purchases -> Purchases
+        MainTab.Purchases -> PurchasesGraph
         MainTab.Profile -> ProfileTab
     }
 
@@ -255,14 +285,15 @@ private val MainTab.route: Any
 private fun NavDestination.mainTab(): MainTab? = when {
     hierarchy.any { it.hasRoute(HomeGraph::class) } -> MainTab.Home
     hierarchy.any { it.hasRoute(Search::class) } -> MainTab.Search
-    hierarchy.any { it.hasRoute(Purchases::class) } -> MainTab.Purchases
+    hierarchy.any { it.hasRoute(PurchasesGraph::class) } -> MainTab.Purchases
     hierarchy.any { it.hasRoute(ProfileTab::class) || it.hasRoute(DebugGallery::class) } -> MainTab.Profile
     else -> null
 }
 
 /** Formulaire plein écran (création / modification) : la barre d'onglets s'efface (Material : full-screen dialog). */
 private fun NavDestination.isFullScreenForm(): Boolean =
-    hasRoute(ChildEditorRoute::class) || hasRoute(EventEditorRoute::class) || hasRoute(AddGiftRoute::class)
+    hasRoute(ChildEditorRoute::class) || hasRoute(EventEditorRoute::class) || hasRoute(AddGiftRoute::class) ||
+        hasRoute(BudgetEditorRoute::class)
 
 private fun WishKind.routeValue(): String = if (this == WishKind.IDEA) AddGiftRoute.KIND_IDEA else AddGiftRoute.KIND_WISH
 

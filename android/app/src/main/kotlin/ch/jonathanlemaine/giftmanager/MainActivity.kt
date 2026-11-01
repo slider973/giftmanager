@@ -5,8 +5,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import ch.jonathanlemaine.giftmanager.ui.navigation.AppNavHost
 import ch.jonathanlemaine.giftmanager.ui.theme.GiftManagerTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val container get() = (application as GiftManagerApp).container
@@ -17,6 +21,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // Après une recréation (rotation), l'intent d'origine est déjà traité.
         if (savedInstanceState == null) handleInvite(intent)
+        // Taux de change indicatifs : lus du cache puis rafraîchis (au plus toutes les 6 h) à chaque retour au premier plan.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) { container.currencyService.refreshIfNeeded() }
+        }
         setContent {
             GiftManagerTheme {
                 AppNavHost(viewModelFactory = container.viewModelFactory)
