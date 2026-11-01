@@ -91,6 +91,7 @@ import ch.jonathanlemaine.giftmanager.ui.navigation.ThanksComposerRoute
 import ch.jonathanlemaine.giftmanager.ui.family.GroupSetupViewModel
 import ch.jonathanlemaine.giftmanager.ui.main.MainViewModel
 import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesViewModel
+import ch.jonathanlemaine.giftmanager.ui.search.SearchViewModel
 import ch.jonathanlemaine.giftmanager.ui.onboarding.ProfileSetupViewModel
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileViewModel
 import ch.jonathanlemaine.giftmanager.ui.root.RootViewModel
@@ -199,7 +200,7 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
                     )
                 }
                 modelClass.isAssignableFrom(GiftDetailViewModel::class.java) -> {
-                    // Deux routes ouvrent la fiche (Accueil et Mes achats) : on lit l'argument commun par son nom.
+                    // Trois routes ouvrent la fiche (Accueil, Recherche et Mes achats) : on lit l'argument commun par son nom.
                     val itemId = checkNotNull(extras.createSavedStateHandle().get<String>(GiftDetailRoute.ITEM_ID_ARG)) { "Fiche sans cadeau" }
                     GiftDetailViewModel(
                         UUID.fromString(itemId), session, itemRepository, reservationRepository, potRepository, itemNotifier,
@@ -292,6 +293,7 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
                         session, purchaseRepository, itemRepository, reservationRepository, potRepository, currencyService.rates,
                         thanksRepository,
                     )
+                modelClass.isAssignableFrom(SearchViewModel::class.java) -> SearchViewModel(session, itemRepository)
                 modelClass.isAssignableFrom(ThanksInboxViewModel::class.java) -> ThanksInboxViewModel(thanksRepository)
                 modelClass.isAssignableFrom(BudgetsViewModel::class.java) ->
                     BudgetsViewModel(session, budgetRepository, currencyService.rates)

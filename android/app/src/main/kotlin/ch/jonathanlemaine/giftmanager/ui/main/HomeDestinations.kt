@@ -60,6 +60,9 @@ import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksInboxActions
 import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksInboxScreen
 import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksInboxViewModel
 import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesActions
+import ch.jonathanlemaine.giftmanager.ui.search.SearchActions
+import ch.jonathanlemaine.giftmanager.ui.search.SearchScreen
+import ch.jonathanlemaine.giftmanager.ui.search.SearchViewModel
 import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesScreen
 import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesViewModel
 import java.util.UUID
@@ -303,6 +306,24 @@ fun ChildModeDestination(viewModelFactory: ViewModelProvider.Factory, onClose: (
             onToggleFavorite = viewModel::toggleFavorite,
             onUnlock = viewModel::requestExit,
             onDismissSaveFailed = viewModel::dismissSaveFailed,
+        ),
+    )
+}
+
+/** Recherche dans les listes de la famille (#75) ; un résultat ouvre la fiche du cadeau dans l'onglet. */
+@Composable
+fun SearchDestination(viewModelFactory: ViewModelProvider.Factory, onOpenItem: (UUID) -> Unit) {
+    val viewModel: SearchViewModel = viewModel(factory = viewModelFactory)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    SearchScreen(
+        state = state,
+        actions = SearchActions(
+            onQueryChange = viewModel::onQueryChange,
+            onToggleOnlyAvailable = viewModel::toggleOnlyAvailable,
+            onSelectCountry = viewModel::selectCountry,
+            onOpenItem = { onOpenItem(it.id) },
+            onRefresh = viewModel::refresh,
+            onDismissError = viewModel::dismissError,
         ),
     )
 }

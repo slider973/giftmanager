@@ -11,6 +11,14 @@ data object HomeGraph
 @Serializable
 data object FamilyHome
 
+/**
+ * Onglet Recherche (#75) : graphe imbriqué, comme Accueil et Mes achats. La liste des résultats ([Search]) et la fiche
+ * d'un cadeau ([SearchGiftDetailRoute]), pour que l'onglet garde sa pile.
+ */
+@Serializable
+data object SearchGraph
+
+/** Recherche dans les listes de la famille (départ du graphe [SearchGraph]). */
 @Serializable
 data object Search
 
@@ -61,7 +69,7 @@ data class ChildGiftsRoute(val childId: String, val eventId: String?, val readOn
 @Serializable
 data class GiftDetailRoute(val itemId: String) {
     companion object {
-        /** Nom de l'argument partagé avec [PurchaseGiftRoute] : le ViewModel de la fiche le lit par ce nom. */
+        /** Nom de l'argument partagé avec [PurchaseGiftRoute] et [SearchGiftDetailRoute] : le ViewModel de la fiche le lit par ce nom. */
         const val ITEM_ID_ARG = "itemId"
     }
 }
@@ -69,6 +77,10 @@ data class GiftDetailRoute(val itemId: String) {
 /** Fiche d'un cadeau ouverte depuis « Mes achats » (#74) : même écran que [GiftDetailRoute], dans l'onglet Mes achats. */
 @Serializable
 data class PurchaseGiftRoute(val itemId: String)
+
+/** Fiche d'un cadeau ouverte depuis la recherche (#75) : même écran que [GiftDetailRoute], dans l'onglet Recherche. */
+@Serializable
+data class SearchGiftDetailRoute(val itemId: String)
 
 /**
  * Définir ([budgetId] `null`) ou modifier un budget (#74). Les autres champs décrivent le budget édité : périmètre,

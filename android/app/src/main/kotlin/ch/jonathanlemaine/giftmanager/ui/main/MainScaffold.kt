@@ -55,7 +55,6 @@ import ch.jonathanlemaine.giftmanager.ui.components.FCNotice
 import ch.jonathanlemaine.giftmanager.ui.components.FCNoticeTone
 import ch.jonathanlemaine.giftmanager.ui.components.GiftIcons
 import ch.jonathanlemaine.giftmanager.ui.components.GiftPreviews
-import ch.jonathanlemaine.giftmanager.ui.components.Illustration
 import ch.jonathanlemaine.giftmanager.ui.components.PreviewFrame
 import ch.jonathanlemaine.giftmanager.ui.components.PrimaryButton
 import ch.jonathanlemaine.giftmanager.ui.debug.DebugEntryPoints
@@ -82,6 +81,8 @@ import ch.jonathanlemaine.giftmanager.ui.navigation.PurchaseGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.Purchases
 import ch.jonathanlemaine.giftmanager.ui.navigation.PurchasesGraph
 import ch.jonathanlemaine.giftmanager.ui.navigation.Search
+import ch.jonathanlemaine.giftmanager.ui.navigation.SearchGiftDetailRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.SearchGraph
 import ch.jonathanlemaine.giftmanager.ui.navigation.ThanksComposerRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ThanksInboxRoute
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileActions
@@ -192,8 +193,20 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
                 }
                 composable<AddGiftRoute> { AddGiftDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
             }
-            composable<Search> {
-                ComingSoonScreen(Illustration.MASCOT_THINKING, stringResource(R.string.tab_search), stringResource(R.string.search_coming_soon))
+            navigation<SearchGraph>(startDestination = Search) {
+                composable<Search> {
+                    SearchDestination(viewModelFactory, onOpenItem = { navController.navigate(SearchGiftDetailRoute(it.toString())) })
+                }
+                composable<SearchGiftDetailRoute> {
+                    GiftDetailDestination(
+                        viewModelFactory,
+                        onBack = { navController.popBackStack() },
+                        onEdit = { childId, kind, eventId, itemId ->
+                            navController.navigate(AddGiftRoute(childId.toString(), kind.routeValue(), eventId?.toString(), false, itemId.toString()))
+                        },
+                        onThank = { navController.navigate(ThanksComposerRoute(it.toString())) },
+                    )
+                }
             }
             navigation<PurchasesGraph>(startDestination = Purchases) {
                 composable<Purchases> {
@@ -289,7 +302,7 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
 private val MainTab.route: Any
     get() = when (this) {
         MainTab.Home -> HomeGraph
-        MainTab.Search -> Search
+        MainTab.Search -> SearchGraph
         MainTab.Purchases -> PurchasesGraph
         MainTab.Profile -> ProfileTab
     }
@@ -297,7 +310,7 @@ private val MainTab.route: Any
 /** Onglet qui contient [this] ; `null` hors onglets (galerie de debug, ouverte depuis Profil → Profil). */
 private fun NavDestination.mainTab(): MainTab? = when {
     hierarchy.any { it.hasRoute(HomeGraph::class) } -> MainTab.Home
-    hierarchy.any { it.hasRoute(Search::class) } -> MainTab.Search
+    hierarchy.any { it.hasRoute(SearchGraph::class) } -> MainTab.Search
     hierarchy.any { it.hasRoute(PurchasesGraph::class) || it.hasRoute(ThanksInboxRoute::class) } -> MainTab.Purchases
     hierarchy.any { it.hasRoute(ProfileTab::class) || it.hasRoute(DebugGallery::class) } -> MainTab.Profile
     else -> null

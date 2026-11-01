@@ -153,7 +153,6 @@
     <string name="tab_profile">Profil</string>
     <string name="tab_add_description">Ajouter un cadeau</string>
     <string name="coming_soon_title">Bientôt ici</string>
-    <string name="search_coming_soon">Tu pourras bientôt chercher un cadeau dans toutes les listes de la famille.</string>
     <string name="add_sheet_title">Ajouter un cadeau</string>
     <string name="add_sheet_notice">Les idées restent invisibles pour les parents de l\'enfant.</string>
     <string name="invite_dialog_title">Rejoindre une famille ?</string>
@@ -582,4 +581,14 @@
     <string name="child_mode_save_failed">Oups, ce cœur n\'a pas été enregistré. Réessaie !</string>
     <string name="child_mode_auth_title">Quitter le mode enfant</string>
     <string name="child_mode_auth_subtitle">Réservé aux adultes</string>
+
+    <!-- Recherche (#75) -->
+    <string name="search_field_label">Cadeau, enfant…</string>
+    <string name="search_loading">Chargement des listes…</string>
+    <string name="search_filter_available">Disponibles</string>
+    <string name="search_filter_all_countries">Tous pays</string>
+    <string name="search_empty_title">Aucun résultat</string>
+    <string name="search_empty_filters">Retire un filtre pour voir plus de cadeaux.</string>
+    <string name="search_empty_query">Essaie un autre mot ou retire les filtres.</string>
+    <string name="search_group_description">%1$s, %2$d cadeaux</string>
 </resources>

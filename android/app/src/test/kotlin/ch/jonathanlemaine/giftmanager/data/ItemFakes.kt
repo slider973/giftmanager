@@ -53,6 +53,9 @@ class FakeItemRepository : ItemRepository {
     val items = mutableListOf<WishItem>()
     val itemLinks = mutableListOf<ItemLink>()
     var failure: Throwable? = null
+
+    /** Enfants dont la liste échoue (les autres répondent) : un seul enfant en panne. */
+    val failingChildren = mutableSetOf<UUID>()
     var audience = 0
     var pending = listOf<PendingIdea>()
 
@@ -85,6 +88,7 @@ class FakeItemRepository : ItemRepository {
         childItemsCalls++
         lastEventFilter = eventId
         maybeFail()
+        if (childId in failingChildren) throw java.io.IOException("liste indisponible")
         return items.filter { it.childId == childId && (kind == null || it.kind == kind) && (eventId == null || it.eventId == eventId || it.eventId == null) }
     }
 
