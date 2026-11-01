@@ -1,0 +1,3 @@
+# Fins de ligne des scripts Gradle
+android/gradlew text eol=lf
+*.bat text eol=crlf
