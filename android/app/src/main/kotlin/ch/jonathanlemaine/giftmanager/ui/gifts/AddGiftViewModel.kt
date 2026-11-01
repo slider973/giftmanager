@@ -101,6 +101,8 @@ class AddGiftViewModel(
     private val notifier: ItemNotifier,
     private val previews: LinkPreviewService,
     previewDebounceMs: Long = PREVIEW_DEBOUNCE_MS,
+    /** Lien partagé depuis une autre app (#79) : pré-remplit la création et lance l'aperçu. */
+    initialUrl: String? = null,
 ) : ViewModel() {
     private val _local = MutableStateFlow(
         AddGiftUiState(
@@ -142,6 +144,8 @@ class AddGiftViewModel(
             viewModelScope.launch { loadExisting(itemId) }
         } else {
             viewModelScope.launch { loadAudience() }
+            // Après la mise en place des flux : l'aperçu part avec le délai habituel.
+            initialUrl?.let(::onUrlChange)
         }
     }
 

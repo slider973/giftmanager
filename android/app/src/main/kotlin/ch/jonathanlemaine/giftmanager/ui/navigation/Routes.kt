@@ -106,6 +106,8 @@ data class AddGiftRoute(
     val eventId: String?,
     val owned: Boolean,
     val itemId: String?,
+    /** Lien partagé depuis une autre app (#79) : pré-remplit la création. */
+    val url: String? = null,
 ) {
     companion object {
         const val KIND_WISH = "wish"
