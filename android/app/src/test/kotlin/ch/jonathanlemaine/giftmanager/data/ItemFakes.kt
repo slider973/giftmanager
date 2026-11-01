@@ -147,6 +147,8 @@ class FakeItemRepository : ItemRepository {
     override suspend fun reviewIdea(itemId: UUID, decision: IdeaReview, note: String?) {
         maybeFail()
         reviews += Triple(itemId, decision, note)
+        // Écriture « serveur » : l'idée n'est plus en attente.
+        pending = pending.filterNot { it.id == itemId }
     }
 }
 
@@ -171,8 +173,12 @@ class FakePotRepository : PotRepository {
     var participants = listOf<PotParticipant>()
     var failure: Throwable? = null
 
+    /** Participations reçues : cadeau, montant, devise. */
+    val joined = mutableListOf<Triple<UUID, BigDecimal, String>>()
+
     override suspend fun join(itemId: UUID, amount: BigDecimal, currency: String) {
         calls += "join"
+        joined += Triple(itemId, amount, currency)
         failure?.let { throw it }
     }
 

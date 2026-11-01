@@ -3,6 +3,7 @@ package ch.jonathanlemaine.giftmanager.ui.family
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.jonathanlemaine.giftmanager.core.error.GiftError
+import ch.jonathanlemaine.giftmanager.core.error.runCatchingCancellable
 import ch.jonathanlemaine.giftmanager.core.model.Child
 import ch.jonathanlemaine.giftmanager.core.model.FamilyGroup
 import ch.jonathanlemaine.giftmanager.core.model.GiftEvent
@@ -16,10 +17,12 @@ import ch.jonathanlemaine.giftmanager.core.session.children
 import ch.jonathanlemaine.giftmanager.core.session.currentEvent
 import ch.jonathanlemaine.giftmanager.core.session.pastEvents
 import ch.jonathanlemaine.giftmanager.core.session.upcomingEvents
+import ch.jonathanlemaine.giftmanager.data.ItemRepository
 import java.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -82,6 +85,8 @@ data class FamilyHomeUiState(
     val inviteMessage: String? = null,
     val showJoinDialog: Boolean = false,
     val joinCode: String = "",
+    /** Idées proposées pour mes enfants et en attente de mon verdict (#57) : bandeau « N idées attendent ton avis ». */
+    val pendingIdeasCount: Int = 0,
     val isRefreshing: Boolean = false,
     val isBusy: Boolean = false,
     val error: GiftError? = null,
@@ -92,6 +97,7 @@ data class FamilyHomeUiState(
 /** « Notre famille » : événements, membres et paramètres (iOS : `FamilyHomeView`). */
 class FamilyHomeViewModel(
     private val session: AppSession,
+    private val items: ItemRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
     private data class Local(
@@ -99,6 +105,7 @@ class FamilyHomeViewModel(
         val renameEdit: Pair<UUID, String>? = null,
         val showJoinDialog: Boolean = false,
         val joinCode: String = "",
+        val pendingIdeasCount: Int = 0,
         val isRefreshing: Boolean = false,
         val isBusy: Boolean = false,
         val error: GiftError? = null,
@@ -143,11 +150,23 @@ class FamilyHomeViewModel(
             inviteMessage = group?.let(InviteLink::message),
             showJoinDialog = l.showJoinDialog,
             joinCode = l.joinCode,
+            pendingIdeasCount = l.pendingIdeasCount,
             isRefreshing = l.isRefreshing,
             isBusy = l.isBusy,
             error = l.error,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, FamilyHomeUiState())
+
+    init {
+        // Au départ, puis à chaque changement de cadeaux (un verdict en est un).
+        viewModelScope.launch { session.itemsRevision.collectLatest { loadPendingIdeas() } }
+    }
+
+    /** Le bandeau est un confort : un échec garde le dernier compte sans déranger. */
+    private suspend fun loadPendingIdeas() {
+        runCatchingCancellable { items.pendingIdeas().size }
+            .onSuccess { count -> local.update { it.copy(pendingIdeasCount = count) } }
+    }
 
     fun selectTab(tab: Int) = local.update { it.copy(tab = tab.coerceIn(0, 2)) }
 
@@ -173,6 +192,7 @@ class FamilyHomeViewModel(
         local.update { it.copy(isRefreshing = true) }
         viewModelScope.launch {
             val failure = session.refreshGroupData().exceptionOrNull()
+            loadPendingIdeas()
             local.update { it.copy(isRefreshing = false, error = failure?.let(GiftError::from) ?: it.error) }
         }
     }
