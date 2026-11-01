@@ -18,6 +18,7 @@ import ch.jonathanlemaine.giftmanager.data.ItemRepository
 import ch.jonathanlemaine.giftmanager.data.PotRepository
 import ch.jonathanlemaine.giftmanager.data.PurchaseRepository
 import ch.jonathanlemaine.giftmanager.data.ReservationRepository
+import ch.jonathanlemaine.giftmanager.data.ThanksRepository
 import java.util.UUID
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -46,6 +47,8 @@ data class PurchasesUiState(
     /** Faux jusqu'à la fin du premier chargement (réussi ou non) : l'écran affiche un indicateur. */
     val hasLoaded: Boolean = false,
     val isRefreshing: Boolean = false,
+    /** Remerciements reçus pour mes cadeaux (#42, #75) : donne la bannière qui ouvre la boîte. */
+    val thanksCount: Int = 0,
     /** Une action (acheté, annuler, quitter) est en cours. */
     val isWorking: Boolean = false,
     /** Participation dont on demande confirmation avant de la quitter. */
@@ -106,6 +109,7 @@ class PurchasesViewModel(
     private val pots: PotRepository,
     /** Taux de change courants (`CurrencyService.rates`). */
     private val rates: StateFlow<ExchangeRates?>,
+    private val thanks: ThanksRepository,
 ) : ViewModel() {
     private data class Local(
         val reservations: List<MyReservation> = emptyList(),
@@ -113,6 +117,7 @@ class PurchasesViewModel(
         val links: Map<UUID, List<ItemLink>> = emptyMap(),
         val hasLoaded: Boolean = false,
         val isRefreshing: Boolean = false,
+        val thanksCount: Int = 0,
         val isWorking: Boolean = false,
         val leaving: MyContribution? = null,
         val error: GiftError? = null,
@@ -134,6 +139,7 @@ class PurchasesViewModel(
         rates = r,
         hasLoaded = l.hasLoaded,
         isRefreshing = l.isRefreshing,
+        thanksCount = l.thanksCount,
         isWorking = l.isWorking,
         leaving = l.leaving,
         error = l.error,
@@ -176,6 +182,8 @@ class PurchasesViewModel(
         }.onFailure { failure ->
             local.update { it.copy(hasLoaded = true, isRefreshing = false, error = GiftError.from(failure)) }
         }
+        // Le décompte des remerciements est un plus : un échec garde le dernier connu, sans erreur.
+        runCatchingCancellable { thanks.myThanks().size }.onSuccess { count -> local.update { it.copy(thanksCount = count) } }
     }
 
     // region Actions

@@ -30,6 +30,10 @@ class RpcTest {
         assertEquals("my_contributions", Rpc.MY_CONTRIBUTIONS)
         assertEquals("my_budgets", Rpc.MY_BUDGETS)
         assertEquals("set_budget", Rpc.SET_BUDGET)
+        assertEquals("send_thanks", Rpc.SEND_THANKS)
+        assertEquals("my_thanks", Rpc.MY_THANKS)
+        assertEquals("reveal_myself", Rpc.REVEAL_MYSELF)
+        assertEquals("item_donors", Rpc.ITEM_DONORS)
     }
 
     @Test fun parameterNames() {
@@ -47,6 +51,9 @@ class RpcTest {
         assertEquals("p_currency", Rpc.P_CURRENCY)
         assertEquals("p_decision", Rpc.P_DECISION)
         assertEquals("p_note", Rpc.P_NOTE)
+        assertEquals("p_message", Rpc.P_MESSAGE)
+        assertEquals("p_photo_url", Rpc.P_PHOTO_URL)
+        assertEquals("p_reveal", Rpc.P_REVEAL)
     }
 
     @Test fun everyNameExistsInTheMigrations() {
@@ -59,10 +66,12 @@ class RpcTest {
             Rpc.ENSURE_BIRTHDAY_EVENTS, Rpc.CHILD_ITEMS, Rpc.RESERVE_ITEM, Rpc.CANCEL_RESERVATION,
             Rpc.SET_RESERVATION_PURCHASED, Rpc.JOIN_POT, Rpc.LEAVE_POT, Rpc.POT_PARTICIPANTS, Rpc.REVIEW_IDEA,
             Rpc.PENDING_IDEAS, Rpc.IDEA_AUDIENCE, Rpc.MY_RESERVATIONS, Rpc.MY_CONTRIBUTIONS, Rpc.MY_BUDGETS, Rpc.SET_BUDGET,
+            Rpc.SEND_THANKS, Rpc.MY_THANKS, Rpc.REVEAL_MYSELF, Rpc.ITEM_DONORS,
         ).forEach { assert("function public.$it(" in sql) { it }; }
         listOf(
             Rpc.P_NAME, Rpc.P_HOUSEHOLD_NAME, Rpc.P_COUNTRY, Rpc.P_CODE, Rpc.P_GROUP, Rpc.P_EVENT, Rpc.P_CHILD, Rpc.P_KIND,
             Rpc.P_ITEM, Rpc.P_PURCHASED, Rpc.P_AMOUNT, Rpc.P_CURRENCY, Rpc.P_DECISION, Rpc.P_NOTE,
+            Rpc.P_MESSAGE, Rpc.P_PHOTO_URL, Rpc.P_REVEAL,
         ).forEach { assert(it in sql) { it } }
     }
 
@@ -87,6 +96,10 @@ class RpcTest {
         assertParams(signature(Rpc.MY_CONTRIBUTIONS))
         assertParams(signature(Rpc.MY_BUDGETS))
         assertParams(signature(Rpc.SET_BUDGET), Rpc.P_CHILD, Rpc.P_EVENT, Rpc.P_AMOUNT, Rpc.P_CURRENCY)
+        assertParams(signature(Rpc.SEND_THANKS), Rpc.P_ITEM, Rpc.P_MESSAGE, Rpc.P_PHOTO_URL)
+        assertParams(signature(Rpc.MY_THANKS))
+        assertParams(signature(Rpc.REVEAL_MYSELF), Rpc.P_ITEM, Rpc.P_REVEAL)
+        assertParams(signature(Rpc.ITEM_DONORS), Rpc.P_ITEM)
     }
 
     private fun assertParams(signature: String, vararg expected: String) {

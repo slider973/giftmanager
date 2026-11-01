@@ -1,6 +1,7 @@
 package ch.jonathanlemaine.giftmanager.ui.main
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -24,6 +25,10 @@ import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorActions
 import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorScreen
 import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorViewModel
 import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetsViewModel
+import ch.jonathanlemaine.giftmanager.ui.childmode.ChildModeActions
+import ch.jonathanlemaine.giftmanager.ui.childmode.ChildModeEffects
+import ch.jonathanlemaine.giftmanager.ui.childmode.ChildModeScreen
+import ch.jonathanlemaine.giftmanager.ui.childmode.ChildModeViewModel
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorActions
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorScreen
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorViewModel
@@ -49,7 +54,16 @@ import ch.jonathanlemaine.giftmanager.ui.gifts.JoinPotViewModel
 import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasActions
 import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasScreen
 import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasViewModel
+import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksComposerActions
+import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksComposerScreen
+import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksComposerViewModel
+import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksInboxActions
+import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksInboxScreen
+import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksInboxViewModel
 import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesActions
+import ch.jonathanlemaine.giftmanager.ui.search.SearchActions
+import ch.jonathanlemaine.giftmanager.ui.search.SearchScreen
+import ch.jonathanlemaine.giftmanager.ui.search.SearchViewModel
 import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesScreen
 import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesViewModel
 import java.util.UUID
@@ -133,6 +147,8 @@ fun ChildGiftsDestination(
     onOpenItem: (UUID) -> Unit,
     /** Ouvre le formulaire d'ajout : enfant, type, événement affiché, cadeau déjà possédé. */
     onAdd: (childId: UUID, kind: WishKind, eventId: UUID?, owned: Boolean) -> Unit,
+    /** Ouvre le mode enfant sur la liste affichée : enfant, événement filtré (#75). */
+    onStartChildMode: (childId: UUID, eventId: UUID?) -> Unit,
 ) {
     val viewModel: ChildGiftsViewModel = viewModel(factory = viewModelFactory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -155,6 +171,7 @@ fun ChildGiftsDestination(
             onMove = viewModel::move,
             onRefresh = viewModel::refresh,
             onDismissError = viewModel::dismissError,
+            onStartChildMode = { state.child?.let { onStartChildMode(it.id, state.eventId) } },
         ),
     )
 }
@@ -170,6 +187,8 @@ fun GiftDetailDestination(
     onBack: () -> Unit,
     /** Ouvre le formulaire de modification : enfant, type, événement, cadeau. */
     onEdit: (childId: UUID, kind: WishKind, eventId: UUID?, itemId: UUID) -> Unit,
+    /** Ouvre la rédaction d'un merci pour ce cadeau (#75). */
+    onThank: (itemId: UUID) -> Unit,
 ) {
     val viewModel: GiftDetailViewModel = viewModel(factory = viewModelFactory)
     // Chaque ouverture de la feuille a son ViewModel (clé distincte) : une feuille fermée ne revient pas « terminée ».
@@ -179,6 +198,13 @@ fun GiftDetailDestination(
     LaunchedEffect(state.isClosed) { if (state.isClosed) onBack() }
     // La célébration (« Réservé ! ») est consommée dès qu'elle est affichée.
     LaunchedEffect(state.celebration) { if (state.celebration != null) viewModel.consumeCelebration() }
+    // « Reçu ! » vient de réussir : l'écran de remerciement s'ouvre, une seule fois.
+    LaunchedEffect(state.thanksRequested) {
+        if (state.thanksRequested) {
+            viewModel.consumeThanksRequest()
+            state.item?.let { onThank(it.id) }
+        }
+    }
     GiftDetailScreen(
         state = state,
         actions = GiftDetailActions(
@@ -197,6 +223,7 @@ fun GiftDetailDestination(
             onLeavePot = viewModel::leavePot,
             onDismissError = viewModel::dismissError,
             onToggleFavorite = viewModel::toggleFavorite,
+            onThank = { state.item?.let { onThank(it.id) } },
         ),
     )
     val itemId = state.item?.id
@@ -238,6 +265,85 @@ private fun JoinPotDestination(
             onSuggestion = viewModel::onSuggestion,
             onSave = viewModel::save,
             onDismissError = viewModel::dismissError,
+        ),
+    )
+}
+
+/** Rédaction d'un merci ; la photo choisie est redimensionnée en JPEG hors du fil principal, puis confiée au ViewModel. */
+@Composable
+fun ThanksComposerDestination(viewModelFactory: ViewModelProvider.Factory, onClose: () -> Unit) {
+    val viewModel: ThanksComposerViewModel = viewModel(factory = viewModelFactory)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(state.isClosed) { if (state.isClosed) onClose() }
+    val resizer = (LocalContext.current.applicationContext as GiftManagerApp).container.imageResizer
+    val scope = rememberCoroutineScope()
+    ThanksComposerScreen(
+        state = state,
+        actions = ThanksComposerActions(
+            onClose = onClose,
+            onMessageChange = viewModel::onMessageChange,
+            onPhotoPicked = { uri -> scope.launch { resizer.resizedJpeg(uri)?.let(viewModel::onPhotoPicked) } },
+            onPhotoRemoved = viewModel::onPhotoRemoved,
+            onSend = viewModel::send,
+            onDismissError = viewModel::dismissError,
+        ),
+    )
+}
+
+/**
+ * Mode enfant (#75) : plein écran, sans barre d'onglets. La sortie passe par « Quitter » maintenu puis la vérification
+ * de l'adulte ; l'écran se ferme une fois validée. Le retour système est consommé par [ChildModeEffects].
+ */
+@Composable
+fun ChildModeDestination(viewModelFactory: ViewModelProvider.Factory, onClose: () -> Unit) {
+    val viewModel: ChildModeViewModel = viewModel(factory = viewModelFactory)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(state.exited) { if (state.exited) onClose() }
+    // Écran recréé (rotation) : l'invite de vérification liée à l'ancienne activité est perdue, on l'abandonne
+    // pour que l'adulte puisse recommencer. L'écran du code de l'appareil, lui, ne détruit pas la composition.
+    DisposableEffect(viewModel) { onDispose { viewModel.cancelAuthentication() } }
+    ChildModeEffects()
+    ChildModeScreen(
+        state = state,
+        isAuthenticationAvailable = viewModel.isAuthenticationAvailable,
+        actions = ChildModeActions(
+            onToggleFavorite = viewModel::toggleFavorite,
+            onUnlock = viewModel::requestExit,
+            onDismissSaveFailed = viewModel::dismissSaveFailed,
+        ),
+    )
+}
+
+/** Recherche dans les listes de la famille (#75) ; un résultat ouvre la fiche du cadeau dans l'onglet. */
+@Composable
+fun SearchDestination(viewModelFactory: ViewModelProvider.Factory, onOpenItem: (UUID) -> Unit) {
+    val viewModel: SearchViewModel = viewModel(factory = viewModelFactory)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    SearchScreen(
+        state = state,
+        actions = SearchActions(
+            onQueryChange = viewModel::onQueryChange,
+            onToggleOnlyAvailable = viewModel::toggleOnlyAvailable,
+            onSelectCountry = viewModel::selectCountry,
+            onOpenItem = { onOpenItem(it.id) },
+            onRefresh = viewModel::refresh,
+            onDismissError = viewModel::dismissError,
+        ),
+    )
+}
+
+/** Remerciements reçus pour mes cadeaux (#75). */
+@Composable
+fun ThanksInboxDestination(viewModelFactory: ViewModelProvider.Factory, onBack: () -> Unit) {
+    val viewModel: ThanksInboxViewModel = viewModel(factory = viewModelFactory)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    ThanksInboxScreen(
+        state = state,
+        actions = ThanksInboxActions(
+            onBack = onBack,
+            onSetRevealed = viewModel::setRevealed,
+            onDismissError = viewModel::dismissError,
+            onRefresh = viewModel::refresh,
         ),
     )
 }
@@ -303,6 +409,7 @@ fun PurchasesDestination(
     onOpenItem: (UUID) -> Unit,
     onNewBudget: () -> Unit,
     onEditBudget: (Budget) -> Unit,
+    onOpenThanks: () -> Unit,
 ) {
     val purchases: PurchasesViewModel = viewModel(factory = viewModelFactory)
     val budgets: BudgetsViewModel = viewModel(factory = viewModelFactory)
@@ -324,6 +431,7 @@ fun PurchasesDestination(
             onCancelLeave = purchases::cancelLeave,
             onNewBudget = onNewBudget,
             onEditBudget = onEditBudget,
+            onOpenThanks = onOpenThanks,
             onDismissError = {
                 purchases.dismissError()
                 budgets.dismissError()

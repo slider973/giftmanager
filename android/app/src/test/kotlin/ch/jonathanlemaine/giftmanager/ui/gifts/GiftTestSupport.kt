@@ -11,6 +11,7 @@ import ch.jonathanlemaine.giftmanager.data.FakeItemRepository
 import ch.jonathanlemaine.giftmanager.data.FakeLinkPreviewService
 import ch.jonathanlemaine.giftmanager.data.FakePotRepository
 import ch.jonathanlemaine.giftmanager.data.FakeReservationRepository
+import ch.jonathanlemaine.giftmanager.data.FakeThanksRepository
 import ch.jonathanlemaine.giftmanager.data.auth.AuthState
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
@@ -25,6 +26,7 @@ class GiftsEnv(val f: SessionFixture) {
     val pots = FakePotRepository()
     val images = FakeImageUploader()
     val notifier = FakeItemNotifier()
+    val thanks = FakeThanksRepository()
     val previews = FakeLinkPreviewService()
 
     val session get() = f.session

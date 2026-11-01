@@ -10,9 +10,11 @@ import ch.jonathanlemaine.giftmanager.core.gifts.GiftActionReducer
 import ch.jonathanlemaine.giftmanager.core.gifts.GiftListLogic
 import ch.jonathanlemaine.giftmanager.core.gifts.ReservationActions
 import ch.jonathanlemaine.giftmanager.core.gifts.StoreCatalog
+import ch.jonathanlemaine.giftmanager.core.gifts.ThanksLogic
 import ch.jonathanlemaine.giftmanager.core.model.Child
 import ch.jonathanlemaine.giftmanager.core.model.DayDate
 import ch.jonathanlemaine.giftmanager.core.model.IdeaReview
+import ch.jonathanlemaine.giftmanager.core.model.ItemDonor
 import ch.jonathanlemaine.giftmanager.core.model.ItemLink
 import ch.jonathanlemaine.giftmanager.core.model.PotParticipant
 import ch.jonathanlemaine.giftmanager.core.model.PotProgress
@@ -26,6 +28,7 @@ import ch.jonathanlemaine.giftmanager.core.session.isParent
 import ch.jonathanlemaine.giftmanager.data.ItemNotifier
 import ch.jonathanlemaine.giftmanager.data.PotRepository
 import ch.jonathanlemaine.giftmanager.data.ReservationRepository
+import ch.jonathanlemaine.giftmanager.data.ThanksRepository
 import ch.jonathanlemaine.giftmanager.data.ItemRepository
 import java.time.Clock
 import java.util.UUID
@@ -68,6 +71,8 @@ data class GiftDetailUiState(
     val canMarkReceived: Boolean = false,
     /** « Dire merci » (#42) : un parent, sur un souhait reçu. */
     val canSendThanks: Boolean = false,
+    /** Donateurs qui se sont fait connaître (« Offert par Mamie »), chargés pour un parent sur un cadeau reçu. */
+    val donors: List<ItemDonor> = emptyList(),
     val isWorking: Boolean = false,
     val celebration: Celebration? = null,
     /** « Reçu ! » vient de réussir : l'écran de remerciement peut s'ouvrir. */
@@ -100,6 +105,9 @@ data class GiftDetailUiState(
     /** Cagnotte à afficher ; jamais pour un parent (le serveur ne renseigne rien non plus). */
     val potProgress: PotProgress? get() = if (isParentView) null else item?.let { PotProgress.make(it, links) }
 
+    /** « Mamie », « Mamie et Paul »… ; vide si aucun donateur ne s'est fait connaître. */
+    val donorNames: String get() = ThanksLogic.donorNames(donors.map { it.displayName })
+
     /** Verdict d'une idée, visible de son auteur et des parents (#57). */
     val ideaReview: IdeaReview? get() = item?.takeIf { it.kind == WishKind.IDEA }?.reviewStatus
 }
@@ -112,6 +120,7 @@ class GiftDetailViewModel(
     private val reservations: ReservationRepository,
     private val pots: PotRepository,
     private val notifier: ItemNotifier,
+    private val thanks: ThanksRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
     /** Taux de change courants (`CurrencyService.rates`) ; aucun par défaut. */
     private val rates: StateFlow<ExchangeRates?> = MutableStateFlow(null),
@@ -166,6 +175,7 @@ class GiftDetailViewModel(
                 )
             }
             loadParticipants()
+            loadDonors()
         }.onFailure { failure ->
             val error = GiftError.from(failure)
             _local.update { it.copy(isLoading = false, error = error, isClosed = error == GiftError.NotFound) }
@@ -229,6 +239,7 @@ class GiftDetailViewModel(
         items.setOwned(current.id, true)
         update(current.copy(owned = true))
         _local.update { it.copy(thanksRequested = true) }
+        loadDonors()
     }
 
     fun delete() = perform {
@@ -262,6 +273,20 @@ class GiftDetailViewModel(
         runCatchingCancellable { pots.participants(current.id) }
             .onSuccess { list -> _local.update { it.copy(participants = list) } }
             .onFailure { failure -> _local.update { it.copy(error = GiftError.from(failure)) } }
+    }
+
+    /**
+     * Donateurs qui se sont fait connaître : un parent, sur un cadeau reçu. Le serveur ne renvoie que ceux qui l'ont
+     * choisi ; un échec n'est pas signalé (la mention « Offert par » est un plus).
+     */
+    private suspend fun loadDonors() {
+        val current = item
+        if (current == null || !current.owned || !isParentView) {
+            _local.update { it.copy(donors = emptyList()) }
+            return
+        }
+        runCatchingCancellable { thanks.itemDonors(current.id) }
+            .onSuccess { list -> _local.update { it.copy(donors = list) } }
     }
 
     // endregion

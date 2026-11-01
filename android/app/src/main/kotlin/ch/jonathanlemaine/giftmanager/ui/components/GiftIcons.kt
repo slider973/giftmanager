@@ -5,6 +5,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -60,6 +62,10 @@ object GiftIcons {
     val Person: ImageVector get() = Icons.Filled.Person
     val Profile: ImageVector get() = Icons.Filled.AccountCircle
     val Mail: ImageVector get() = Icons.Filled.MailOutline
+    /** Enveloppe pleine (`envelope.fill`) : « Dire merci ». */
+    val MailFilled: ImageVector get() = Icons.Filled.Email
+    /** Envoyer (`paperplane.fill`), inversé en droite-à-gauche. */
+    val Send: ImageVector get() = Icons.AutoMirrored.Filled.Send
     val Info: ImageVector get() = Icons.Filled.Info
     val Edit: ImageVector get() = Icons.Filled.Edit
     val Delete: ImageVector get() = Icons.Filled.Delete

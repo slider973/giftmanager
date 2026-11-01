@@ -27,6 +27,9 @@ interface ItemNotifier {
 
     /** Informe l'auteur d'une idée du verdict de son parent (#57). */
     fun notifyIdeaReview(itemId: UUID, decision: IdeaReview)
+
+    /** Prévient les donateurs d'un cadeau qu'un merci les attend (#42, #75) ; le serveur choisit les destinataires. */
+    fun notifyThanks(itemId: UUID)
 }
 
 /** Aucune notification (écrans et tests qui n'en veulent pas). */
@@ -36,6 +39,8 @@ object NoItemNotifier : ItemNotifier {
     override fun notifyReservation(itemId: UUID) = Unit
 
     override fun notifyIdeaReview(itemId: UUID, decision: IdeaReview) = Unit
+
+    override fun notifyThanks(itemId: UUID) = Unit
 }
 
 class SupabaseItemNotifier(private val client: SupabaseClient, private val scope: CoroutineScope) : ItemNotifier {
@@ -44,6 +49,8 @@ class SupabaseItemNotifier(private val client: SupabaseClient, private val scope
     override fun notifyReservation(itemId: UUID) = send(reservationBody(itemId))
 
     override fun notifyIdeaReview(itemId: UUID, decision: IdeaReview) = send(ideaReviewBody(itemId, decision))
+
+    override fun notifyThanks(itemId: UUID) = send(thanksBody(itemId))
 
     private fun send(body: JsonObject) {
         scope.launch {
@@ -67,6 +74,11 @@ class SupabaseItemNotifier(private val client: SupabaseClient, private val scope
 
         fun reservationBody(itemId: UUID): JsonObject = buildJsonObject {
             put("type", "reservation")
+            put("item_id", itemId.toString())
+        }
+
+        fun thanksBody(itemId: UUID): JsonObject = buildJsonObject {
+            put("type", "thanks")
             put("item_id", itemId.toString())
         }
 

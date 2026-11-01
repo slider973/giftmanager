@@ -38,6 +38,12 @@ object Rpc {
     const val MY_BUDGETS = "my_budgets"
     const val SET_BUDGET = "set_budget"
 
+    // Remerciements (#75).
+    const val SEND_THANKS = "send_thanks"
+    const val MY_THANKS = "my_thanks"
+    const val REVEAL_MYSELF = "reveal_myself"
+    const val ITEM_DONORS = "item_donors"
+
     const val P_NAME = "p_name"
     const val P_HOUSEHOLD_NAME = "p_household_name"
     const val P_COUNTRY = "p_country"
@@ -52,6 +58,9 @@ object Rpc {
     const val P_CURRENCY = "p_currency"
     const val P_DECISION = "p_decision"
     const val P_NOTE = "p_note"
+    const val P_MESSAGE = "p_message"
+    const val P_PHOTO_URL = "p_photo_url"
+    const val P_REVEAL = "p_reveal"
 }
 
 /** Réponse d'une RPC qui renvoie un `uuid` : PostgREST le sérialise en chaîne JSON (`"3f2a…"`). */

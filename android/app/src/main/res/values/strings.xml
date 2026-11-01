@@ -153,7 +153,6 @@
     <string name="tab_profile">Profil</string>
     <string name="tab_add_description">Ajouter un cadeau</string>
     <string name="coming_soon_title">Bientôt ici</string>
-    <string name="search_coming_soon">Tu pourras bientôt chercher un cadeau dans toutes les listes de la famille.</string>
     <string name="add_sheet_title">Ajouter un cadeau</string>
     <string name="add_sheet_notice">Les idées restent invisibles pour les parents de l\'enfant.</string>
     <string name="invite_dialog_title">Rejoindre une famille ?</string>
@@ -531,4 +530,77 @@
     <string name="budget_delete_title">Supprimer ce budget ?</string>
     <string name="budget_delete_message">Tes réservations ne changent pas.</string>
     <string name="budget_delete_confirm">Supprimer</string>
+
+    <!-- Remerciements (#75) -->
+    <string name="gift_detail_say_thanks">Dire merci</string>
+    <string name="gift_detail_donors">Offert par %1$s</string>
+    <string name="gift_detail_thanks_anonymous">Ton message sera transmis à la personne qui l\'a offert, sans révéler qui c\'est.</string>
+    <string name="gift_detail_thanks_donors">Ton message sera transmis à toutes les personnes qui l\'ont offert.</string>
+    <string name="thanks_composer_title">Dire merci</string>
+    <string name="thanks_received_by">Reçu par %1$s</string>
+    <string name="thanks_privacy_notice">Ton message arrivera chez la personne qui a offert ce cadeau. Tu ne sauras pas qui c\'est, sauf si elle choisit de se faire connaître.</string>
+    <string name="thanks_message_label">Ton message</string>
+    <string name="thanks_counter">%1$d / %2$d</string>
+    <string name="thanks_counter_spoken">%1$d caractères sur %2$d</string>
+    <string name="thanks_photo_label">Photo (facultatif)</string>
+    <string name="thanks_photo_add">Ajouter une photo</string>
+    <string name="thanks_photo_attached">Photo jointe</string>
+    <string name="thanks_photo_remove">Retirer la photo</string>
+    <string name="thanks_photo_description">Photo jointe au remerciement</string>
+    <string name="thanks_send">Envoyer le merci</string>
+    <string name="thanks_sent_title">Merci envoyé !</string>
+    <string name="thanks_sent_message">Il arrivera chez la personne qui a offert « %1$s », sans révéler qui c\'est.</string>
+    <string name="thanks_done">Terminer</string>
+    <string name="thanks_inbox_title">Remerciements</string>
+    <string name="thanks_inbox_loading">Chargement des remerciements…</string>
+    <string name="thanks_inbox_empty_title">Aucun merci pour l\'instant</string>
+    <string name="thanks_inbox_empty_message">Après la fête, les parents peuvent remercier pour un cadeau : leur message arrivera ici.</string>
+    <string name="thanks_from">De %1$s</string>
+    <string name="thanks_from_parents">Des parents de %1$s</string>
+    <string name="thanks_for_gift">Pour « %1$s »</string>
+    <string name="thanks_reveal">Me faire connaître</string>
+    <string name="thanks_reveal_on">Les parents de %1$s savent que c\'est toi.</string>
+    <string name="thanks_reveal_off">Les parents ne savent pas que c\'est toi.</string>
+    <string name="thanks_banner_one">Un remerciement reçu</string>
+    <string name="thanks_banner_many">%1$d remerciements reçus</string>
+    <string name="thanks_open_inbox">Remerciements reçus</string>
+    <string name="thanks_open_inbox_count">%1$s, %2$d</string>
+    <string name="thanks_banner_message">Lis les messages des parents</string>
+
+    <!-- Mode enfant (#75) -->
+    <string name="child_mode_entry_title">Mode enfant</string>
+    <string name="child_mode_entry_message">%1$s choisit ses envies en grand, sans prix ni statut.</string>
+    <string name="child_mode_entry_action">ouvrir le mode enfant</string>
+    <string name="child_mode_title">Les envies de %1$s</string>
+    <string name="child_mode_subtitle">Touche le cœur des cadeaux dont tu as très envie !</string>
+    <string name="child_mode_empty_title">Pas encore d\'envies</string>
+    <string name="child_mode_empty_message">Avec ton parent, ajoute des cadeaux à ta liste.</string>
+    <string name="child_mode_error_title">Ta liste n\'a pas pu s\'afficher</string>
+    <string name="child_mode_error_message">Demande à un adulte de réessayer un peu plus tard.</string>
+    <string name="child_mode_hearts_one">%1$d cœur posé</string>
+    <string name="child_mode_hearts_many">%1$d cœurs posés</string>
+    <string name="child_mode_heart_add">poser un cœur</string>
+    <string name="child_mode_heart_remove">retirer le cœur</string>
+    <string name="child_mode_heart_state">Très envie</string>
+    <string name="child_mode_exit">Quitter</string>
+    <string name="child_mode_exit_holding">Maintiens…</string>
+    <string name="child_mode_exit_description">Quitter le mode enfant</string>
+    <string name="child_mode_exit_hint">Pour quitter, un adulte garde le doigt sur « Quitter » pendant 3 secondes.</string>
+    <string name="child_mode_save_failed">Oups, ce cœur n\'a pas été enregistré. Réessaie !</string>
+    <string name="child_mode_hint_dismiss">masquer le message</string>
+    <string name="child_mode_auth_title">Quitter le mode enfant</string>
+    <string name="child_mode_auth_subtitle">Réservé aux adultes</string>
+
+    <!-- Recherche (#75) -->
+    <string name="search_field_label">Cadeau, enfant…</string>
+    <string name="search_loading">Chargement des listes…</string>
+    <string name="search_filter_available">Disponibles</string>
+    <string name="search_filter_all_countries">Tous pays</string>
+    <string name="search_empty_title">Aucun résultat</string>
+    <string name="search_empty_filters">Retire un filtre pour voir plus de cadeaux.</string>
+    <string name="search_empty_query">Essaie un autre mot ou retire les filtres.</string>
+    <plurals name="search_group_description">
+        <item quantity="one">%1$s, %2$d cadeau</item>
+        <item quantity="other">%1$s, %2$d cadeaux</item>
+    </plurals>
 </resources>

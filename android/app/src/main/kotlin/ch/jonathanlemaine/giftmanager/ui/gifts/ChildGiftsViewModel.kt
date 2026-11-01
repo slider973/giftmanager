@@ -71,6 +71,13 @@ data class ChildGiftsUiState(
     /** Titre de l'événement filtré, ou `null` pour « Tous les cadeaux ». */
     val selectedEvent: GiftEvent? get() = selectableEvents.firstOrNull { it.id == eventId }
 
+    /**
+     * Entrée « Mode enfant » (#36, #75) : sur la liste d'un de mes enfants (pas celle d'un adulte), hors événement
+     * passé, quand il y a au moins une envie à parcourir.
+     */
+    val canStartChildMode: Boolean
+        get() = isParent && !readOnly && child?.isAdult == false && GiftListLogic.wishes(items).isNotEmpty()
+
     val addMode: AddMode? get() = GiftListLogic.addMode(isParent, tab, readOnly)
 
     val canReorder: Boolean get() = GiftListLogic.canReorder(isParent, tab, items, readOnly)

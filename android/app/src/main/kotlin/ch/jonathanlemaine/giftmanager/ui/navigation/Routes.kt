@@ -11,6 +11,14 @@ data object HomeGraph
 @Serializable
 data object FamilyHome
 
+/**
+ * Onglet Recherche (#75) : graphe imbriqué, comme Accueil et Mes achats. La liste des résultats ([Search]) et la fiche
+ * d'un cadeau ([SearchGiftDetailRoute]), pour que l'onglet garde sa pile.
+ */
+@Serializable
+data object SearchGraph
+
+/** Recherche dans les listes de la famille (départ du graphe [SearchGraph]). */
 @Serializable
 data object Search
 
@@ -61,7 +69,7 @@ data class ChildGiftsRoute(val childId: String, val eventId: String?, val readOn
 @Serializable
 data class GiftDetailRoute(val itemId: String) {
     companion object {
-        /** Nom de l'argument partagé avec [PurchaseGiftRoute] : le ViewModel de la fiche le lit par ce nom. */
+        /** Nom de l'argument partagé avec [PurchaseGiftRoute] et [SearchGiftDetailRoute] : le ViewModel de la fiche le lit par ce nom. */
         const val ITEM_ID_ARG = "itemId"
     }
 }
@@ -69,6 +77,10 @@ data class GiftDetailRoute(val itemId: String) {
 /** Fiche d'un cadeau ouverte depuis « Mes achats » (#74) : même écran que [GiftDetailRoute], dans l'onglet Mes achats. */
 @Serializable
 data class PurchaseGiftRoute(val itemId: String)
+
+/** Fiche d'un cadeau ouverte depuis la recherche (#75) : même écran que [GiftDetailRoute], dans l'onglet Recherche. */
+@Serializable
+data class SearchGiftDetailRoute(val itemId: String)
 
 /**
  * Définir ([budgetId] `null`) ou modifier un budget (#74). Les autres champs décrivent le budget édité : périmètre,
@@ -100,6 +112,24 @@ data class AddGiftRoute(
         const val KIND_IDEA = "idea"
     }
 }
+
+/**
+ * Rédaction d'un merci pour un cadeau reçu (#42, #75). Au niveau racine du NavHost : formulaire plein écran, ouvert
+ * depuis la fiche d'un cadeau de n'importe quel onglet.
+ */
+@Serializable
+data class ThanksComposerRoute(val itemId: String)
+
+/** Remerciements reçus pour les cadeaux que j'ai offerts. Racine du NavHost, rattachée à l'onglet Mes achats. */
+@Serializable
+data object ThanksInboxRoute
+
+/**
+ * Mode enfant (#36, #75) : la liste de souhaits de l'enfant en grand, avec des cœurs. [eventId] filtre la liste comme
+ * celle d'où l'on vient (`null` : tous les cadeaux). Racine du NavHost, plein écran.
+ */
+@Serializable
+data class ChildModeRoute(val childId: String, val eventId: String?)
 
 /** Idées proposées pour mes enfants, en attente de mon verdict (#57, #73). */
 @Serializable

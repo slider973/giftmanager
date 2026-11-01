@@ -64,6 +64,7 @@ import ch.jonathanlemaine.giftmanager.core.gifts.GiftTab
 import ch.jonathanlemaine.giftmanager.core.model.WishItem
 import ch.jonathanlemaine.giftmanager.core.model.WishKind
 import ch.jonathanlemaine.giftmanager.ui.common.GiftAlertDialog
+import ch.jonathanlemaine.giftmanager.ui.childmode.ChildModeEntryCard
 import ch.jonathanlemaine.giftmanager.ui.common.GiftErrorDialog
 import ch.jonathanlemaine.giftmanager.ui.common.GiftTopBar
 import ch.jonathanlemaine.giftmanager.ui.common.ScreenContentMaxWidth
@@ -103,6 +104,8 @@ data class ChildGiftsActions(
     val onMove: (from: Int, to: Int) -> Unit,
     val onRefresh: () -> Unit,
     val onDismissError: () -> Unit,
+    /** Ouvre le mode enfant (#75), si [ChildGiftsUiState.canStartChildMode]. */
+    val onStartChildMode: () -> Unit = {},
 )
 
 /**
@@ -171,6 +174,11 @@ fun ChildGiftsScreen(state: ChildGiftsUiState, actions: ChildGiftsActions, modif
             ) {
                 val column = Modifier.widthIn(max = ScreenContentMaxWidth).fillMaxWidth()
                 item(key = "header") { Header(state, column) }
+                if (state.canStartChildMode) {
+                    item(key = "child-mode") {
+                        ChildModeEntryCard(state.child?.firstName.orEmpty(), actions.onStartChildMode, column)
+                    }
+                }
                 if (state.readOnly) {
                     item(key = "archive") {
                         FCNotice(

@@ -108,13 +108,14 @@ class ItemPayloadsTest {
             """{"type":"idea_review","item_id":"$id","decision":"owned_already"}""",
             SupabaseItemNotifier.ideaReviewBody(id, IdeaReview.OWNED_ALREADY).toString(),
         )
+        assertEquals("""{"type":"thanks","item_id":"$id"}""", SupabaseItemNotifier.thanksBody(id).toString())
         assertEquals("notify-new-items", SupabaseItemNotifier.FUNCTION)
     }
 
     @Test fun edgeFunctionStillReadsTheseFields() {
         val source = generateSequence(java.io.File("").absoluteFile) { it.parentFile }
             .map { java.io.File(it, "supabase/functions/notify-new-items/index.ts") }.first { it.isFile }.readText()
-        listOf("item_ids", "payload.type === \"reservation\"", "payload.type === \"idea_review\"", "payload.item_id", "payload.decision")
+        listOf("item_ids", "payload.type === \"reservation\"", "payload.type === \"idea_review\"", "payload.type === \"thanks\"", "payload.item_id", "payload.decision")
             .forEach { assertTrue(it, it in source) }
     }
 

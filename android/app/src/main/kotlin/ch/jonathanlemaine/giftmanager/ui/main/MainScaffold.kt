@@ -55,7 +55,6 @@ import ch.jonathanlemaine.giftmanager.ui.components.FCNotice
 import ch.jonathanlemaine.giftmanager.ui.components.FCNoticeTone
 import ch.jonathanlemaine.giftmanager.ui.components.GiftIcons
 import ch.jonathanlemaine.giftmanager.ui.components.GiftPreviews
-import ch.jonathanlemaine.giftmanager.ui.components.Illustration
 import ch.jonathanlemaine.giftmanager.ui.components.PreviewFrame
 import ch.jonathanlemaine.giftmanager.ui.components.PrimaryButton
 import ch.jonathanlemaine.giftmanager.ui.debug.DebugEntryPoints
@@ -68,6 +67,7 @@ import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddViewModel
 import ch.jonathanlemaine.giftmanager.ui.navigation.AddGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildGiftsRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.ChildModeRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.DebugGallery
 import ch.jonathanlemaine.giftmanager.ui.navigation.EventDetailRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.EventEditorRoute
@@ -81,6 +81,10 @@ import ch.jonathanlemaine.giftmanager.ui.navigation.PurchaseGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.Purchases
 import ch.jonathanlemaine.giftmanager.ui.navigation.PurchasesGraph
 import ch.jonathanlemaine.giftmanager.ui.navigation.Search
+import ch.jonathanlemaine.giftmanager.ui.navigation.SearchGiftDetailRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.SearchGraph
+import ch.jonathanlemaine.giftmanager.ui.navigation.ThanksComposerRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.ThanksInboxRoute
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileActions
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileScreen
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileViewModel
@@ -109,6 +113,7 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
     val mainViewModel: MainViewModel = viewModel(factory = viewModelFactory)
     val pendingInvite by mainViewModel.pendingInviteCode.collectAsStateWithLifecycle()
     val mainError by mainViewModel.error.collectAsStateWithLifecycle()
+    val childModeActive by mainViewModel.childModeActive.collectAsStateWithLifecycle()
 
     Scaffold(
         containerColor = GiftTheme.colors.background,
@@ -173,6 +178,7 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
                         onAdd = { childId, kind, eventId, owned ->
                             navController.navigate(AddGiftRoute(childId.toString(), kind.routeValue(), eventId?.toString(), owned, null))
                         },
+                        onStartChildMode = { childId, eventId -> navController.navigate(ChildModeRoute(childId.toString(), eventId?.toString())) },
                     )
                 }
                 composable<GiftDetailRoute> {
@@ -182,12 +188,25 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
                         onEdit = { childId, kind, eventId, itemId ->
                             navController.navigate(AddGiftRoute(childId.toString(), kind.routeValue(), eventId?.toString(), false, itemId.toString()))
                         },
+                        onThank = { navController.navigate(ThanksComposerRoute(it.toString())) },
                     )
                 }
                 composable<AddGiftRoute> { AddGiftDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
             }
-            composable<Search> {
-                ComingSoonScreen(Illustration.MASCOT_THINKING, stringResource(R.string.tab_search), stringResource(R.string.search_coming_soon))
+            navigation<SearchGraph>(startDestination = Search) {
+                composable<Search> {
+                    SearchDestination(viewModelFactory, onOpenItem = { navController.navigate(SearchGiftDetailRoute(it.toString())) })
+                }
+                composable<SearchGiftDetailRoute> {
+                    GiftDetailDestination(
+                        viewModelFactory,
+                        onBack = { navController.popBackStack() },
+                        onEdit = { childId, kind, eventId, itemId ->
+                            navController.navigate(AddGiftRoute(childId.toString(), kind.routeValue(), eventId?.toString(), false, itemId.toString()))
+                        },
+                        onThank = { navController.navigate(ThanksComposerRoute(it.toString())) },
+                    )
+                }
             }
             navigation<PurchasesGraph>(startDestination = Purchases) {
                 composable<Purchases> {
@@ -195,6 +214,7 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
                         viewModelFactory,
                         onOpenItem = { navController.navigate(PurchaseGiftRoute(it.toString())) },
                         onNewBudget = { navController.navigate(BudgetEditorRoute()) },
+                        onOpenThanks = { navController.navigate(ThanksInboxRoute) },
                         onEditBudget = { budget ->
                             navController.navigate(
                                 BudgetEditorRoute(
@@ -215,10 +235,15 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
                         onEdit = { childId, kind, eventId, itemId ->
                             navController.navigate(AddGiftRoute(childId.toString(), kind.routeValue(), eventId?.toString(), false, itemId.toString()))
                         },
+                        onThank = { navController.navigate(ThanksComposerRoute(it.toString())) },
                     )
                 }
                 composable<BudgetEditorRoute> { BudgetEditorDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
             }
+            // Remerciements (#75) : racine du NavHost, hors des graphes d'onglets, ouverts depuis plusieurs onglets.
+            composable<ChildModeRoute> { ChildModeDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
+            composable<ThanksComposerRoute> { ThanksComposerDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
+            composable<ThanksInboxRoute> { ThanksInboxDestination(viewModelFactory, onBack = { navController.popBackStack() }) }
             composable<ProfileTab> {
                 ProfileRoute(
                     viewModelFactory,
@@ -260,7 +285,8 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
         )
     }
 
-    pendingInvite?.let { code ->
+    // Mode enfant : rien ne s'affiche devant l'enfant ; l'invitation et l'erreur restent en attente jusqu'à la sortie.
+    if (!childModeActive) pendingInvite?.let { code ->
         GiftAlertDialog(
             title = stringResource(R.string.invite_dialog_title),
             message = stringResource(R.string.invite_dialog_message, code),
@@ -270,13 +296,13 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
             dismissLabel = stringResource(R.string.cancel),
         )
     }
-    GiftErrorDialog(mainError, mainViewModel::dismissError)
+    if (!childModeActive) GiftErrorDialog(mainError, mainViewModel::dismissError)
 }
 
 private val MainTab.route: Any
     get() = when (this) {
         MainTab.Home -> HomeGraph
-        MainTab.Search -> Search
+        MainTab.Search -> SearchGraph
         MainTab.Purchases -> PurchasesGraph
         MainTab.Profile -> ProfileTab
     }
@@ -284,8 +310,8 @@ private val MainTab.route: Any
 /** Onglet qui contient [this] ; `null` hors onglets (galerie de debug, ouverte depuis Profil → Profil). */
 private fun NavDestination.mainTab(): MainTab? = when {
     hierarchy.any { it.hasRoute(HomeGraph::class) } -> MainTab.Home
-    hierarchy.any { it.hasRoute(Search::class) } -> MainTab.Search
-    hierarchy.any { it.hasRoute(PurchasesGraph::class) } -> MainTab.Purchases
+    hierarchy.any { it.hasRoute(SearchGraph::class) } -> MainTab.Search
+    hierarchy.any { it.hasRoute(PurchasesGraph::class) || it.hasRoute(ThanksInboxRoute::class) } -> MainTab.Purchases
     hierarchy.any { it.hasRoute(ProfileTab::class) || it.hasRoute(DebugGallery::class) } -> MainTab.Profile
     else -> null
 }
@@ -293,7 +319,7 @@ private fun NavDestination.mainTab(): MainTab? = when {
 /** Formulaire plein écran (création / modification) : la barre d'onglets s'efface (Material : full-screen dialog). */
 private fun NavDestination.isFullScreenForm(): Boolean =
     hasRoute(ChildEditorRoute::class) || hasRoute(EventEditorRoute::class) || hasRoute(AddGiftRoute::class) ||
-        hasRoute(BudgetEditorRoute::class)
+        hasRoute(BudgetEditorRoute::class) || hasRoute(ThanksComposerRoute::class) || hasRoute(ChildModeRoute::class)
 
 private fun WishKind.routeValue(): String = if (this == WishKind.IDEA) AddGiftRoute.KIND_IDEA else AddGiftRoute.KIND_WISH
 

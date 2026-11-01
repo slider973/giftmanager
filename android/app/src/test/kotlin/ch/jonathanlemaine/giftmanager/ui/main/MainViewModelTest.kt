@@ -1,5 +1,6 @@
 package ch.jonathanlemaine.giftmanager.ui.main
 
+import ch.jonathanlemaine.giftmanager.core.childmode.ChildModeLock
 import ch.jonathanlemaine.giftmanager.core.error.GiftError
 import ch.jonathanlemaine.giftmanager.core.session.SessionFixture
 import ch.jonathanlemaine.giftmanager.core.session.SessionPhase
@@ -15,7 +16,9 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -31,7 +34,7 @@ class MainViewModelTest {
         f.families.joinable["ABC123"] = group(2)
         f.session.start()
         runCurrent()
-        val vm = MainViewModel(f.session)
+        val vm = MainViewModel(f.session, ChildModeLock())
         assertNull(vm.pendingInviteCode.value)
         f.session.handleDeepLink("famillecadeaux://join/abc123")
         assertEquals("ABC123", vm.pendingInviteCode.value)
@@ -48,7 +51,7 @@ class MainViewModelTest {
         f.seedReady(1)
         f.session.start()
         runCurrent()
-        val vm = MainViewModel(f.session)
+        val vm = MainViewModel(f.session, ChildModeLock())
         f.session.handleDeepLink("famillecadeaux://join/ABC123")
         vm.dismissInvite()
         assertNull(vm.pendingInviteCode.value)
@@ -60,12 +63,29 @@ class MainViewModelTest {
         f.seedReady(1)
         f.session.start()
         runCurrent()
-        val vm = MainViewModel(f.session)
+        val vm = MainViewModel(f.session, ChildModeLock())
         f.session.handleDeepLink("famillecadeaux://join/BAD000")
         vm.confirmInvite()
         runCurrent()
         assertEquals(GiftError.InvalidInvite, vm.error.value)
         vm.dismissError()
         assertNull(vm.error.value)
+    }
+
+    @Test fun followsTheChildModeLock() = runTest {
+        val f = SessionFixture(backgroundScope, AuthState.SignedIn(uuid(1)))
+        f.seedReady(1)
+        f.session.start()
+        runCurrent()
+        val lock = ChildModeLock()
+        val vm = MainViewModel(f.session, lock)
+        assertFalse(vm.childModeActive.value)
+        lock.activate()
+        assertTrue(vm.childModeActive.value)
+        // L'invitation reste en attente pendant le mode enfant, pour s'afficher à la sortie.
+        f.session.handleDeepLink("famillecadeaux://join/ABC123")
+        assertEquals("ABC123", vm.pendingInviteCode.value)
+        lock.release()
+        assertFalse(vm.childModeActive.value)
     }
 }

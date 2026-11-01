@@ -56,6 +56,7 @@ import ch.jonathanlemaine.giftmanager.core.format.Money
 import ch.jonathanlemaine.giftmanager.core.gifts.ReservationActions
 import ch.jonathanlemaine.giftmanager.core.gifts.StoreCatalog
 import ch.jonathanlemaine.giftmanager.core.model.IdeaReview
+import ch.jonathanlemaine.giftmanager.core.model.ItemDonor
 import ch.jonathanlemaine.giftmanager.core.model.ItemStatus
 import ch.jonathanlemaine.giftmanager.core.model.PotParticipant
 import ch.jonathanlemaine.giftmanager.core.model.ReservationState
@@ -109,6 +110,8 @@ data class GiftDetailActions(
     val onDismissError: () -> Unit,
     /** Cœur « très envie » de la fiche : parents seulement ([GiftDetailUiState.canToggleFavorite]). */
     val onToggleFavorite: () -> Unit = {},
+    /** « Dire merci » (#75) : ouvre la rédaction d'un merci. */
+    val onThank: () -> Unit = {},
 )
 
 /**
@@ -369,9 +372,35 @@ private fun ParentActions(state: GiftDetailUiState, reservation: ReservationActi
     }
 }
 
-/** « Reçu ! » (#42) : un parent, après la fête. */
+/**
+ * Après la fête (#42, #75), pour un parent : « Reçu ! » tant que le cadeau n'est pas rangé ; ensuite « Offert par
+ * Mamie et Paul » (cœur `heart`, donateurs qui se sont fait connaître), « Dire merci » et la légende qui dit à qui
+ * le message ira.
+ */
 @Composable
 private fun ReceiptActions(state: GiftDetailUiState, actions: GiftDetailActions) {
+    if (state.canSendThanks) {
+        val type = GiftTheme.type
+        val colors = GiftTheme.colors
+        if (state.donors.isNotEmpty()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(GiftTheme.spacing.s),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.semantics(mergeDescendants = true) { },
+            ) {
+                Icon(GiftIcons.Heart, contentDescription = null, tint = colors.heart, modifier = Modifier.size(type.headline.glyphSize()))
+                Text(stringResource(R.string.gift_detail_donors, state.donorNames), style = type.headline, color = colors.textPrimary)
+            }
+        }
+        PrimaryButton(stringResource(R.string.gift_detail_say_thanks), actions.onThank, leadingIcon = GiftIcons.MailFilled)
+        Text(
+            stringResource(if (state.donors.isEmpty()) R.string.gift_detail_thanks_anonymous else R.string.gift_detail_thanks_donors),
+            style = type.caption,
+            color = colors.textSecondary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = GiftTheme.spacing.l),
+        )
+    }
     if (!state.canMarkReceived) return
     SecondaryButton(
         text = stringResource(R.string.gift_detail_received),
@@ -637,6 +666,16 @@ private fun GiftDetailMinePurchasedPreview() = ScreenPreviewFrame(height = 1000.
 @Composable
 private fun GiftDetailTakenPreview() = ScreenPreviewFrame(height = 1000.dp) {
     GiftDetailScreen(previewState(GiftPreviewData.detailItem(ItemStatus.TAKEN), isParent = false), previewActions)
+}
+
+@GiftPreviews
+@Composable
+private fun GiftDetailThanksPreview() = ScreenPreviewFrame(height = 1000.dp) {
+    GiftDetailScreen(
+        previewState(GiftPreviewData.detailItem(status = null).copy(owned = true), isParent = true)
+            .copy(canSendThanks = true, donors = listOf(ItemDonor("Mamie Jo"), ItemDonor("Paul"))),
+        previewActions,
+    )
 }
 
 @GiftPreviews
