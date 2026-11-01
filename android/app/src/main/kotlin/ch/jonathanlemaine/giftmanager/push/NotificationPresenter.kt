@@ -40,6 +40,7 @@ class NotificationPresenter(private val context: Context) {
         val id = payload.key.hashCode()
         val notification = NotificationCompat.Builder(context, payload.channel.id)
             .setSmallIcon(R.drawable.ic_stat_gift)
+            .setColor(ContextCompat.getColor(context, R.color.notification_accent))
             .setContentTitle(payload.title.ifEmpty { context.getString(R.string.app_name) })
             .setContentText(payload.body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(payload.body))

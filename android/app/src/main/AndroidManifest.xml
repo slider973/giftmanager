@@ -48,6 +48,9 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_stat_gift" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_accent" />
 
         <!-- Widget d'écran d'accueil (#80) : prochain événement et compte à rebours. -->
         <receiver
