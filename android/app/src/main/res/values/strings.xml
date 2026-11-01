@@ -570,19 +570,24 @@
     <!-- Mode enfant (#75) -->
     <string name="child_mode_entry_title">Mode enfant</string>
     <string name="child_mode_entry_message">%1$s choisit ses envies en grand, sans prix ni statut.</string>
+    <string name="child_mode_entry_action">ouvrir le mode enfant</string>
     <string name="child_mode_title">Les envies de %1$s</string>
     <string name="child_mode_subtitle">Touche le cœur des cadeaux dont tu as très envie !</string>
     <string name="child_mode_empty_title">Pas encore d\'envies</string>
     <string name="child_mode_empty_message">Avec ton parent, ajoute des cadeaux à ta liste.</string>
+    <string name="child_mode_error_title">Ta liste n\'a pas pu s\'afficher</string>
+    <string name="child_mode_error_message">Demande à un adulte de réessayer un peu plus tard.</string>
     <string name="child_mode_hearts_one">%1$d cœur posé</string>
     <string name="child_mode_hearts_many">%1$d cœurs posés</string>
-    <string name="child_mode_heart_add">Très envie : %1$s</string>
-    <string name="child_mode_heart_remove">Retirer le cœur : %1$s</string>
+    <string name="child_mode_heart_add">poser un cœur</string>
+    <string name="child_mode_heart_remove">retirer le cœur</string>
+    <string name="child_mode_heart_state">Très envie</string>
     <string name="child_mode_exit">Quitter</string>
     <string name="child_mode_exit_holding">Maintiens…</string>
     <string name="child_mode_exit_description">Quitter le mode enfant</string>
     <string name="child_mode_exit_hint">Pour quitter, un adulte garde le doigt sur « Quitter » pendant 3 secondes.</string>
     <string name="child_mode_save_failed">Oups, ce cœur n\'a pas été enregistré. Réessaie !</string>
+    <string name="child_mode_hint_dismiss">masquer le message</string>
     <string name="child_mode_auth_title">Quitter le mode enfant</string>
     <string name="child_mode_auth_subtitle">Réservé aux adultes</string>
 
