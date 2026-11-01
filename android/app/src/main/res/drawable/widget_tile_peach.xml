@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vignette du type d'événement dans le widget (#80), repli avant Android 12 : pastel peach, coins arrondis. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/widget_tile_peach" />
+    <corners android:radius="7dp" />
+</shape>

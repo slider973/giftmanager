@@ -2,4 +2,16 @@
 <resources>
     <!-- Token `background` clair (ThemeTokens.Light.background). -->
     <color name="window_background">#FBF4EC</color>
+
+    <!--
+        Widget (#80) : reflet des tokens ThemeTokens.Light, pour les layouts XML (chargement, aperçu du sélecteur)
+        et les formes arrondies de repli avant Android 12. Vérifié par WidgetColorResourcesTest.
+    -->
+    <color name="widget_background">#FBF4EC</color>
+    <color name="widget_primary">#1E2A47</color>
+    <color name="widget_text_primary">#1B1F2A</color>
+    <color name="widget_text_secondary">#626673</color>
+    <color name="widget_tile_mint">#D5F0E4</color>
+    <color name="widget_tile_pink">#F9D9DC</color>
+    <color name="widget_tile_peach">#FCE3D2</color>
 </resources>

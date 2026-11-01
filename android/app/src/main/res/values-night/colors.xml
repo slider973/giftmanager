@@ -2,4 +2,13 @@
 <resources>
     <!-- Token `background` sombre (ThemeTokens.Dark.background). -->
     <color name="window_background">#141A2C</color>
+
+    <!-- Widget (#80) : reflet des tokens ThemeTokens.Dark. Vérifié par WidgetColorResourcesTest. -->
+    <color name="widget_background">#141A2C</color>
+    <color name="widget_primary">#A9BCEE</color>
+    <color name="widget_text_primary">#F4F1EC</color>
+    <color name="widget_text_secondary">#A8AEBF</color>
+    <color name="widget_tile_mint">#1F4237</color>
+    <color name="widget_tile_pink">#4A2C36</color>
+    <color name="widget_tile_peach">#4A3326</color>
 </resources>

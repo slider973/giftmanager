@@ -5,7 +5,20 @@
     <!-- Widget d'écran d'accueil (#80) -->
     <string name="widget_name">Compte à rebours</string>
     <string name="widget_description">Le prochain événement et le nombre de jours restants.</string>
-    <string name="widget_preview">🎄 J-24</string>
+    <!-- Aperçu du sélecteur de widgets (exemple fixe). -->
+    <string name="widget_preview_emoji" translatable="false">🎄</string>
+    <string name="widget_preview_countdown" translatable="false">J-24</string>
+    <string name="widget_preview_title">Noël</string>
+    <string name="widget_preview_date">25 déc.</string>
+    <!-- Lecture TalkBack du widget : « Noël, dans 24 jours, le 25 décembre 2026. Ensuite : … » -->
+    <string name="widget_a11y_event">%1$s, %2$s, le %3$s</string>
+    <string name="widget_a11y_upcoming">Ensuite\u00A0: %1$s</string>
+    <string name="widget_a11y_today">aujourd\'hui</string>
+    <string name="widget_a11y_tomorrow">demain</string>
+    <plurals name="widget_a11y_in_days">
+        <item quantity="one">dans %d jour</item>
+        <item quantity="other">dans %d jours</item>
+    </plurals>
     <string name="widget_signed_out">Ouvre Gift Manager pour te connecter.</string>
     <string name="widget_no_event">Aucun événement à venir.</string>
 
