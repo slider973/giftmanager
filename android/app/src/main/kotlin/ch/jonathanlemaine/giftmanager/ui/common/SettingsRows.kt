@@ -61,6 +61,8 @@ fun SettingsSection(
     title: String?,
     modifier: Modifier = Modifier,
     footer: String? = null,
+    /** Encart entre le titre et la carte (bandeau d'état de la section). */
+    notice: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = GiftTheme.colors
@@ -75,6 +77,7 @@ fun SettingsSection(
                 modifier = Modifier.padding(horizontal = spacing.l).semantics { heading() },
             )
         }
+        notice?.invoke()
         Column(modifier = Modifier.fillMaxWidth().fcCard(padding = 0.dp), content = content)
         footer?.let {
             Text(text = it, style = type.caption, color = colors.textSecondary, modifier = Modifier.padding(horizontal = spacing.l))

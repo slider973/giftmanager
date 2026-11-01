@@ -69,6 +69,10 @@ import ch.jonathanlemaine.giftmanager.core.gifts.ShareTargets
 import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddSheet
 import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddTarget
 import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddViewModel
+import ch.jonathanlemaine.giftmanager.push.NotificationTarget
+import ch.jonathanlemaine.giftmanager.push.notificationSettingsIntent
+import ch.jonathanlemaine.giftmanager.ui.notifications.NotificationPromptSheet
+import ch.jonathanlemaine.giftmanager.ui.notifications.NotificationsViewModel
 import ch.jonathanlemaine.giftmanager.ui.navigation.AddGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildGiftsRoute
@@ -92,6 +96,7 @@ import ch.jonathanlemaine.giftmanager.ui.navigation.SearchGiftDetailRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.SearchGraph
 import ch.jonathanlemaine.giftmanager.ui.navigation.ThanksComposerRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ThanksInboxRoute
+import ch.jonathanlemaine.giftmanager.ui.profile.NotificationAccess
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileActions
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileScreen
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileViewModel
@@ -128,6 +133,20 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
     var shareNotice by rememberSaveable { mutableStateOf<ShareNotice?>(null) }
     val quickAdd: QuickAddViewModel = viewModel(factory = viewModelFactory)
     val quickAddState by quickAdd.uiState.collectAsStateWithLifecycle()
+
+    // Notifications push (#76) : destination d'une notification touchée, et feuille d'explication de l'autorisation.
+    val notifications: NotificationsViewModel = viewModel(factory = viewModelFactory)
+    val notificationTarget by notifications.pendingTarget.collectAsStateWithLifecycle()
+    val notificationPromptVisible by notifications.promptVisible.collectAsStateWithLifecycle()
+    val notificationPermission by notifications.permission.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    LaunchedEffect(Unit) { notifications.onMainScreenReached() }
+    // MainScaffold n'existe qu'en phase Ready, et le modèle ne publie rien pendant le mode enfant : la destination attend.
+    LaunchedEffect(notificationTarget) {
+        val target = notificationTarget ?: return@LaunchedEffect
+        navController.openNotificationTarget(target)
+        notifications.consumeTarget(target)
+    }
 
     // MainScaffold n'existe qu'en phase Ready, et le modèle ne publie rien pendant le mode enfant : le lien attend.
     LaunchedEffect(pendingLink) {
@@ -311,6 +330,18 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
         )
     }
 
+    if (notificationPromptVisible) {
+        NotificationPromptSheet(
+            permission = notificationPermission,
+            onEnable = notifications::requestPermission,
+            onOpenSettings = {
+                notifications.dismissPrompt()
+                context.startActivity(notificationSettingsIntent(context))
+            },
+            onLater = notifications::dismissPrompt,
+        )
+    }
+
     shareNotice?.let { notice ->
         GiftAlertDialog(
             title = stringResource(notice.title),
@@ -382,6 +413,33 @@ private fun NavController.openAddGift(target: QuickAddTarget, eventId: UUID?, ur
     )
 }
 
+/**
+ * Ouvre l'écran visé par une notification (#76), dans l'onglet qui le contient. Un cadeau, un événement ou un enfant
+ * devenu introuvable ferme son écran de lui-même (voir les destinations), on retombe alors sur l'onglet.
+ */
+private fun NavController.openNotificationTarget(target: NotificationTarget) {
+    when (target) {
+        NotificationTarget.Home -> switchTab(HomeGraph)
+        NotificationTarget.MyPurchases -> switchTab(PurchasesGraph)
+        NotificationTarget.ThanksInbox -> {
+            switchTab(PurchasesGraph)
+            navigate(ThanksInboxRoute)
+        }
+        is NotificationTarget.GiftDetail -> {
+            switchTab(HomeGraph)
+            navigate(GiftDetailRoute(target.itemId.toString()))
+        }
+        is NotificationTarget.Event -> {
+            switchTab(HomeGraph)
+            navigate(EventDetailRoute(target.eventId.toString()))
+        }
+        is NotificationTarget.ChildList -> {
+            switchTab(HomeGraph)
+            navigate(ChildGiftsRoute(target.childId.toString(), eventId = null, readOnly = false))
+        }
+    }
+}
+
 /** Change d'onglet en sauvegardant l'état de celui qu'on quitte et en restaurant celui qu'on rejoint. */
 private fun NavController.switchTab(route: Any) {
     navigate(route) {
@@ -440,6 +498,9 @@ private fun FamilyHomeRoute(
 private fun ProfileRoute(viewModelFactory: ViewModelProvider.Factory, onOpenGallery: (() -> Unit)?) {
     val viewModel: ProfileViewModel = viewModel(factory = viewModelFactory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val notifications: NotificationsViewModel = viewModel(factory = viewModelFactory)
+    val permission by notifications.permission.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     ProfileScreen(
         state = state,
         actions = ProfileActions(
@@ -460,5 +521,10 @@ private fun ProfileRoute(viewModelFactory: ViewModelProvider.Factory, onOpenGall
             onDismissError = viewModel::dismissError,
         ),
         onOpenGallery = onOpenGallery,
+        notifications = NotificationAccess(
+            permission = permission,
+            onRequest = notifications::requestPermission,
+            onOpenSettings = { context.startActivity(notificationSettingsIntent(context)) },
+        ),
     )
 }

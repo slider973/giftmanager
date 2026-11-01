@@ -14,4 +14,6 @@
     <color name="widget_tile_mint">#D5F0E4</color>
     <color name="widget_tile_pink">#F9D9DC</color>
     <color name="widget_tile_peach">#FCE3D2</color>
+    <!-- Accent des notifications (#76) : token `primary` (clair). -->
+    <color name="notification_accent">#1E2A47</color>
 </resources>

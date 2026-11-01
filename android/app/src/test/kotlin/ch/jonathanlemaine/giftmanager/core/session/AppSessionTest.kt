@@ -135,6 +135,26 @@ class AppSessionTest {
         assertEquals(1, f.authRepo.signOutCalls)
     }
 
+    private fun TestScope.sessionWithHook(f: SessionFixture, hook: suspend () -> Unit) =
+        AppSession(f.authRepo, f.profiles, f.families, f.households, f.childRepo, f.eventRepo, f.store, backgroundScope, beforeSignOut = hook)
+
+    @Test fun beforeSignOutRunsWhileTheSessionIsStillOpen() = runTest {
+        val f = started()
+        val events = mutableListOf<String>()
+        val session = sessionWithHook(f) { events += "hook:signOutCalls=${f.authRepo.signOutCalls}" }
+        session.signOut()
+        assertEquals(listOf("hook:signOutCalls=0"), events)
+        assertEquals(1, f.authRepo.signOutCalls)
+    }
+
+    @Test fun failingBeforeSignOutNeverBlocksSigningOut() = runTest {
+        val f = started()
+        val session = sessionWithHook(f) { throw IOException("hors ligne") }
+        session.signOut()
+        assertEquals(1, f.authRepo.signOutCalls)
+        assertEquals(SessionPhase.SignedOut, session.state.value.phase)
+    }
+
     @Test fun authSignedOutEventResets() = runTest {
         val f = started()
         f.authRepo.stateFlow.value = AuthState.SignedOut

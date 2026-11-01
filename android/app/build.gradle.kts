@@ -8,13 +8,16 @@ plugins {
 }
 
 // Configuration Supabase (valeurs publiques côté client), par ordre de priorité :
-// (idem pour GOOGLE_WEB_CLIENT_ID, l'ID client OAuth « Web » utilisé comme serverClientId de Credential Manager)
+// (idem pour GOOGLE_WEB_CLIENT_ID, l'ID client OAuth « Web » utilisé comme serverClientId de Credential Manager,
+// et pour FIREBASE_API_KEY / FIREBASE_APP_ID / FIREBASE_PROJECT_ID / FIREBASE_SENDER_ID, la configuration Firebase
+// des notifications push : pas de plugin google-services, l'app initialise Firebase elle-même depuis BuildConfig, #76)
 //   1. app/secrets.properties, généré par scripts/secrets/inject.sh depuis 1Password (ignoré par git) ;
 //   2. variables d'environnement SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY (CI) ;
 //   3. valeurs factices, qui suffisent à compiler et tester mais font échouer le build release.
 val dummyUrl = "https://example.invalid"
 val dummyKey = "sb_publishable_dummy"
 val dummyGoogleClientId = "dummy.apps.googleusercontent.com"
+val dummyFirebaseValue = "dummy"
 
 val secrets = Properties().apply {
     val file = layout.projectDirectory.file("secrets.properties").asFile
@@ -32,6 +35,10 @@ fun secret(name: String, fallback: String): String =
 val supabaseUrl = secret("SUPABASE_URL", dummyUrl)
 val supabaseKey = secret("SUPABASE_PUBLISHABLE_KEY", dummyKey)
 val googleWebClientId = secret("GOOGLE_WEB_CLIENT_ID", dummyGoogleClientId)
+val firebaseApiKey = secret("FIREBASE_API_KEY", dummyFirebaseValue)
+val firebaseAppId = secret("FIREBASE_APP_ID", dummyFirebaseValue)
+val firebaseProjectId = secret("FIREBASE_PROJECT_ID", dummyFirebaseValue)
+val firebaseSenderId = secret("FIREBASE_SENDER_ID", dummyFirebaseValue)
 
 // Clé d'upload Play (release), uniquement par variables d'environnement : en CI elles viennent des secrets
 // GitHub, en local de `op run`. Absentes, le release n'est pas signé (et bundleRelease refuse, voir plus bas).
@@ -61,6 +68,10 @@ android {
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabaseKey\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
+        buildConfigField("String", "FIREBASE_API_KEY", "\"$firebaseApiKey\"")
+        buildConfigField("String", "FIREBASE_APP_ID", "\"$firebaseAppId\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"$firebaseProjectId\"")
+        buildConfigField("String", "FIREBASE_SENDER_ID", "\"$firebaseSenderId\"")
     }
 
     buildFeatures {
@@ -167,6 +178,10 @@ dependencies {
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.work.runtime.ktx)
 
+    // Notifications push (#76) : FCM seul, initialisé à la main depuis BuildConfig (pas de plugin google-services).
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 
@@ -178,10 +193,16 @@ dependencies {
 // Garde : un build de diffusion ne doit jamais embarquer les valeurs factices.
 val checkReleaseSecrets by tasks.registering {
     group = "verification"
-    description = "Échoue si la configuration Supabase ou Google est factice (build release)."
+    description = "Échoue si la configuration Supabase, Google ou Firebase est factice (build release)."
     val url = supabaseUrl
     val key = supabaseKey
     val googleId = googleWebClientId
+    val firebaseValues = mapOf(
+        "FIREBASE_API_KEY" to firebaseApiKey,
+        "FIREBASE_APP_ID" to firebaseAppId,
+        "FIREBASE_PROJECT_ID" to firebaseProjectId,
+        "FIREBASE_SENDER_ID" to firebaseSenderId,
+    )
     doLast {
         if (url == dummyUrl || key == dummyKey || url.endsWith(".invalid") || key.contains("dummy")) {
             throw GradleException(
@@ -191,6 +212,13 @@ val checkReleaseSecrets by tasks.registering {
         if (googleId == dummyGoogleClientId || googleId.contains("dummy")) {
             throw GradleException(
                 "GOOGLE_WEB_CLIENT_ID factice : renseigne op://giftmanager/google-oauth/web_client_id puis lance scripts/secrets/inject.sh (voir docs/SECRETS.md)."
+            )
+        }
+        val dummyFirebase = firebaseValues.filterValues { it == dummyFirebaseValue || it.contains("dummy") }.keys
+        if (dummyFirebase.isNotEmpty()) {
+            throw GradleException(
+                "Configuration Firebase factice (${dummyFirebase.joinToString()}) : renseigne les champs de l'item op://giftmanager/fcm " +
+                    "puis lance scripts/secrets/inject.sh (voir docs/SECRETS.md)."
             )
         }
     }

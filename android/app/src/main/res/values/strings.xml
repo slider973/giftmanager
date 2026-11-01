@@ -24,6 +24,28 @@
 
     <string name="sign_out">Se déconnecter</string>
 
+    <!-- Notifications push (#76) : canaux visibles dans les réglages du système. -->
+    <string name="channel_purchases_name">Achats et prix</string>
+    <string name="channel_purchases_description">Rappels avant un événement et alertes de baisse de prix sur tes cadeaux.</string>
+    <string name="channel_birthdays_name">Anniversaires</string>
+    <string name="channel_birthdays_description">Rappels des anniversaires à venir.</string>
+    <string name="channel_family_name">Famille</string>
+    <string name="channel_family_description">Nouvelles envies, réponses à tes idées, remerciements et réservations.</string>
+    <!-- Feuille d'explication avant la demande d'autorisation (#76). -->
+    <string name="notif_prompt_title">On te prévient au bon moment</string>
+    <string name="notif_prompt_message">Quelques notifications bien choisies, jamais de bruit. Tu règles chaque type dans ton profil.</string>
+    <string name="notif_prompt_message_denied">Les notifications sont coupées pour Gift Manager. Tu peux les réactiver dans les réglages d\'Android.</string>
+    <string name="notif_prompt_purchases_title">Rappels d\'achats</string>
+    <string name="notif_prompt_purchases_subtitle">Avant chaque fête, un rappel pour les cadeaux que tu as réservés.</string>
+    <string name="notif_prompt_birthdays_title">Anniversaires</string>
+    <string name="notif_prompt_birthdays_subtitle">Un mois et une semaine avant, pour ne rien oublier.</string>
+    <string name="notif_prompt_news_title">Nouvelles envies</string>
+    <string name="notif_prompt_news_subtitle">Quand quelqu\'un de la famille ajoute une idée ou une envie.</string>
+    <string name="notif_prompt_surprise">Aucune notification ne dit qui a réservé quoi : la surprise reste entière.</string>
+    <string name="notif_prompt_enable">Activer les notifications</string>
+    <string name="notif_prompt_open_settings">Ouvrir les réglages</string>
+    <string name="notif_prompt_later">Plus tard</string>
+
     <!-- Connexion Google -->
     <string name="sign_in_title">La surprise\nest garantie</string>
     <string name="sign_in_message">Les autres voient « déjà pris » sans savoir par qui. Les parents ne voient rien.</string>
@@ -85,6 +107,9 @@
     <string name="profile_notif_purchases">Rappels d\'achats (J-30, J-15, J-7, J-2)</string>
     <string name="profile_notif_family_news">Nouvelles envies dans la famille</string>
     <string name="profile_notif_birthdays">Rappels d\'anniversaire (J-30, J-7)</string>
+    <string name="profile_notif_disabled">Les notifications sont désactivées pour Gift Manager : tes rappels ne s\'afficheront pas.</string>
+    <string name="profile_notif_enable">Activer</string>
+    <string name="profile_notif_open_settings">Ouvrir les réglages</string>
     <string name="profile_notifications_footer">Aucune notification ne dit qui a réservé quoi. Les rappels d\'achats ne concernent que tes propres réservations, et ceux d\'anniversaire jamais tes propres listes.</string>
     <string name="profile_surprise_notice">Mode surprise : tu ne vois jamais ce qui a été réservé pour tes enfants, ni les idées proposées pour eux. Personne ne sait qui offre quoi.</string>
     <string name="profile_delete">Supprimer mon compte</string>

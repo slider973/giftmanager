@@ -50,13 +50,14 @@ Deno.serve(async (req) => {
         checked++;
         for (const a of (alerts ?? []) as Alert[]) {
           notifications++;
+          const data = { type: "price", item_id: a.item_id };
           sent += await sendPush(admin, [a.kind === "price_drop"
             ? {
-              userId: a.user_id, threadId: `price-${a.item_id}`, title: "Prix en baisse",
+              userId: a.user_id, threadId: `price-${a.item_id}`, title: "Prix en baisse", data,
               body: `« ${a.title} » passe de ${a.old_price} à ${a.new_price} ${a.currency ?? ""}`.trim() + ".",
             }
             : {
-              userId: a.user_id, threadId: `price-${a.item_id}`, title: "Plus en stock",
+              userId: a.user_id, threadId: `price-${a.item_id}`, title: "Plus en stock", data,
               body: `« ${a.title} » n'est plus disponible sur le site que tu avais choisi.`,
             }]);
         }
