@@ -49,7 +49,9 @@ data class Budget(
             return spent.divide(amount, PROGRESS_SCALE, RoundingMode.HALF_EVEN).toDouble().coerceIn(0.0, 1.0)
         }
 
-    private companion object {
-        const val PROGRESS_SCALE = 10
+    // Le companion d'une classe @Serializable porte `serializer()` : il ne doit pas être privé, sinon le
+    // décodage depuis un autre fichier lève IllegalAccessError à l'exécution sur Android.
+    companion object {
+        private const val PROGRESS_SCALE = 10
     }
 }
