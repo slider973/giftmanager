@@ -68,6 +68,8 @@ import ch.jonathanlemaine.giftmanager.ui.navigation.AddGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildGiftsRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildModeRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.SantaRoute
+import ch.jonathanlemaine.giftmanager.ui.santa.SantaDestination
 import ch.jonathanlemaine.giftmanager.ui.navigation.DebugGallery
 import ch.jonathanlemaine.giftmanager.ui.navigation.EventDetailRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.EventEditorRoute
@@ -179,6 +181,7 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
                             navController.navigate(AddGiftRoute(childId.toString(), kind.routeValue(), eventId?.toString(), owned, null))
                         },
                         onStartChildMode = { childId, eventId -> navController.navigate(ChildModeRoute(childId.toString(), eventId?.toString())) },
+                        onLaunchSanta = { navController.navigate(SantaRoute(it.toString())) },
                     )
                 }
                 composable<GiftDetailRoute> {
@@ -242,6 +245,7 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
             }
             // Remerciements (#75) : racine du NavHost, hors des graphes d'onglets, ouverts depuis plusieurs onglets.
             composable<ChildModeRoute> { ChildModeDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
+            composable<SantaRoute> { SantaDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
             composable<ThanksComposerRoute> { ThanksComposerDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
             composable<ThanksInboxRoute> { ThanksInboxDestination(viewModelFactory, onBack = { navController.popBackStack() }) }
             composable<ProfileTab> {
@@ -319,7 +323,8 @@ private fun NavDestination.mainTab(): MainTab? = when {
 /** Formulaire plein écran (création / modification) : la barre d'onglets s'efface (Material : full-screen dialog). */
 private fun NavDestination.isFullScreenForm(): Boolean =
     hasRoute(ChildEditorRoute::class) || hasRoute(EventEditorRoute::class) || hasRoute(AddGiftRoute::class) ||
-        hasRoute(BudgetEditorRoute::class) || hasRoute(ThanksComposerRoute::class) || hasRoute(ChildModeRoute::class)
+        hasRoute(BudgetEditorRoute::class) || hasRoute(ThanksComposerRoute::class) || hasRoute(ChildModeRoute::class) ||
+        hasRoute(SantaRoute::class)
 
 private fun WishKind.routeValue(): String = if (this == WishKind.IDEA) AddGiftRoute.KIND_IDEA else AddGiftRoute.KIND_WISH
 

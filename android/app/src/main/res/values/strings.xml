@@ -621,4 +621,27 @@
         <item quantity="one">%1$s, %2$d cadeau</item>
         <item quantity="other">%1$s, %2$d cadeaux</item>
     </plurals>
+
+    <!-- Père Noël vocal (#78) : textes de câblage, à reprendre par le design -->
+    <string name="santa_entry_action">Demander à %1$s avec le Père Noël</string>
+    <string name="santa_title">Le Père Noël et %1$s</string>
+    <string name="santa_close">Fermer</string>
+    <string name="santa_speaking">Le Père Noël parle…</string>
+    <string name="santa_audio_unavailable">Voix indisponible : lis la réplique à voix haute.</string>
+    <string name="santa_replay">Réécouter</string>
+    <string name="santa_skip_speaking">Passer la voix</string>
+    <string name="santa_answer_label">Réponse de l\'enfant</string>
+    <string name="santa_answer_send">Valider</string>
+    <string name="santa_answer_skip">Passer</string>
+    <string name="santa_suggestions_title">Idées de cadeaux</string>
+    <string name="santa_suggestion_store">%1$s</string>
+    <string name="santa_suggestion_approve">Ajouter à la liste</string>
+    <string name="santa_suggestion_reject">Écarter</string>
+    <string name="santa_finish">Terminer</string>
+    <string name="santa_done_saved">%1$d idée(s) ajoutée(s) à la liste.</string>
+    <string name="santa_done_none">Aucune idée ajoutée.</string>
+    <string name="santa_blocked_child_mode">La session du Père Noël se lance depuis l\'espace parent.</string>
+    <string name="santa_blocked_empty_script">Le script du Père Noël est vide.</string>
+    <string name="santa_blocked_no_store">Aucune boutique n\'est configurée pour le pays du foyer.</string>
+    <string name="santa_blocked_no_wish">L\'enfant n\'a exprimé aucune envie.</string>
 </resources>
