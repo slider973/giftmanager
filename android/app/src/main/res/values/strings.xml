@@ -1,8 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Famille Cadeaux</string>
+    <string name="home_title">Gift Manager</string>
+    <string name="home_tagline">Des idées. Moins de doublons. Plus de magie.</string>
     <string name="home_session_loading">Vérification de la session…</string>
     <string name="home_signed_out">Non connecté</string>
     <string name="home_signed_in">Connecté en tant que %1$s</string>
     <string name="home_error">Session indisponible</string>
+    <string name="home_gallery_link">Galerie du design system</string>
+
+    <!-- Statuts d'un cadeau (StatusBadge) -->
+    <string name="status_available">Disponible</string>
+    <string name="status_taken">Déjà pris</string>
+    <string name="status_mine">Je l\'offre</string>
+    <string name="status_owned">Possède déjà</string>
+    <string name="status_pot">Cagnotte</string>
+    <string name="status_a11y">Statut : %1$s</string>
+
+    <!-- Cœur « très envie » (PriorityHeart) -->
+    <string name="heart_label">Très envie</string>
+    <string name="heart_label_off">Envie normale</string>
+    <string name="heart_state_on">Activé</string>
+    <string name="heart_state_off">Désactivé</string>
+
+    <!-- Prix et pays -->
+    <string name="country_unknown">Pays inconnu</string>
+    <string name="approx_price_spoken">environ %1$s, conversion indicative</string>
+    <string name="rate_note_dated">Conversion indicative, taux BCE du %1$s. Le prix de la boutique fait foi.</string>
+    <string name="rate_note">Conversion indicative. Le prix de la boutique fait foi.</string>
+    <string name="approx_symbol" translatable="false">≈</string>
+
+    <!-- Cagnotte (PotProgressCard) -->
+    <string name="pot_title">Cagnotte</string>
+    <string name="pot_goal_reached">Objectif atteint</string>
+    <string name="pot_of_target">sur %1$s</string>
+    <string name="pot_collected_suffix">réunis</string>
+    <string name="pot_my_share">ma part : %1$s</string>
+    <string name="pot_remaining">encore %1$s</string>
+    <string name="pot_a11y_collected">Cagnotte : %1$s réunis</string>
+    <string name="pot_a11y_target">sur %1$s</string>
+    <string name="pot_a11y_my_share">ma part %1$s</string>
+    <string name="pot_a11y_goal_reached">objectif atteint</string>
+    <string name="pot_a11y_missing">il manque %1$s</string>
+
+    <!-- Événements -->
+    <string name="event_kind_christmas">Noël</string>
+    <string name="event_kind_birthday">Anniversaire</string>
+    <string name="event_kind_other">Événement</string>
+    <string name="event_open">voir l\'événement</string>
+    <string name="gift_open">voir le cadeau</string>
+
+    <!-- Avatars -->
+    <string name="avatars_none">Aucun participant</string>
+    <plurals name="avatars_overflow">
+        <item quantity="one">%1$s et %2$d autre</item>
+        <item quantity="other">%1$s et %2$d autres</item>
+    </plurals>
+
+    <!-- Liens, boutons, champs -->
+    <string name="store_link_open">ouvrir le site de la boutique</string>
+    <string name="loading">Chargement en cours</string>
+    <string name="section_add">Ajouter</string>
+    <string name="text_field_clear">Effacer</string>
+
+    <!-- Images distantes -->
+    <string name="image_loading">Image en cours de chargement</string>
+    <string name="image_missing">Pas d\'image</string>
+    <string name="image_failed">Image indisponible</string>
 </resources>

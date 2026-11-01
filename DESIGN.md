@@ -27,7 +27,7 @@ Contrastes mesurés (WCAG 2.x) : toutes les paires texte / fond ≥ 4,5:1 dans l
 | `textPrimary` | `#1B1F2A` | `#F4F1EC` | Titres, noms | 15,1 / 15,4 |
 | `textSecondary` | `#626673` | `#A8AEBF` | Métadonnées (prix, boutique, dates) | 5,3 / 7,8 sur `background` |
 | `heart` | `#E5484D` | `#FF6B70` | Cœur « très envie » (icône) | 3,9 / 5,1 sur `surface` |
-| `accentAmber` | `#B85F0E` | `#F2A65A` | Accent chaud (pastille « Surprise », placeholder d'image) | 4,5 / 6,9 |
+| `accentAmber` | `#B85F0E` | `#F2A65A` | Accent chaud (pastille « Surprise », placeholder d'image) | 4,1 / 6,9 sur `background` — voir [Android](#android-compose) |
 | `availableBg` / `availableFg` | `#DDF3E6` / `#1E6B43` | `#1D3D2E` / `#8EDBB0` | Badge « Disponible » | 5,6 / 7,3 |
 | `takenBg` / `takenFg` | `#FDE3E3` / `#B3302F` | `#45222A` / `#FFA3A3` | Badge « Déjà pris » | 5,1 / 7,3 |
 | `mineBg` / `mineFg` | `#DCE8FB` / `#234E9A` | `#22365A` / `#A9C6FF` | Badge « Je l'offre » | 6,5 / 7,0 |
@@ -156,6 +156,83 @@ FCSystemAppearance.apply()                   // au lancement : titres de navigat
 - Équilibre (#41) : une ligne `caption` sous la liste, `textSecondary` ; ambre (`accentAmber`) quand rien n'est prévu. Jamais sur mes propres listes.
 - Remerciements (#42) : un donateur n'est nommé aux parents que s'il s'est dévoilé (« Offert par … ») ; sinon « la personne qui l'a offert ». L'expéditeur d'un merci (un parent) est nommé côté donateur.
 - Conversion de devises (#38) : uniquement à côté d'un prix dans une autre devise que celle du profil, jamais à sa place. Format « prix d'origine ≈ montant converti », arrondi à l'unité (au centime sous 10). Là où plusieurs prix sont convertis (fiche cadeau, total de Mes achats), le mot « indicatif » est écrit en toutes lettres. Taux BCE du jour via `CurrencyService.shared` ; hors ligne, dernier taux connu ; sans aucun taux, rien n'est affiché.
+
+## Android (Compose)
+
+Port du design system dans `android/app/src/main/kotlin/ch/jonathanlemaine/giftmanager/ui/` (`theme/`, `components/`). Mêmes tokens, mêmes composants, mêmes règles d'usage qu'iOS ; les écarts ci-dessous sont propres à Android.
+
+### Tokens
+
+- **Couleurs** : valeurs ARGB dans `ThemeTokens.Light` / `ThemeTokens.Dark` (`PaletteTokens.kt`), vérifiées contre les `.colorset` iOS par `PaletteParityTest`. Résolues en `GiftColors` immuable (`Color.kt`), accès `GiftTheme.colors.primary`… `pastel(Pastel)`, `pastel(named)` et `pastelFor(seed)` reprennent `Color.Theme.pastel(named:)` / `pastel(for:)`. **Pas de couleurs dynamiques Material You** : la palette est celle de la marque.
+- **Typographie** (`Type.kt`, `GiftTheme.type`) : mêmes 7 styles et mêmes tailles qu'iOS, **toujours en `sp`** (suivent la taille de police système). `largeTitle` et `title` en **Nunito** (police variable, axe `wght`, licence OFL dans `android/licenses/`) : l'équivalent de SF Pro Rounded. Le reste en police système (Roboto). Prix et montants : `style.tabular()` (`fontFeatureSettings = "tnum"`).
+- **Mesures** (`Metrics.kt`) : `GiftTheme.spacing` (xs 4 · s 8 · m 12 · l 16 · xl 20 · xxl 32 dp), `GiftTheme.radius` (card 20 · thumb 14 · field 14 dp, + `cardShape`…), `CapsuleShape` pour boutons et badges. `HitTarget.minimum` = **48 dp** (Material) au lieu de 44 pt, `HitTarget.button` = 52 dp. Les mesures qui suivent Dynamic Type sur iOS (`@ScaledMetric`) grandissent avec l'échelle de police, plafonnées.
+- **Profondeur et pression** (`Modifiers.kt`) : `Modifier.fcCard(padding)` (fond `surface`, rayon `card`, ombre unique noir 6 %, y 2 dp, flou 8 dp), `fcScreenBackground()`, `fcPressable(interactionSource)` et `fcClickable(onClick)` (échelle 0,97 + opacité 0,85, ressort 0,25 s ; pas d'échelle si animations réduites ; **anneau `primary` de 2 dp au focus clavier / D-pad**, puisque ces contrôles n'ont pas d'ondulation). `fcListRow` n'a pas d'équivalent : pas de `List` groupée en Compose.
+- **Animations réduites** : `rememberReduceMotion()` lit `Settings.Global.ANIMATOR_DURATION_SCALE` (0 = animations coupées, réglage « Supprimer les animations ») et suit les changements en direct ; exposé par `GiftTheme.reduceMotion`.
+
+### Projection Material 3
+
+`GiftManagerTheme` fournit les tokens **et** un `ColorScheme` / `Typography` M3, pour que les composants Material (Switch, Slider, indicateurs, sélection de texte) prennent l'identité de l'app.
+
+| Rôle M3 | Token | | Rôle M3 | Token |
+|---|---|---|---|---|
+| `background` | `background` | | `primary` / `onPrimary` | `primary` / `onPrimary` |
+| `surface`, `surfaceContainer`, `…High`, `…Highest`, `surfaceBright` | `surface` | | `secondary` / `onSecondary` | `secondary` / `onPrimary` |
+| `surfaceVariant`, `surfaceContainerLow`, `…Lowest`, `surfaceDim` | `background` | | `tertiary` / `onTertiary` | `accentAmber` / `onPrimary` |
+| `onBackground`, `onSurface`, `inverseSurface` | `textPrimary` | | `primaryContainer` / on | `mineBg` / `mineFg` |
+| `onSurfaceVariant`, `outline` | `textSecondary` | | `secondaryContainer` / on | `availableBg` / `availableFg` |
+| `outlineVariant` | `separator` | | `tertiaryContainer` / on | `potBg` / `potFg` |
+| `surfaceTint` | `surface` (teinte d'élévation neutralisée) | | `error` / `onError` | `takenFg` / `onPrimary` |
+| `scrim` | noir | | `errorContainer` / on | `takenBg` / `takenFg` |
+
+Typographie : `headlineLarge` / `displaySmall` = `largeTitle`, `titleLarge` / `headline*` = `title`, `titleMedium` / `labelLarge` = `headline`, `bodyLarge` = `callout`, `bodyMedium` = `body`, `bodySmall` / `labelSmall` = `caption`, `labelMedium` = `captionBold`. Paires texte des rôles vérifiées AA par `MaterialRolesContrastTest`.
+
+La fenêtre native (`res/values[-night]/themes.xml`) prend la couleur `background` pour éviter un flash au lancement ; l'app est bord à bord (`enableEdgeToEdge`), chaque écran pose les marges `WindowInsets.safeDrawing`.
+
+### Écart : `accentAmber` en clair
+
+`accentAmber` clair (`#B85F0E`) ne fait que **4,11:1 sur `background`** (4,49:1 sur `surface`, 4,49:1 sous un texte blanc), et non 4,5 comme annoncé dans le tableau des couleurs. La valeur n'est **pas** modifiée (parité avec iOS) ; sur Android :
+
+- jamais de **texte** `accentAmber` sur `background` ou `surface`, ni de texte posé sur un fond `accentAmber` (rôle M3 `tertiary`) ;
+- usages permis : formes et icônes (≥ 3:1 : étincelles de `GiftLoadingView`, icône de `FeaturePill` sur `pastelPeach`, jauge), toujours doublées d'un texte ;
+- les usages iOS en texte (« ambre quand rien n'est prévu » de l'équilibre #41, niveau « Plus que 20 CHF » des budgets #40) passeront en `potFg` sur Android.
+
+`ContrastTest` et `MaterialRolesContrastTest` figent cet écart (3:1 exigé en clair, AA en sombre). À corriger d'abord côté iOS si l'ambre doit un jour porter du texte seul.
+
+### Composants
+
+Un fichier par composant dans `ui/components/`, chacun avec `modifier: Modifier = Modifier` et des aperçus `@GiftPreviews` (clair, sombre, police 200 %). Libellés en français dans `res/values/strings.xml`. Signatures alignées sur SwiftUI, aux idiomes Compose près :
+
+| iOS | Compose | Différences |
+|---|---|---|
+| `StatusBadge(status:)` | `StatusBadge(status)` | Libellé par `GiftStatus.labelRes` ; couleurs `status.background(colors)` / `foreground(colors)` |
+| `GiftCard(...)` | `GiftCard(title, imageUrl, priceText, storeText, countryCode, isFavorite, status, approxPriceText, onClick)` | `onClick` remplace le `NavigationLink`. Pile verticale dès `fontScale ≥ 1,5` |
+| `PotProgressCard(progress:myShareText:)` | `PotProgressCard(progress, myShareText)` | Un seul nœud TalkBack |
+| `PriorityHeart(isOn:action:)` | `PriorityHeart(isOn, onToggle: ((Boolean) -> Unit)?)` | Rôle interrupteur, haptique `ToggleOn/Off` |
+| `CountryFlag(code:)` | `CountryFlag(code, style)` | Logique dans `CountryFlagLogic` |
+| `RemoteImage(url:contentMode:placeholderSeed:)` | `RemoteImage(url, contentScale, placeholderSeed, contentDescription)` | Coil 3 ; `contentDescription = null` = décorative |
+| `StoreLinkRow(store:countryCode:priceText:action:)` | `StoreLinkRow(store, countryCode, priceText, onClick, approxPriceText)` | TalkBack : « Appuyez deux fois pour ouvrir le site de la boutique » |
+| `ChildAvatar(name:emoji:colorName:size:)` | `ChildAvatar(name, emoji, colorName, size, photoUrl)` | Photo optionnelle (Coil), avatar pastel en repli |
+| `AvatarStack(names:maxVisible:size:)` | `AvatarStack(names, maxVisible, size)` | |
+| `EventRow(...)` / `EventKindTile(kind:size:)` | `EventRow(title, dateText, subtitle, kind: GiftEventKind, avatarNames, onClick)` / `EventKindTile(kind, size)` | `GiftEventKind` du modèle au lieu d'un `EventKind` d'UI |
+| `PrimaryButton` / `SecondaryButton(title:systemImage:isLoading:action:)` | `PrimaryButton(text, onClick, leadingIcon, trailingIcon, isLoading, enabled)` | Icône de tête ou de queue explicite (iOS : déduit du nom `chevron.*`/`arrow.*`) ; `enabled` remplace `.disabled()` |
+| `TextLinkButton(title:action:)` | `TextLinkButton(text, onClick)` | |
+| `FCPillLabel(title:systemImage:style:)` | `FCPillLabel(text, icon, style: FCPillStyle)` | L'hôte pose `fcClickable` |
+| `FCNotice(systemImage:text:tone:)` | `FCNotice(icon, text, tone: FCNoticeTone)` | |
+| `SegmentedTabs(selection:titles:)` | `SegmentedTabs(selectedIndex, onSelect, titles)` | `Role.Tab`, position « 1 sur 3 » |
+| `EmptyStateView(imageName:...)` | `EmptyStateView(illustration: Illustration, title, message, actionLabel, onAction)` | |
+| `FeaturePill(systemImage:color:title:subtitle:background:)` | `FeaturePill(icon, color, title, subtitle, background)` | |
+| `SectionHeader(title:actionSystemImage:action:actionLabel:)` | `SectionHeader(title, actionIcon, onAction, actionLabel)` | Titre = `heading()` TalkBack |
+| `FCTextField(title:text:systemImage:prompt:isTitleHidden:)` | `FCTextField(label, value, onValueChange, leadingIcon, placeholder, isLabelHidden, keyboardOptions)` | Libellé dans la décoration du champ (lu avec la valeur) |
+| `ApproxPriceText(text:)` / `IndicativeRateNote(rateDateText:)` | idem | |
+| `GiftLoadingView(size:label:)` | `GiftLoadingView(size, label)` | Port fidèle : une seule `rememberInfiniteTransition`, valeurs lues au dessin ; figée (paquet droit, étincelles visibles) si animations réduites ; région live « Chargement en cours » |
+
+**Icônes** : `GiftIcons` — `material-icons-core` (cœur, plus, chevron, recherche, cadenas, partage, alerte) et vector drawables Material (`res/drawable/ic_*.xml` : cadeau, sac, globe, lien externe, groupe, œil barré, archive, lien, erreur, bouclier, effacer). Pas d'`icons-extended`.
+
+**Illustrations** : `Illustration` (enum) → `res/drawable-nodpi/*.webp`, générés depuis `Illustrations.xcassets` par `scripts/android/convert-illustrations.sh` (WebP sans perte avec alpha, idempotent, nécessite `cwebp`). Relancer le script après toute mise à jour des PNG iOS.
+
+### Galerie (debug)
+
+`DesignSystemGallery` vit **uniquement** dans `android/app/src/debug/kotlin/…/ui/debug/` ; `src/release` fournit un `DebugEntryPoints` vide de même API, si bien que le build release ne contient aucune classe de la galerie. Accès : lien « Galerie du design system » en bas de l'écran d'accueil (debug seulement). Sections dans l'ordre iOS, plus la cagnotte ; barre fixe avec bascule clair / sombre et curseur de taille du texte 100 → 200 % pour éprouver les grandes polices sans changer les réglages du téléphone.
 
 ## Mode enfant (#36)
 
