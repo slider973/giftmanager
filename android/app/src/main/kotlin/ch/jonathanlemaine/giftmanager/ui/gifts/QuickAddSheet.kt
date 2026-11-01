@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ch.jonathanlemaine.giftmanager.R
+import ch.jonathanlemaine.giftmanager.core.gifts.ShareTargets
 import ch.jonathanlemaine.giftmanager.core.model.WishKind
 import ch.jonathanlemaine.giftmanager.ui.children.ChildRow
 import ch.jonathanlemaine.giftmanager.ui.common.TopBarTextAction
@@ -46,20 +47,26 @@ import ch.jonathanlemaine.giftmanager.ui.theme.GiftTheme
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun QuickAddSheet(state: QuickAddUiState, onPick: (QuickAddTarget) -> Unit, onDismiss: () -> Unit) {
+fun QuickAddSheet(
+    state: QuickAddUiState,
+    onPick: (QuickAddTarget) -> Unit,
+    onDismiss: () -> Unit,
+    /** Mode partage (#79) : lien reçu d'une autre app ; titre « Ajouter ce lien à… » et domaine en sous-titre. */
+    sharedLink: String? = null,
+) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = GiftTheme.colors.background,
         contentColor = GiftTheme.colors.textPrimary,
     ) {
-        QuickAddContent(state, onPick, onDismiss)
+        QuickAddContent(state, onPick, onDismiss, sharedLink)
     }
 }
 
 /** Contenu de la feuille, séparé pour les aperçus (une `ModalBottomSheet` ne s'affiche pas en aperçu). */
 @Composable
-internal fun QuickAddContent(state: QuickAddUiState, onPick: (QuickAddTarget) -> Unit, onDismiss: () -> Unit) {
+internal fun QuickAddContent(state: QuickAddUiState, onPick: (QuickAddTarget) -> Unit, onDismiss: () -> Unit, sharedLink: String? = null) {
     val spacing = GiftTheme.spacing
     Column(
         verticalArrangement = Arrangement.spacedBy(spacing.l),
@@ -70,12 +77,19 @@ internal fun QuickAddContent(state: QuickAddUiState, onPick: (QuickAddTarget) ->
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = stringResource(R.string.add_sheet_title),
+                text = stringResource(if (sharedLink != null) R.string.share_sheet_title else R.string.add_sheet_title),
                 style = GiftTheme.type.title,
                 color = GiftTheme.colors.textPrimary,
                 modifier = Modifier.weight(1f).semantics { heading() },
             )
             TopBarTextAction(stringResource(R.string.add_sheet_close), onClick = onDismiss)
+        }
+        sharedLink?.let { link ->
+            Text(
+                text = ShareTargets.domain(link) ?: link,
+                style = GiftTheme.type.caption,
+                color = GiftTheme.colors.textSecondary,
+            )
         }
         if (state.isEmpty) {
             EmptyStateView(
