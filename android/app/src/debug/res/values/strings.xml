@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Chaînes de la galerie du design system (debug uniquement). -->
+<resources>
+    <string name="gallery_title">Gift Manager</string>
+    <string name="gallery_subtitle">Design system · galerie de revue</string>
+    <string name="gallery_back">Retour</string>
+    <string name="gallery_dark">Sombre</string>
+    <string name="gallery_font_scale">Taille du texte</string>
+    <string name="gallery_font_scale_value">%1$d %%</string>
+    <string name="gallery_section_loading">Chargement</string>
+    <string name="gallery_section_colors">Couleurs</string>
+    <string name="gallery_section_type">Typographie</string>
+    <string name="gallery_section_cards">Cartes cadeau</string>
+    <string name="gallery_section_pot">Cagnotte</string>
+    <string name="gallery_section_events">Événements à venir</string>
+    <string name="gallery_section_links">Liens par pays</string>
+    <string name="gallery_section_buttons">Boutons</string>
+    <string name="gallery_section_controls">Contrôles</string>
+    <string name="gallery_section_avatars">Avatars</string>
+    <string name="gallery_section_features">Pastilles</string>
+    <string name="gallery_section_empty">État vide</string>
+</resources>
