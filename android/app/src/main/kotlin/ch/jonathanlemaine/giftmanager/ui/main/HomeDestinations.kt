@@ -84,6 +84,7 @@ fun EventDetailDestination(
             onEdit = onEdit,
             onOpenChild = { childId -> state.event?.let { onOpenChild(childId, it.id, state.readOnly) } },
             onDismissError = viewModel::dismissError,
+            onRefresh = viewModel::refresh,
         ),
     )
 }

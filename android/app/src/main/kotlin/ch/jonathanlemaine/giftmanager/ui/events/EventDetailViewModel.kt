@@ -14,6 +14,7 @@ import ch.jonathanlemaine.giftmanager.core.session.canEdit
 import ch.jonathanlemaine.giftmanager.core.session.child
 import ch.jonathanlemaine.giftmanager.core.session.children
 import ch.jonathanlemaine.giftmanager.core.session.event
+import ch.jonathanlemaine.giftmanager.core.session.household
 import ch.jonathanlemaine.giftmanager.core.session.isParent
 import ch.jonathanlemaine.giftmanager.data.EventRepository
 import java.time.Clock
@@ -30,9 +31,9 @@ import kotlinx.coroutines.launch
 /**
  * Une liste concernée par l'événement. [counts] est l'indicateur d'équilibre anonyme (#41) : `null` pour mes
  * propres listes (jamais affiché, mode surprise), pour un événement passé, ou tant que le serveur n'a rien
- * renvoyé.
+ * renvoyé. [householdName] : foyer de la liste, affiché sous le prénom (iOS : `ChildRow`).
  */
-data class EventListEntry(val child: Child, val counts: ReservationCounts?)
+data class EventListEntry(val child: Child, val counts: ReservationCounts?, val householdName: String? = null)
 
 /** « Léo fête ses 8 ans » / « Léo a fêté ses 8 ans » (#43). */
 data class BirthdayInfo(val childName: String, val age: Int, val isPast: Boolean)
@@ -92,7 +93,8 @@ class EventDetailViewModel(
         val event = s.event(eventId) ?: return EventDetailUiState(isRefreshing = l.isRefreshing, error = l.error)
         val isPast = event.isPast(clock)
         // Jamais de compteur pour mes listes ni pour un événement passé.
-        fun entry(child: Child) = EventListEntry(child, if (isPast || s.isParent(child)) null else l.counts[child.id])
+        fun entry(child: Child) =
+            EventListEntry(child, if (isPast || s.isParent(child)) null else l.counts[child.id], s.household(of = child)?.name)
         val lists = s.children(event)
         val kids = lists.filter { !s.isParent(it) && !it.isAdult }
         val adults = lists.filter { !s.isParent(it) && it.isAdult }
