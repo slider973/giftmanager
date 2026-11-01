@@ -594,5 +594,8 @@
     <string name="search_empty_title">Aucun résultat</string>
     <string name="search_empty_filters">Retire un filtre pour voir plus de cadeaux.</string>
     <string name="search_empty_query">Essaie un autre mot ou retire les filtres.</string>
-    <string name="search_group_description">%1$s, %2$d cadeaux</string>
+    <plurals name="search_group_description">
+        <item quantity="one">%1$s, %2$d cadeau</item>
+        <item quantity="other">%1$s, %2$d cadeaux</item>
+    </plurals>
 </resources>
