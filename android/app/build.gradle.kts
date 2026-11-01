@@ -117,6 +117,9 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.androidx.exifinterface)
 
+    // Mode enfant (#75) : empreinte, visage ou code de l'appareil à la sortie (BiometricPrompt, stable 1.1.0).
+    implementation(libs.androidx.biometric)
+
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 

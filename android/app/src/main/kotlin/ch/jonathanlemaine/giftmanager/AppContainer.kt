@@ -1,12 +1,15 @@
 package ch.jonathanlemaine.giftmanager
 
 import android.content.Context
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.navigation.toRoute
 import ch.jonathanlemaine.giftmanager.core.budgets.Budget
+import ch.jonathanlemaine.giftmanager.core.childmode.ChildModeLock
+import ch.jonathanlemaine.giftmanager.core.childmode.ParentAuthenticator
 import ch.jonathanlemaine.giftmanager.core.config.AppConfig
 import ch.jonathanlemaine.giftmanager.core.currency.CurrencyService
 import ch.jonathanlemaine.giftmanager.core.gifts.AndroidImageResizer
@@ -60,6 +63,8 @@ import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorMode
 import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetEditorViewModel
 import ch.jonathanlemaine.giftmanager.ui.budgets.BudgetsViewModel
 import ch.jonathanlemaine.giftmanager.ui.auth.SignInViewModel
+import ch.jonathanlemaine.giftmanager.ui.childmode.BiometricParentAuthenticator
+import ch.jonathanlemaine.giftmanager.ui.childmode.ChildModeViewModel
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorMode
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorViewModel
 import ch.jonathanlemaine.giftmanager.ui.events.EventDetailViewModel
@@ -78,6 +83,7 @@ import ch.jonathanlemaine.giftmanager.ui.navigation.AddGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.BudgetEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildGiftsRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.ChildModeRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.EventDetailRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.EventEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.GiftDetailRoute
@@ -92,6 +98,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import okhttp3.OkHttpClient
+import java.lang.ref.WeakReference
 import java.math.BigDecimal
 import java.time.Clock
 import java.util.UUID
@@ -101,6 +108,22 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
     private val supabase by lazy { SupabaseProvider.create(config) }
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** Verrou du mode enfant : tant qu'il est actif, aucun dialogue global ne s'affiche (#75). */
+    val childModeLock = ChildModeLock()
+
+    private var activityRef: WeakReference<FragmentActivity>? = null
+
+    /** `MainActivity` s'annonce : la vérification de l'adulte à la sortie du mode enfant a besoin d'une activité. */
+    fun attachActivity(activity: FragmentActivity) {
+        activityRef = WeakReference(activity)
+    }
+
+    fun detachActivity(activity: FragmentActivity) {
+        if (activityRef?.get() === activity) activityRef = null
+    }
+
+    val parentAuthenticator: ParentAuthenticator by lazy { BiometricParentAuthenticator { activityRef?.get() } }
 
     val repository: GiftRepository by lazy { SupabaseGiftRepository(supabase) }
 
@@ -228,6 +251,13 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
                     } ?: BudgetEditorMode.Create
                     BudgetEditorViewModel(mode, session, budgetRepository)
                 }
+                modelClass.isAssignableFrom(ChildModeViewModel::class.java) -> {
+                    val route = extras.route<ChildModeRoute>()
+                    ChildModeViewModel(
+                        UUID.fromString(route.childId), route.eventId?.let(UUID::fromString), session, itemRepository,
+                        childModeLock, parentAuthenticator,
+                    )
+                }
                 modelClass.isAssignableFrom(ThanksComposerViewModel::class.java) -> {
                     val route = extras.route<ThanksComposerRoute>()
                     ThanksComposerViewModel(
@@ -255,7 +285,7 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
                 modelClass.isAssignableFrom(GroupSetupViewModel::class.java) -> GroupSetupViewModel(session)
                 modelClass.isAssignableFrom(FamilyHomeViewModel::class.java) -> FamilyHomeViewModel(session, itemRepository)
                 modelClass.isAssignableFrom(ProfileViewModel::class.java) -> ProfileViewModel(session, localPrefs)
-                modelClass.isAssignableFrom(MainViewModel::class.java) -> MainViewModel(session)
+                modelClass.isAssignableFrom(MainViewModel::class.java) -> MainViewModel(session, childModeLock)
                 modelClass.isAssignableFrom(QuickAddViewModel::class.java) -> QuickAddViewModel(session)
                 modelClass.isAssignableFrom(PurchasesViewModel::class.java) ->
                     PurchasesViewModel(

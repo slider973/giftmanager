@@ -6,6 +6,7 @@ import ch.jonathanlemaine.giftmanager.core.gifts.GiftTab
 import ch.jonathanlemaine.giftmanager.core.gifts.GiftActionReducer
 import ch.jonathanlemaine.giftmanager.core.model.ItemStatus
 import ch.jonathanlemaine.giftmanager.core.model.WishKind
+import ch.jonathanlemaine.giftmanager.core.session.testChild
 import ch.jonathanlemaine.giftmanager.core.session.uuid
 import ch.jonathanlemaine.giftmanager.data.itemLink
 import ch.jonathanlemaine.giftmanager.data.wishItem
@@ -69,6 +70,35 @@ class ChildGiftsViewModelTest {
     }
 
     private val ChildGiftsViewModel.state get() = uiState.value
+
+    // region Mode enfant (#75)
+
+    @Test fun childModeIsOfferedOnMyChildsListWithWishes() = runTest {
+        assertTrue(vm(env()).state.canStartChildMode)
+    }
+
+    @Test fun childModeIsNotOfferedOnAnotherHouseholdsList() = runTest {
+        assertFalse(vm(env(), childId = zoe).state.canStartChildMode)
+    }
+
+    @Test fun childModeIsNotOfferedForAPastEvent() = runTest {
+        assertFalse(vm(env(), readOnly = true).state.canStartChildMode)
+    }
+
+    @Test fun childModeIsNotOfferedOnAnAdultList() = runTest {
+        val env = env {
+            f.childRepo.all += testChild(5, adult = true, name = "Papa")
+            items.items += wishItem(21, childN = 5, status = null)
+        }
+        assertFalse(vm(env, childId = uuid(405)).state.canStartChildMode)
+    }
+
+    @Test fun childModeIsNotOfferedWithoutAnyWish() = runTest {
+        val env = giftsEnv { items.items += wishItem(1, childN = 1, status = null, owned = true) }
+        assertFalse(vm(env).state.canStartChildMode)
+    }
+
+    // endregion
 
     // region Chargement
 

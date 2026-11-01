@@ -112,6 +112,13 @@ data class ThanksComposerRoute(val itemId: String)
 @Serializable
 data object ThanksInboxRoute
 
+/**
+ * Mode enfant (#36, #75) : la liste de souhaits de l'enfant en grand, avec des cœurs. [eventId] filtre la liste comme
+ * celle d'où l'on vient (`null` : tous les cadeaux). Racine du NavHost, plein écran.
+ */
+@Serializable
+data class ChildModeRoute(val childId: String, val eventId: String?)
+
 /** Idées proposées pour mes enfants, en attente de mon verdict (#57, #73). */
 @Serializable
 data object PendingIdeasRoute
