@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.DropdownMenu
@@ -106,6 +107,8 @@ data class ChildGiftsActions(
     val onDismissError: () -> Unit,
     /** Ouvre le mode enfant (#75), si [ChildGiftsUiState.canStartChildMode]. */
     val onStartChildMode: () -> Unit = {},
+    /** Lance la session du Père Noël (#78), si [ChildGiftsUiState.canLaunchSanta]. */
+    val onLaunchSanta: () -> Unit = {},
 )
 
 /**
@@ -146,7 +149,15 @@ fun ChildGiftsScreen(state: ChildGiftsUiState, actions: ChildGiftsActions, modif
                 title = state.child?.firstName,
                 titleVisible = titleUnderBar,
                 showDivider = scrolled,
-            ) { TopBarActions(state, reordering, onToggleReorder = { reordering = !reordering }, onAdd = actions.onAdd) }
+            ) {
+                TopBarActions(
+                    state = state,
+                    reordering = reordering,
+                    onToggleReorder = { reordering = !reordering },
+                    onAdd = actions.onAdd,
+                    onLaunchSanta = actions.onLaunchSanta,
+                )
+            }
         },
     ) {
         PullToRefreshBox(
@@ -241,7 +252,13 @@ fun ChildGiftsScreen(state: ChildGiftsUiState, actions: ChildGiftsActions, modif
 
 /** « Archivé » (événement passé), « Ordonner » / « OK », puis ajouter (souhait, cadeau possédé) ou proposer une idée. */
 @Composable
-private fun TopBarActions(state: ChildGiftsUiState, reordering: Boolean, onToggleReorder: () -> Unit, onAdd: () -> Unit) {
+private fun TopBarActions(
+    state: ChildGiftsUiState,
+    reordering: Boolean,
+    onToggleReorder: () -> Unit,
+    onAdd: () -> Unit,
+    onLaunchSanta: () -> Unit,
+) {
     val colors = GiftTheme.colors
     val type = GiftTheme.type
     if (state.readOnly) {
@@ -261,6 +278,7 @@ private fun TopBarActions(state: ChildGiftsUiState, reordering: Boolean, onToggl
     if (state.canReorder) {
         TopBarTextAction(stringResource(if (reordering) R.string.gifts_reorder_done else R.string.gifts_reorder), onClick = onToggleReorder)
     }
+    if (state.canLaunchSanta) SantaEntryButton(state.child?.firstName.orEmpty(), onLaunchSanta)
     val mode = state.addMode ?: return
     val (icon, label) = when {
         mode.kind == WishKind.IDEA -> GiftIcons.Lightbulb to stringResource(R.string.gifts_add_idea)
@@ -268,6 +286,27 @@ private fun TopBarActions(state: ChildGiftsUiState, reordering: Boolean, onToggl
         else -> GiftIcons.AddCircle to stringResource(R.string.gifts_add_wish_a11y)
     }
     RoundIconButton(icon = icon, label = label, onClick = onAdd)
+}
+
+/**
+ * Entrée du Père Noël (#78), à côté du « + » comme sur iOS (`gift.circle.fill`) : cadeau `onPrimary` sur un disque
+ * `primary` de la taille du glyphe ⊕ voisin, cible 48 dp. Parents seulement, hors archive et hors mode enfant.
+ */
+@Composable
+private fun SantaEntryButton(childName: String, onClick: () -> Unit) {
+    val colors = GiftTheme.colors
+    val label = stringResource(R.string.santa_entry_action, childName)
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(HitTarget.minimum)
+            .fcClickable(onClick = onClick, shape = CircleShape, pressedScale = 0.9f)
+            .semantics { contentDescription = label },
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(22.dp).background(colors.primary, CircleShape)) {
+            Icon(GiftIcons.Gift, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(13.dp))
+        }
+    }
 }
 
 /** Avatar 56 dp, prénom (titre TalkBack), « 8 ans · Ses envies » ou « 8 ans · Foyer Martin » : un seul nœud. */

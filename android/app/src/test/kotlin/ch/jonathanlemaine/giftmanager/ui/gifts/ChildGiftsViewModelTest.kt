@@ -1,5 +1,6 @@
 package ch.jonathanlemaine.giftmanager.ui.gifts
 
+import ch.jonathanlemaine.giftmanager.core.childmode.ChildModeLock
 import ch.jonathanlemaine.giftmanager.core.currency.ExchangeRates
 import ch.jonathanlemaine.giftmanager.core.error.GiftError
 import ch.jonathanlemaine.giftmanager.core.gifts.GiftTab
@@ -70,6 +71,33 @@ class ChildGiftsViewModelTest {
     }
 
     private val ChildGiftsViewModel.state get() = uiState.value
+
+    // region Père Noël (#78)
+
+    @Test fun santaIsOfferedToAParentOnTheirChildsList() = runTest {
+        assertTrue(vm(env()).state.canLaunchSanta)
+    }
+
+    @Test fun santaIsNotOfferedOnAnotherHouseholdsList() = runTest {
+        assertFalse(vm(env(), childId = zoe).state.canLaunchSanta)
+    }
+
+    @Test fun santaIsNotOfferedForAPastEvent() = runTest {
+        assertFalse(vm(env(), readOnly = true).state.canLaunchSanta)
+    }
+
+    @Test fun santaIsNotOfferedInChildMode() = runTest {
+        val env = env()
+        val lock = ChildModeLock()
+        val vm = ChildGiftsViewModel(lea, null, false, env.session, env.items, childModeLock = lock).also { runCurrent() }
+        assertTrue(vm.state.canLaunchSanta)
+        lock.activate()
+        assertFalse(vm.state.canLaunchSanta)
+        lock.release()
+        assertTrue(vm.state.canLaunchSanta)
+    }
+
+    // endregion
 
     // region Mode enfant (#75)
 

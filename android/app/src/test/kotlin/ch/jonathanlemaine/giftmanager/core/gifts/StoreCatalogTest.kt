@@ -63,4 +63,55 @@ class StoreCatalogTest {
         val b = link("Amazon", "FR", 1, "EUR")
         assertEquals(listOf("Amazon", "Zalando"), StoreCatalog.sorted(listOf(a, b), "CH").map { it.store })
     }
+
+    // region Recherche par pays (#78)
+
+    @Test fun swissStoresComeFirstForSwitzerland() {
+        val stores = StoreCatalog.searchableStores("CH")
+        assertEquals(listOf("franz-carl-weber.ch", "galaxus.ch", "fnac.ch", "manor.ch", "digitec.ch"), stores.map { it.domain })
+        assertEquals(setOf("CH"), stores.map { it.country }.toSet())
+    }
+
+    @Test fun frenchStoresForFrance() {
+        val stores = StoreCatalog.searchableStores("FR")
+        assertEquals("king-jouet.com", stores.first().domain)
+        assertEquals(setOf("FR"), stores.map { it.country }.toSet())
+    }
+
+    @Test fun countryWithoutListFallsBackOnItsAmazon() {
+        val stores = StoreCatalog.searchableStores("IT")
+        assertEquals(listOf(StoreCatalog.SearchableStore("amazon.it", "Amazon", "IT", "https://www.amazon.it/s?k={q}")), stores)
+    }
+
+    @Test fun unknownOrMissingCountryHasNoStore() {
+        assertEquals(emptyList<StoreCatalog.SearchableStore>(), StoreCatalog.searchableStores("ZZ"))
+        assertEquals(emptyList<StoreCatalog.SearchableStore>(), StoreCatalog.searchableStores(null))
+        assertEquals(emptyList<StoreCatalog.SearchableStore>(), StoreCatalog.searchableStores(""))
+    }
+
+    @Test fun searchUrlEscapesSpacesAsPercent20() {
+        val galaxus = StoreCatalog.searchableStores("CH").first { it.domain == "galaxus.ch" }
+        assertEquals("https://www.galaxus.ch/fr/search?q=trottinette%20rouge", StoreCatalog.searchUrl("trottinette rouge", galaxus))
+    }
+
+    @Test fun searchUrlEscapesAccentsAndSymbolsInUtf8() {
+        val fnac = StoreCatalog.searchableStores("FR").first { it.domain == "fnac.com" }
+        assertEquals(
+            "https://www.fnac.com/SearchResult/ResultList.aspx?Search=ch%C3%A2teau%20%26%20d%C3%A9s",
+            StoreCatalog.searchUrl("château & dés", fnac),
+        )
+        // Les caractères non réservés d'iOS restent tels quels.
+        assertEquals(
+            "https://www.fnac.com/SearchResult/ResultList.aspx?Search=a-b_c.d",
+            StoreCatalog.searchUrl("a-b_c.d", fnac),
+        )
+    }
+
+    @Test fun emptyQueryGivesNoUrl() {
+        val store = StoreCatalog.searchableStores("CH").first()
+        assertNull(StoreCatalog.searchUrl("", store))
+        assertNull(StoreCatalog.searchUrl("  \n ", store))
+    }
+
+    // endregion
 }

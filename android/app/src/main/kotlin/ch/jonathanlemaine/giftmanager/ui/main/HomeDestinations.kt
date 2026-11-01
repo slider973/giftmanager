@@ -149,6 +149,8 @@ fun ChildGiftsDestination(
     onAdd: (childId: UUID, kind: WishKind, eventId: UUID?, owned: Boolean) -> Unit,
     /** Ouvre le mode enfant sur la liste affichée : enfant, événement filtré (#75). */
     onStartChildMode: (childId: UUID, eventId: UUID?) -> Unit,
+    /** Lance la session du Père Noël pour cet enfant (#78). */
+    onLaunchSanta: (childId: UUID) -> Unit,
 ) {
     val viewModel: ChildGiftsViewModel = viewModel(factory = viewModelFactory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -172,6 +174,7 @@ fun ChildGiftsDestination(
             onRefresh = viewModel::refresh,
             onDismissError = viewModel::dismissError,
             onStartChildMode = { state.child?.let { onStartChildMode(it.id, state.eventId) } },
+            onLaunchSanta = { state.child?.let { onLaunchSanta(it.id) } },
         ),
     )
 }

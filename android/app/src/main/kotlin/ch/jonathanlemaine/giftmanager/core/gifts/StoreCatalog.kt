@@ -83,4 +83,89 @@ object StoreCatalog {
         links.sortedWith(
             compareByDescending<ItemLink> { it.country == preferredCountry }.thenBy { it.store.orEmpty() },
         )
+
+    // region Recherche par pays (#78)
+
+    /** Boutique où lancer une recherche de jouet, avec le gabarit d'URL correspondant. */
+    data class SearchableStore(
+        val domain: String,
+        val name: String,
+        val country: String,
+        /** Gabarit où `{q}` est remplacé par la requête, déjà échappée. */
+        val searchTemplate: String,
+    )
+
+    /**
+     * Boutiques interrogeables, par pays du foyer. Le pays vient de `households.country`, jamais de la locale de
+     * l'appareil : un parent suisse en voyage continue à voir des boutiques suisses. Les enseignes de jouets sont
+     * en tête — ce sont elles qui donnent les résultats les plus pertinents pour une envie d'enfant.
+     */
+    private val searchable: Map<String, List<SearchableStore>> = mapOf(
+        "CH" to listOf(
+            SearchableStore("franz-carl-weber.ch", "Franz Carl Weber", "CH", "https://www.franz-carl-weber.ch/fr/search?q={q}"),
+            SearchableStore("galaxus.ch", "Galaxus", "CH", "https://www.galaxus.ch/fr/search?q={q}"),
+            SearchableStore("fnac.ch", "Fnac", "CH", "https://www.fnac.ch/SearchResult/ResultList.aspx?Search={q}"),
+            SearchableStore("manor.ch", "Manor", "CH", "https://www.manor.ch/fr/search?q={q}"),
+            SearchableStore("digitec.ch", "Digitec", "CH", "https://www.digitec.ch/fr/search?q={q}"),
+        ),
+        "FR" to listOf(
+            SearchableStore("king-jouet.com", "King Jouet", "FR", "https://www.king-jouet.com/recherche.htm?mot={q}"),
+            SearchableStore("joueclub.fr", "JouéClub", "FR", "https://www.joueclub.fr/catalogsearch/result/?q={q}"),
+            SearchableStore("lagranderecre.fr", "La Grande Récré", "FR", "https://www.lagranderecre.fr/catalogsearch/result/?q={q}"),
+            SearchableStore("fnac.com", "Fnac", "FR", "https://www.fnac.com/SearchResult/ResultList.aspx?Search={q}"),
+            SearchableStore("amazon.fr", "Amazon", "FR", "https://www.amazon.fr/s?k={q}"),
+        ),
+        "DE" to listOf(
+            SearchableStore("galaxus.de", "Galaxus", "DE", "https://www.galaxus.de/search?q={q}"),
+            SearchableStore("amazon.de", "Amazon", "DE", "https://www.amazon.de/s?k={q}"),
+            SearchableStore("mediamarkt.de", "MediaMarkt", "DE", "https://www.mediamarkt.de/de/search.html?query={q}"),
+        ),
+        "BE" to listOf(
+            SearchableStore("amazon.com.be", "Amazon", "BE", "https://www.amazon.com.be/s?k={q}"),
+            SearchableStore("fnac.com", "Fnac", "BE", "https://www.fnac.com/SearchResult/ResultList.aspx?Search={q}"),
+        ),
+    )
+
+    /**
+     * Boutiques à interroger pour un foyer donné. Un pays sans liste dédiée retombe sur Amazon de ce pays s'il
+     * existe dans le catalogue, plutôt que de ne rien proposer.
+     */
+    fun searchableStores(country: String?): List<SearchableStore> {
+        if (country.isNullOrEmpty()) return emptyList()
+        searchable[country]?.let { return it }
+
+        val amazonDomain = "amazon." + country.lowercase(Locale.ROOT)
+        val store = known[amazonDomain]
+        val storeCountry = store?.country
+        if (store != null && storeCountry != null) {
+            return listOf(SearchableStore(amazonDomain, store.name, storeCountry, "https://www.$amazonDomain/s?k={q}"))
+        }
+        return emptyList()
+    }
+
+    /**
+     * URL de recherche pour une envie exprimée par l'enfant. `null` si la requête est vide, pour ne jamais ouvrir une
+     * page de recherche vide.
+     */
+    fun searchUrl(query: String, store: SearchableStore): String? {
+        val clean = query.trim()
+        if (clean.isEmpty()) return null
+        return store.searchTemplate.replace("{q}", percentEncode(clean))
+    }
+
+    /**
+     * Même échappement qu'iOS (`alphanumerics` + « -_. », UTF-8 en %XX, espace = %20) : `URLEncoder` produirait « + »
+     * et laisserait « * » passer. Les lettres accentuées sont échappées (iOS : par `URL(string:)`).
+     */
+    private const val HEX = "0123456789ABCDEF"
+
+    private fun percentEncode(text: String): String = buildString {
+        for (byte in text.toByteArray(Charsets.UTF_8)) {
+            val c = byte.toInt() and 0xFF
+            val plain = c < 0x80 && (c.toChar() in 'a'..'z' || c.toChar() in 'A'..'Z' || c.toChar() in '0'..'9' || c.toChar() in "-_.")
+            if (plain) append(c.toChar()) else append('%').append(HEX[c shr 4]).append(HEX[c and 0xF])
+        }
+    }
+
+    // endregion
 }

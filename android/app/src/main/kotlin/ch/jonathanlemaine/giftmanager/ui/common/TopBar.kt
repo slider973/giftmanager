@@ -56,6 +56,8 @@ enum class TopBarNavigation { BACK, CLOSE }
  *   contenu et ne le fait apparaître ici qu'une fois ce grand titre parti sous la barre.
  * - [showDivider] : filet `separator` quand le contenu défile dessous (seul « relief » permis, pas d'ombre).
  * - [actions] : actions de queue (« Modifier »).
+ * - [navigationLabel] : libellé TalkBack du bouton de tête, si « Retour » / « Annuler » ne convient pas
+ *   (« Fermer » d'une session qui n'a rien à annuler).
  */
 @Composable
 fun GiftTopBar(
@@ -65,6 +67,7 @@ fun GiftTopBar(
     title: String? = null,
     titleVisible: Boolean = true,
     showDivider: Boolean = false,
+    navigationLabel: String? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val colors = GiftTheme.colors
@@ -80,7 +83,8 @@ fun GiftTopBar(
         animationSpec = if (reduceMotion) snap() else tween(150),
         label = "topBarDivider",
     )
-    val navigationLabel = stringResource(if (navigation == TopBarNavigation.BACK) R.string.back else R.string.cancel)
+    val navigationText = navigationLabel
+        ?: stringResource(if (navigation == TopBarNavigation.BACK) R.string.back else R.string.cancel)
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -96,7 +100,7 @@ fun GiftTopBar(
                     .size(HitTarget.minimum)
                     .fcClickable(onClick = onNavigate, shape = CircleShape, pressedScale = 0.9f)
                     .semantics {
-                        contentDescription = navigationLabel
+                        contentDescription = navigationText
                         // Premier élément lu à l'ouverture de l'écran, avant le titre.
                         traversalIndex = -1f
                     },

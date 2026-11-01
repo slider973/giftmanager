@@ -131,6 +131,13 @@ data object ThanksInboxRoute
 @Serializable
 data class ChildModeRoute(val childId: String, val eventId: String?)
 
+/**
+ * Père Noël vocal (#78) : le parent déclenche, l'enfant répond, le parent retranscrit puis valide les suggestions.
+ * Racine du NavHost, plein écran.
+ */
+@Serializable
+data class SantaRoute(val childId: String)
+
 /** Idées proposées pour mes enfants, en attente de mon verdict (#57, #73). */
 @Serializable
 data object PendingIdeasRoute

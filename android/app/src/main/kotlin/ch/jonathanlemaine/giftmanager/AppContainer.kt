@@ -89,7 +89,12 @@ import ch.jonathanlemaine.giftmanager.ui.navigation.ChildModeRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.EventDetailRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.EventEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.GiftDetailRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.SantaRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ThanksComposerRoute
+import ch.jonathanlemaine.giftmanager.ui.santa.Media3SantaVoicePlayer
+import ch.jonathanlemaine.giftmanager.ui.santa.SantaViewModel
+import ch.jonathanlemaine.giftmanager.data.santa.AssetSantaScriptSource
+import ch.jonathanlemaine.giftmanager.data.santa.LiveSantaSessionActions
 import ch.jonathanlemaine.giftmanager.ui.family.GroupSetupViewModel
 import ch.jonathanlemaine.giftmanager.ui.main.MainViewModel
 import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesViewModel
@@ -199,7 +204,7 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
                     val route = extras.route<ChildGiftsRoute>()
                     ChildGiftsViewModel(
                         UUID.fromString(route.childId), route.eventId?.let(UUID::fromString), route.readOnly, session, itemRepository,
-                        currencyService.rates,
+                        currencyService.rates, childModeLock,
                     )
                 }
                 modelClass.isAssignableFrom(GiftDetailViewModel::class.java) -> {
@@ -260,6 +265,13 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
                     ChildModeViewModel(
                         UUID.fromString(route.childId), route.eventId?.let(UUID::fromString), session, itemRepository,
                         childModeLock, parentAuthenticator,
+                    )
+                }
+                modelClass.isAssignableFrom(SantaViewModel::class.java) -> {
+                    val route = extras.route<SantaRoute>()
+                    SantaViewModel(
+                        UUID.fromString(route.childId), session, LiveSantaSessionActions(itemRepository, session),
+                        AssetSantaScriptSource(context.assets), Media3SantaVoicePlayer(context), childModeLock,
                     )
                 }
                 modelClass.isAssignableFrom(ThanksComposerViewModel::class.java) -> {
