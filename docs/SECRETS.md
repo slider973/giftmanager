@@ -14,6 +14,8 @@ Tous les secrets du projet sont stockés dans **1Password**, coffre **`giftmanag
 | `apple-distribution` | `certificate_id`, `p12_password`, fichier `p12` | Signature des builds TestFlight (CI) |
 | `apns` | `key_id`, `private_key` (contenu du `.p8` APNs) | Notifications push (fonction Edge `notify-new-items`), via `scripts/secrets/sync-supabase.sh` |
 | `google-oauth` | `web_client_id`, `web_client_secret`, `android_client_id_debug`, `android_client_id_release`, `sha1_debug`, `sha1_release` | Connexion Google de l'app Android (`web_client_id`), provider Google dans Supabase (`web_client_id` + `web_client_secret`) |
+| `android-upload` | `keystore` (fichier `.jks`), `keystore_password`, `key_alias`, `key_password`, `sha1` | Signature de l'AAB Android (clé d'**upload** Play), CI `android-release.yml` |
+| `google-play` | `service_account_json`, `package_name` | Envoi sur la piste de test interne Google Play (CI) |
 | `cron` | `password` (généré) | Tâches planifiées (rappels d'anniversaires, suivi des prix) : secret `CRON_SECRET` des fonctions Edge + secret Vault `cron_secret` lu par pg_cron |
 
 Les valeurs pas encore connues valent `A_RENSEIGNER`.
@@ -108,6 +110,46 @@ Procédure, à faire une fois (console Google Cloud, projet dédié à l'app) :
 
    (ou, à la main : tableau de bord Supabase > Authentication > Sign In / Providers > Google, avec le client Web). En local, le provider reste désactivé.
 6. Un build **release** refuse un `GOOGLE_WEB_CLIENT_ID` factice (`checkReleaseSecrets`).
+
+## Publication Google Play (test interne)
+
+Le tag `vX.Y.Z` posé par `scripts/release.sh` déclenche `.github/workflows/android-release.yml` : AAB signé, `versionName` = tag, `versionCode` = minutes depuis 2026-01-01 (`scripts/android/version-code.sh`), envoi sur la piste **test interne**. Le build lit la signature dans les variables d'environnement `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` ; sans elles, `bundleRelease` échoue avec un message explicite (`checkReleaseSigning`).
+
+Secrets GitHub créés par `scripts/secrets/sync-github.sh` : `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `PLAY_SERVICE_ACCOUNT_JSON`, `SUPABASE_URL` (plus `SUPABASE_PUBLISHABLE_KEY` et `GOOGLE_WEB_CLIENT_ID`, déjà synchronisés).
+
+### Deux clés distinctes (Play App Signing)
+
+- **Clé d'upload** : celle de l'item `android-upload`. Elle ne sert qu'à prouver à Google que l'AAB vient de nous. Si elle est perdue ou compromise, Google permet de la réinitialiser.
+- **Clé de signature** : générée et gardée par Google. C'est elle qui signe l'APK installé sur les téléphones. Sa SHA-1 (Play Console > Intégrité de l'application > Signature d'application) est celle à déclarer dans le client OAuth Android *release* (item `google-oauth`, champs `android_client_id_release` et `sha1_release`, voir « Connexion Google »). Déclarer la SHA-1 de la clé d'upload ne suffit pas : la connexion Google échouerait sur l'app installée depuis Play.
+
+### Actions humaines (une fois)
+
+1. **Compte Play Console** : créer un compte développeur (frais uniques de 25 USD ; un compte personnel créé après nov. 2023 exige un test fermé de 12 testeurs pendant 14 jours avant la production, mais **pas** pour le test interne).
+2. **Créer l'application** : nom « Famille Cadeaux », langue par défaut, type Application, gratuite, nom de package `ch.jonathanlemaine.giftmanager` (définitif).
+3. **Fiche et déclarations** (Tableau de bord > Configurer l'application) : description, icône 512 px, visuel de présentation, captures d'écran ; classification du contenu ; public cible (ne pas cibler les enfants : l'app est destinée aux adultes, le « mode enfant » n'est qu'un affichage) ; déclaration d'annonces (aucune) ; **sécurité des données** (Data safety) : e-mail, nom, contenus créés par l'utilisateur (idées, cadeaux, photos), identifiants ; données chiffrées en transit, suppression de compte possible.
+4. **Politique de confidentialité publique** : publier `docs/privacy` à une URL publique (GitHub Pages ou autre) et la renseigner dans la fiche (Contenu de l'application > Politique de confidentialité).
+5. **Clé d'upload** (hors du dépôt, dans un dossier temporaire) :
+
+   ```bash
+   keytool -genkeypair -v -keystore upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
+   keytool -list -v -keystore upload.jks -alias upload | grep SHA1
+   scripts/secrets/setup-1password.sh                      # crée android-upload et google-play s'ils manquent
+   op item edit android-upload --vault giftmanager "keystore[file]=upload.jks" "key_alias[text]=upload" "sha1[text]=<sha1>"
+   op item edit android-upload --vault giftmanager "keystore_password[concealed]=<mot de passe>" "key_password[concealed]=<mot de passe>"   # ne pas laisser dans l'historique du shell
+   shred -u upload.jks 2>/dev/null || rm -P upload.jks     # le fichier ne doit pas traîner
+   ```
+6. **Play App Signing** : à la création de la première version, accepter l'inscription à Play App Signing (par défaut) ; Google signe l'app avec sa propre clé. Relever ensuite la SHA-1 du certificat de signature et la déclarer dans le client OAuth Android *release* (voir ci-dessus).
+7. **Compte de service pour la CI** : dans Google Cloud (projet de l'app), activer l'API *Google Play Android Developer*, créer un compte de service et une clé JSON ; dans la Play Console > Utilisateurs et autorisations, inviter l'e-mail du compte de service avec l'accès à l'application et les droits de publication sur les pistes de test (« Publier les applications sur les pistes de test »). Puis :
+
+   ```bash
+   op item edit google-play --vault giftmanager "service_account_json[concealed]=$(cat service-account.json)"
+   rm service-account.json
+   ```
+8. **Piste de test interne** : Tests > Test interne > Testeurs : créer une liste (adresses Gmail de la famille), copier le lien d'inscription et l'envoyer aux testeurs.
+9. **Premier envoi** : l'API de Play refuse de publier sur une app qui n'a jamais reçu de version par la console. Envoyer **une fois à la main** un AAB signé (artefact d'un lancement `gh workflow run android-release.yml -f publish=false`, ou build local) dans Test interne > Créer une version, puis publier. Ensuite le workflow suffit.
+10. **Synchroniser et publier** : `scripts/secrets/sync-github.sh`, puis `scripts/release.sh X.Y.Z`.
+
+Le workflow envoie la version en `status: draft` : à valider dans la Play Console (Test interne > Versions) pour la rendre disponible aux testeurs. Une fois la première version publiée par ce chemin sans accroc, passer `status` à `completed` dans `android-release.yml` pour une mise à disposition automatique.
 
 ## Tâches planifiées (pg_cron)
 

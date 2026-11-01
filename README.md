@@ -84,3 +84,7 @@ scripts/apple/release.sh                  # certificat/profil à jour, secrets s
 ```
 
 `scripts/apple/setup-distribution.sh` crée si besoin le certificat Apple Distribution (stocké dans 1Password, item `apple-distribution`) et le profil App Store « Famille Cadeaux App Store ».
+
+## Publication Google Play
+
+Même déclencheur que TestFlight : `scripts/release.sh X.Y.Z` pose le tag `vX.Y.Z`, ce qui lance `android-release.yml` (AAB signé, `versionName` = tag, `versionCode` horodaté, envoi sur la piste de test interne de Google Play). Rejouer sans publier : `gh workflow run android-release.yml -f publish=false`. Prérequis humains (compte Play Console, fiche, clé d'upload, compte de service) : `docs/SECRETS.md`, section « Publication Google Play ».
