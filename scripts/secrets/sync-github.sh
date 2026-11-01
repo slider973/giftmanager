@@ -33,7 +33,7 @@ for entry in "${SECRETS[@]}"; do
   name=${entry%%=*}
   ref=${entry#*=}
   value=$(op read "$ref")
-  if [ "$value" = "A_RENSEIGNER" ] || [ -z "$value" ]; then
+  if [ -z "$value" ] || [[ "$value" == *A_RENSEIGNER* ]]; then
     echo "• $name ignoré (à renseigner dans 1Password)"
     continue
   fi
