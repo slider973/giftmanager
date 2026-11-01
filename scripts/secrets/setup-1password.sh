@@ -49,7 +49,7 @@ create cron --category Password --generate-password='letters,digits,40' \
 
 create fcm --category "API Credential" \
   "service_account[concealed]=$P" "project_id[text]=$P" "api_key[concealed]=$P" "app_id[text]=$P" "sender_id[text]=$P" \
-  "notesPlain=Firebase Cloud Messaging (notifications push Android). service_account = JSON complet du compte de service (rôle Firebase Cloud Messaging API Admin), poussé vers Supabase (FCM_SERVICE_ACCOUNT) par sync-supabase.sh. project_id, api_key, app_id, sender_id viennent de google-services.json."
+  "notesPlain=Firebase Cloud Messaging (notifications push Android). service_account = JSON complet du compte de service (rôle Firebase Cloud Messaging API Admin), poussé vers Supabase (FCM_SERVICE_ACCOUNT) par sync-supabase.sh. project_id, api_key, app_id, sender_id : valeurs publiques du projet Firebase, lues par l'app Android au build (pas de google-services.json)."
 
 create github --category "API Credential" \
   "project_token[concealed]=$P" \

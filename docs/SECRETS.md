@@ -16,7 +16,7 @@ Tous les secrets du projet sont stockés dans **1Password**, coffre **`giftmanag
 | `google-oauth` | `web_client_id`, `web_client_secret`, `android_client_id_debug`, `android_client_id_release`, `sha1_debug`, `sha1_release` | Connexion Google de l'app Android (`web_client_id`), provider Google dans Supabase (`web_client_id` + `web_client_secret`) |
 | `android-upload` | `keystore` (fichier `.jks`), `keystore_password`, `key_alias`, `key_password`, `sha1` | Signature de l'AAB Android (clé d'**upload** Play), CI `android-release.yml` |
 | `google-play` | `service_account_json`, `package_name` | Envoi sur la piste de test interne Google Play (CI) |
-| `fcm` | `service_account` (JSON du compte de service Firebase), `project_id`, `api_key`, `app_id`, `sender_id` | Notifications push Android : `service_account` est poussé par `scripts/secrets/sync-supabase.sh` (secret `FCM_SERVICE_ACCOUNT`) ; les autres champs viennent de `google-services.json` |
+| `fcm` | `service_account` (JSON du compte de service Firebase), `project_id`, `api_key`, `app_id`, `sender_id` | Notifications push Android : `service_account` est poussé par `scripts/secrets/sync-supabase.sh` (secret `FCM_SERVICE_ACCOUNT`) ; `project_id`, `api_key`, `app_id`, `sender_id` sont lus par l'app Android au build (`FIREBASE_*`, pas de `google-services.json`) |
 | `cron` | `password` (généré) | Tâches planifiées (rappels d'anniversaires, suivi des prix) : secret `CRON_SECRET` des fonctions Edge + secret Vault `cron_secret` lu par pg_cron |
 
 Les valeurs pas encore connues valent `A_RENSEIGNER`.
@@ -63,7 +63,7 @@ Puis relancer `scripts/secrets/inject.sh` et `scripts/secrets/sync-github.sh`.
 
 ## App Android
 
-`android/app/build.gradle.kts` injecte `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` et `GOOGLE_WEB_CLIENT_ID` dans `BuildConfig`, dans cet ordre de priorité :
+`android/app/build.gradle.kts` injecte `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `GOOGLE_WEB_CLIENT_ID` et `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID`, `FIREBASE_SENDER_ID` dans `BuildConfig`, dans cet ordre de priorité :
 
 1. `android/app/secrets.properties` (généré par `scripts/secrets/inject.sh`, ignoré par git) ;
 2. les variables d'environnement du même nom ;
@@ -116,7 +116,7 @@ Procédure, à faire une fois (console Google Cloud, projet dédié à l'app) :
 
 Le tag `vX.Y.Z` posé par `scripts/release.sh` déclenche `.github/workflows/android-release.yml` : AAB signé, `versionName` = tag, `versionCode` = minutes depuis 2026-01-01 (`scripts/android/version-code.sh`), envoi sur la piste **test interne**. Le build lit la signature dans les variables d'environnement `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` ; sans elles, `bundleRelease` échoue avec un message explicite (`checkReleaseSigning`).
 
-Secrets GitHub créés par `scripts/secrets/sync-github.sh` : `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `PLAY_SERVICE_ACCOUNT_JSON`, `SUPABASE_URL` (plus `SUPABASE_PUBLISHABLE_KEY` et `GOOGLE_WEB_CLIENT_ID`, déjà synchronisés).
+Secrets GitHub créés par `scripts/secrets/sync-github.sh` : `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID`, `FIREBASE_SENDER_ID`, `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `PLAY_SERVICE_ACCOUNT_JSON`, `SUPABASE_URL` (plus `SUPABASE_PUBLISHABLE_KEY` et `GOOGLE_WEB_CLIENT_ID`, déjà synchronisés).
 
 ### Deux clés distinctes (Play App Signing)
 
@@ -157,17 +157,20 @@ Le workflow envoie la version en `status: draft` : à valider dans la Play Conso
 Les appareils Android reçoivent leurs notifications via Firebase Cloud Messaging (API HTTP v1). Les fonctions Edge envoient des messages « data-only » avec un compte de service Google ; sans le secret `FCM_SERVICE_ACCOUNT`, seuls les appareils iOS (APNs) sont servis, et inversement.
 
 1. Dans la console Firebase, créer le projet Firebase **dans le même projet Google Cloud** que la connexion Google (voir ci-dessus), pour ne gérer qu'un seul projet.
-2. Y enregistrer l'app Android `ch.jonathanlemaine.giftmanager` et télécharger `google-services.json` (ne pas le commiter).
+2. Y enregistrer l'app Android `ch.jonathanlemaine.giftmanager`. Il n'y a **pas** de `google-services.json` à télécharger : l'app initialise Firebase elle-même (`FirebaseApp.initializeApp` avec `FirebaseOptions`) depuis `BuildConfig`. Relever seulement quatre valeurs (Paramètres du projet > Général > Vos applications, ou le `google-services.json` consulté puis supprimé) : `project_id` (ID du projet), `api_key` (`current_key`), `app_id` (`mobilesdk_app_id`, de la forme `1:123…:android:abc…`) et `sender_id` (numéro du projet, `project_number`).
 3. Dans Google Cloud, créer un compte de service avec le rôle **Firebase Cloud Messaging API Admin**, puis générer une clé JSON. Vérifier que l'**API Firebase Cloud Messaging (V1)** est activée.
 4. Stocker les valeurs dans 1Password (`scripts/secrets/setup-1password.sh` crée l'item `fcm` avec `A_RENSEIGNER`) :
 
    ```bash
    op item edit fcm --vault giftmanager "service_account[concealed]=$(cat ~/Downloads/<cle>.json)"
    op item edit fcm --vault giftmanager "project_id[text]=..." "app_id[text]=..." "sender_id[text]=..."
+   op item edit fcm --vault giftmanager "api_key[concealed]=..."   # ne pas laisser dans l'historique du shell
    rm ~/Downloads/<cle>.json                  # le fichier ne doit pas traîner sur le disque
    ```
 
 5. Pousser le secret vers Supabase : `scripts/secrets/sync-supabase.sh` (JSON compacté, jamais affiché).
+6. Côté app : `scripts/secrets/inject.sh` écrit `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID` et `FIREBASE_SENDER_ID` dans `android/app/secrets.properties` (même ordre de priorité que Supabase : fichier, variables d'environnement, valeurs factices `dummy`) ; `scripts/secrets/sync-github.sh` les pousse vers GitHub Actions pour le build de diffusion. Avec des valeurs factices ou absentes, l'app compile et tourne, mais les notifications push sont désactivées (Firebase n'est pas initialisé) ; `assembleRelease` et `bundleRelease` refusent une configuration Firebase factice (`checkReleaseSecrets`).
+7. Android 13 et plus : la permission `POST_NOTIFICATIONS` est demandée à l'utilisateur après sa première connexion ; le jeton FCM n'est enregistré côté serveur (`register_device`, plateforme `android`) qu'une fois les notifications autorisées, et supprimé à la déconnexion.
 
 ## Tâches planifiées (pg_cron)
 
