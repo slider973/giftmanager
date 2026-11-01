@@ -488,6 +488,8 @@
     <string name="add_sheet_empty_message">Ajoute d\'abord tes enfants dans Famille › Membres.</string>
     <string name="add_sheet_close">Fermer</string>
     <string name="share_sheet_title">Ajouter ce lien à…</string>
+    <string name="share_sheet_link_label">Lien partagé</string>
+    <string name="share_sheet_link_spoken">Lien partagé : %1$s</string>
     <string name="share_no_link_title">Aucun lien dans ce partage</string>
     <string name="share_no_link_message">Partage une page produit depuis ton navigateur ou une app marchande.</string>
     <string name="share_no_list_title">Ajoute d\'abord un enfant</string>
