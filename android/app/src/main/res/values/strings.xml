@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Famille Cadeaux</string>
+    <string name="home_session_loading">Vérification de la session…</string>
+    <string name="home_signed_out">Non connecté</string>
+    <string name="home_signed_in">Connecté en tant que %1$s</string>
+    <string name="home_error">Session indisponible</string>
+</resources>

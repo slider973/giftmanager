@@ -1,0 +1,9 @@
+# Android / Gradle (voir aussi le .gitignore racine)
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+.kotlin/
+captures/
+.cxx/

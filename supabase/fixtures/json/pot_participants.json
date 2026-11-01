@@ -1,0 +1,4 @@
+[
+  {"display_name": "Mamie", "amount": 50, "currency": "CHF", "is_me": false},
+  {"display_name": "Jonathan", "amount": 25.5, "currency": "CHF", "is_me": true}
+]
