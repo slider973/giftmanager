@@ -398,6 +398,7 @@
     <!-- Fiche cadeau (#73) -->
     <string name="gift_detail_actions">Actions</string>
     <string name="gift_detail_links">Liens par pays</string>
+    <string name="gift_detail_price_history">Suivi du prix</string>
     <string name="gift_detail_link_fallback">Lien</string>
     <string name="gift_detail_idea_none">Idée proposée — invisible pour les parents</string>
     <string name="gift_detail_idea_pending_parent">Idée proposée : à toi de décider</string>

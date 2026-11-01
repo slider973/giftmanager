@@ -15,6 +15,7 @@ import ch.jonathanlemaine.giftmanager.core.model.MyReservation
 import ch.jonathanlemaine.giftmanager.core.model.PendingIdea
 import ch.jonathanlemaine.giftmanager.core.model.PotParticipant
 import ch.jonathanlemaine.giftmanager.core.model.ReservationState
+import ch.jonathanlemaine.giftmanager.core.model.PriceCheck
 import ch.jonathanlemaine.giftmanager.core.model.ThanksNote
 import ch.jonathanlemaine.giftmanager.core.model.WishItem
 import ch.jonathanlemaine.giftmanager.core.model.WishKind
@@ -357,5 +358,17 @@ class FakeThanksRepository : ThanksRepository {
         donorCalls++
         donorsFailure?.let { throw it }
         return donors
+    }
+}
+
+class FakePriceHistoryRepository : PriceHistoryRepository {
+    var checks = listOf<PriceCheck>()
+    var failure: Throwable? = null
+    var calls = 0
+
+    override suspend fun priceHistory(itemId: UUID): List<PriceCheck> {
+        calls++
+        failure?.let { throw it }
+        return checks
     }
 }

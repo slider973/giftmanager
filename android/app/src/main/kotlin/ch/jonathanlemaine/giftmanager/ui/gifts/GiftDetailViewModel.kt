@@ -21,12 +21,14 @@ import ch.jonathanlemaine.giftmanager.core.model.PotProgress
 import ch.jonathanlemaine.giftmanager.core.model.ReceiptRules
 import ch.jonathanlemaine.giftmanager.core.model.WishItem
 import ch.jonathanlemaine.giftmanager.core.model.WishKind
+import ch.jonathanlemaine.giftmanager.core.prices.PriceTrend
 import ch.jonathanlemaine.giftmanager.core.session.AppSession
 import ch.jonathanlemaine.giftmanager.core.session.SessionState
 import ch.jonathanlemaine.giftmanager.core.session.child
 import ch.jonathanlemaine.giftmanager.core.session.isParent
 import ch.jonathanlemaine.giftmanager.data.ItemNotifier
 import ch.jonathanlemaine.giftmanager.data.PotRepository
+import ch.jonathanlemaine.giftmanager.data.PriceHistoryRepository
 import ch.jonathanlemaine.giftmanager.data.ReservationRepository
 import ch.jonathanlemaine.giftmanager.data.ThanksRepository
 import ch.jonathanlemaine.giftmanager.data.ItemRepository
@@ -73,6 +75,8 @@ data class GiftDetailUiState(
     val canSendThanks: Boolean = false,
     /** Donateurs qui se sont fait connaître (« Offert par Mamie »), chargés pour un parent sur un cadeau reçu. */
     val donors: List<ItemDonor> = emptyList(),
+    /** Évolution du prix de chaque lien, pour celui qui a réservé le cadeau (#77) ; vide sinon. */
+    val trends: List<PriceTrend> = emptyList(),
     val isWorking: Boolean = false,
     val celebration: Celebration? = null,
     /** « Reçu ! » vient de réussir : l'écran de remerciement peut s'ouvrir. */
@@ -121,6 +125,7 @@ class GiftDetailViewModel(
     private val pots: PotRepository,
     private val notifier: ItemNotifier,
     private val thanks: ThanksRepository,
+    private val priceHistory: PriceHistoryRepository,
     private val clock: Clock = Clock.systemDefaultZone(),
     /** Taux de change courants (`CurrencyService.rates`) ; aucun par défaut. */
     private val rates: StateFlow<ExchangeRates?> = MutableStateFlow(null),
@@ -176,6 +181,7 @@ class GiftDetailViewModel(
             }
             loadParticipants()
             loadDonors()
+            loadTrends()
         }.onFailure { failure ->
             val error = GiftError.from(failure)
             _local.update { it.copy(isLoading = false, error = error, isClosed = error == GiftError.NotFound) }
@@ -287,6 +293,20 @@ class GiftDetailViewModel(
         }
         runCatchingCancellable { thanks.itemDonors(current.id) }
             .onSuccess { list -> _local.update { it.copy(donors = list) } }
+    }
+
+    /**
+     * Évolution des prix : seulement si j'ai réservé le cadeau (le serveur ne renvoie rien aux autres). Un échec ou
+     * un historique vide donne une liste vide, sans erreur : la section est un plus.
+     */
+    private suspend fun loadTrends() {
+        val current = item
+        if (current == null || current.myReservation == null) {
+            _local.update { it.copy(trends = emptyList()) }
+            return
+        }
+        val trends = runCatchingCancellable { PriceTrend.trends(priceHistory.priceHistory(current.id)) }.getOrDefault(emptyList())
+        _local.update { it.copy(trends = trends) }
     }
 
     // endregion
