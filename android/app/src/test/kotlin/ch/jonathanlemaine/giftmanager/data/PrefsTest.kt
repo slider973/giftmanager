@@ -1,7 +1,9 @@
 package ch.jonathanlemaine.giftmanager.data
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import ch.jonathanlemaine.giftmanager.core.currency.ExchangeRates
 import ch.jonathanlemaine.giftmanager.data.prefs.DataStoreCurrentGroupStore
+import ch.jonathanlemaine.giftmanager.data.prefs.DataStoreExchangeRateCache
 import ch.jonathanlemaine.giftmanager.data.prefs.DataStoreLocalPrefs
 import java.io.File
 import java.util.UUID
@@ -41,5 +43,24 @@ class PrefsTest {
         prefs.setNotifyFamilyNews(false)
         assertFalse(prefs.notifyFamilyNews.first())
         assertEquals("notify_family_news", DataStoreLocalPrefs.FAMILY_NEWS.name)
+    }
+
+    @Test fun exchangeRatesRoundTripAndKeyName() = runTest {
+        val cache = DataStoreExchangeRateCache(store())
+        assertNull(cache.load())
+        val rates = ExchangeRates(
+            "EUR", "2026-10-02", mapOf("CHF" to java.math.BigDecimal("0.9279")), java.time.Instant.parse("2026-10-02T08:00:00Z"),
+        )
+        cache.save(rates)
+        assertEquals(rates, cache.load())
+        assertEquals("exchange_rates_v1", DataStoreExchangeRateCache.KEY.name)
+    }
+
+    @Test fun corruptedExchangeRatesAreIgnored() = runTest {
+        val ds = store()
+        ds.updateData { it.toMutablePreferences().apply { set(DataStoreExchangeRateCache.KEY, "{pas du json") } }
+        assertNull(DataStoreExchangeRateCache(ds).load())
+        ds.updateData { it.toMutablePreferences().apply { set(DataStoreExchangeRateCache.KEY, """{"base":"EUR"}""") } }
+        assertNull(DataStoreExchangeRateCache(ds).load())
     }
 }

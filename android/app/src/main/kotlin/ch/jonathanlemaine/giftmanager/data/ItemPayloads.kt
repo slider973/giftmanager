@@ -100,5 +100,13 @@ internal object ItemPayloads {
 
     fun audienceParams(childId: UUID): JsonObject = buildJsonObject { put(Rpc.P_CHILD, childId.toString()) }
 
+    /** Périmètre absent omis (paramètre SQL `null` par défaut) ; la devise est écrite en majuscules. */
+    fun setBudgetParams(childId: UUID?, eventId: UUID?, amount: BigDecimal, currency: String): JsonObject = buildJsonObject {
+        childId?.let { put(Rpc.P_CHILD, it.toString()) }
+        eventId?.let { put(Rpc.P_EVENT, it.toString()) }
+        put(Rpc.P_AMOUNT, decimal(amount))
+        put(Rpc.P_CURRENCY, currency.uppercase())
+    }
+
     // endregion
 }

@@ -153,7 +153,7 @@ class OkHttpLinkFetcher(
         internal fun amazonCurrency(host: String): String? =
             amazonCurrencies[host.lowercase(Locale.ROOT).removePrefix("www.")]
 
-        fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
+        fun defaultClient(base: OkHttpClient = OkHttpClient()): OkHttpClient = base.newBuilder()
             .dns(PublicOnlyDns())
             .followRedirects(false)
             .followSslRedirects(false)
@@ -165,7 +165,7 @@ class OkHttpLinkFetcher(
 }
 
 /** Attend les en-têtes de la réponse sans bloquer ; l'annulation de la coroutine annule l'appel. */
-private suspend fun Call.await(): Response = suspendCancellableCoroutine { continuation ->
+internal suspend fun Call.await(): Response = suspendCancellableCoroutine { continuation ->
     continuation.invokeOnCancellation { cancel() }
     enqueue(
         object : Callback {

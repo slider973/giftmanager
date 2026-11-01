@@ -1,0 +1,10 @@
+{
+  "id": "bbbbbbbb-0000-0000-0000-000000000001",
+  "child_id": null,
+  "child_name": null,
+  "event_id": "cccccccc-0000-0000-0000-000000000001",
+  "event_title": "Noël 2026",
+  "amount": 200.00,
+  "currency": "CHF",
+  "spent": 180.5
+}

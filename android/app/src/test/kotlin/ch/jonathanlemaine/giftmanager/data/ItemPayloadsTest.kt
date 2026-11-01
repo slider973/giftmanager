@@ -134,4 +134,22 @@ class ItemPayloadsTest {
     }
 
     // endregion
+
+    // region Budgets (#74)
+
+    @Test fun setBudgetOmitsAbsentScopeAndUppercasesTheCurrency() {
+        val json = ItemPayloads.setBudgetParams(null, uuid(501), BigDecimal("200.50"), "chf")
+        assertEquals(setOf("p_event", "p_amount", "p_currency"), json.keys)
+        assertEquals(JsonPrimitive(uuid(501).toString()), json["p_event"])
+        assertEquals(JsonPrimitive("CHF"), json["p_currency"])
+        assertEquals("200.50", json["p_amount"].toString())
+        assertEquals(setOf("p_child", "p_amount", "p_currency"), ItemPayloads.setBudgetParams(child, null, BigDecimal.TEN, "EUR").keys)
+    }
+
+    @Test fun setBudgetAmountIsABareJsonNumber() {
+        val amount = ItemPayloads.setBudgetParams(child, null, BigDecimal("12.5"), "EUR")["p_amount"] as JsonPrimitive
+        assertFalse(amount.isString)
+    }
+
+    // endregion
 }

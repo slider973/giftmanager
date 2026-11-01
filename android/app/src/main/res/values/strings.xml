@@ -154,7 +154,6 @@
     <string name="tab_add_description">Ajouter un cadeau</string>
     <string name="coming_soon_title">Bientôt ici</string>
     <string name="search_coming_soon">Tu pourras bientôt chercher un cadeau dans toutes les listes de la famille.</string>
-    <string name="purchases_coming_soon">Les cadeaux que tu réserves et tes participations aux cagnottes apparaîtront ici.</string>
     <string name="add_sheet_title">Ajouter un cadeau</string>
     <string name="add_sheet_notice">Les idées restent invisibles pour les parents de l\'enfant.</string>
     <string name="invite_dialog_title">Rejoindre une famille ?</string>
@@ -471,4 +470,65 @@
     <string name="add_sheet_empty_title">Aucun enfant</string>
     <string name="add_sheet_empty_message">Ajoute d\'abord tes enfants dans Famille › Membres.</string>
     <string name="add_sheet_close">Fermer</string>
+
+    <!-- Mes achats, budgets et devises (#74) — iOS : MyPurchasesView, BudgetsSection, BudgetEditorView -->
+    <string name="purchases_loading">Chargement de tes achats…</string>
+    <string name="purchases_empty_title">Aucun achat prévu</string>
+    <string name="purchases_empty_message">Réserve un cadeau ou participe à une cagnotte dans la liste d\'un enfant : il apparaîtra ici.</string>
+    <string name="purchases_summary_budget">Budget estimé</string>
+    <string name="purchases_summary_none">—</string>
+    <string name="purchases_summary_none_spoken">aucun montant connu</string>
+    <string name="purchases_total_separator" translatable="false">" + "</string>
+    <string name="purchases_for_child">Pour %1$s</string>
+    <string name="purchases_purchased">Acheté</string>
+    <string name="purchases_purchased_toggle">Acheté : %1$s</string>
+    <string name="purchases_received">Bien reçu !</string>
+    <string name="purchases_owned_warning">Les parents l\'ont noté comme déjà possédé</string>
+    <string name="purchases_open_store">Ouvrir la boutique</string>
+    <string name="purchases_open_store_item">Ouvrir la boutique de « %1$s »</string>
+    <string name="purchases_more_actions">Plus d\'actions pour « %1$s »</string>
+    <string name="purchases_cancel_reservation">Annuler la réservation</string>
+    <string name="purchases_cancel_title">Annuler la réservation ?</string>
+    <string name="purchases_cancel_message">« %1$s » redeviendra disponible pour la famille.</string>
+    <string name="purchases_keep">Garder</string>
+    <string name="purchases_pots">Cagnottes</string>
+    <plurals name="purchases_pots_count">
+        <item quantity="one">%d participation</item>
+        <item quantity="other">%d participations</item>
+    </plurals>
+    <string name="purchases_pot_my_share">Ma part : %1$s</string>
+    <plurals name="purchases_pot_collected">
+        <item quantity="one">%2$s réunis · %1$d participant</item>
+        <item quantity="other">%2$s réunis · %1$d participants</item>
+    </plurals>
+    <string name="purchases_leave_pot">Quitter la cagnotte</string>
+    <string name="purchases_leave_title">Quitter la cagnotte ?</string>
+    <string name="purchases_leave_message">Ta part sera retirée de la cagnotte.</string>
+    <string name="purchases_leave_confirm">Quitter « %1$s »</string>
+    <string name="budgets_title">Budgets</string>
+    <string name="budgets_add">Ajouter un budget</string>
+    <string name="budgets_invitation_title">Définir un budget</string>
+    <string name="budgets_invitation_message">Une limite par enfant ou par événement, visible de toi seul.</string>
+    <string name="budgets_edit_hint">modifier ou supprimer ce budget</string>
+    <string name="budgets_card_spoken">%1$s, %2$s dépensés sur %3$s, %4$s</string>
+    <string name="budgets_approx_spoken">conversion indicative : environ %1$s dépensés sur %2$s</string>
+    <string name="budget_editor_title_new">Nouveau budget</string>
+    <string name="budget_editor_title_edit">Modifier le budget</string>
+    <string name="budget_child_label">Enfant</string>
+    <string name="budget_all_children">Tous les enfants</string>
+    <string name="budget_event_label">Événement</string>
+    <string name="budget_all_events">Tous les événements</string>
+    <string name="budget_scope_hint">Choisis un enfant, un événement, ou les deux.</string>
+    <string name="budget_amount_label">Montant</string>
+    <string name="budget_amount_hint" translatable="false">200</string>
+    <string name="budget_amount_invalid">Saisis un montant supérieur à zéro, par exemple 200 ou 199,90.</string>
+    <string name="budget_currency_label">Devise</string>
+    <string name="budget_currency_hint">Seuls les cadeaux dont un lien est en %1$s sont comptés dans ce budget.</string>
+    <string name="budget_private_note">Ton budget est privé : personne d\'autre ne le voit, pas même les parents.</string>
+    <string name="budget_create">Créer le budget</string>
+    <string name="budget_save">Enregistrer</string>
+    <string name="budget_delete">Supprimer ce budget</string>
+    <string name="budget_delete_title">Supprimer ce budget ?</string>
+    <string name="budget_delete_message">Tes réservations ne changent pas.</string>
+    <string name="budget_delete_confirm">Supprimer</string>
 </resources>

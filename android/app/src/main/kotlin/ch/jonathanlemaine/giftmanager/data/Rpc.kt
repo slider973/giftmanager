@@ -32,6 +32,12 @@ object Rpc {
     const val PENDING_IDEAS = "pending_ideas"
     const val IDEA_AUDIENCE = "idea_audience"
 
+    // Mes achats et budgets (#74).
+    const val MY_RESERVATIONS = "my_reservations"
+    const val MY_CONTRIBUTIONS = "my_contributions"
+    const val MY_BUDGETS = "my_budgets"
+    const val SET_BUDGET = "set_budget"
+
     const val P_NAME = "p_name"
     const val P_HOUSEHOLD_NAME = "p_household_name"
     const val P_COUNTRY = "p_country"

@@ -273,4 +273,13 @@ class ModelDecodingTest {
     }
 
     // endregion
+
+    @Test fun budgetDecoding() {
+        val budget = Fixtures.decode<ch.jonathanlemaine.giftmanager.core.budgets.Budget>("budget.json")
+        assertEquals("Noël 2026", budget.scopeTitle)
+        assertNull(budget.childId)
+        assertDecimal("180.5", budget.spent)
+        assertDecimal("200", budget.amount)
+        assertEquals("CHF", budget.currency)
+    }
 }

@@ -1,5 +1,6 @@
 package ch.jonathanlemaine.giftmanager.ui.gifts
 
+import ch.jonathanlemaine.giftmanager.core.currency.ExchangeRates
 import ch.jonathanlemaine.giftmanager.core.error.GiftError
 import ch.jonathanlemaine.giftmanager.core.gifts.GiftTab
 import ch.jonathanlemaine.giftmanager.core.gifts.GiftActionReducer
@@ -9,9 +10,12 @@ import ch.jonathanlemaine.giftmanager.core.session.uuid
 import ch.jonathanlemaine.giftmanager.data.itemLink
 import ch.jonathanlemaine.giftmanager.data.wishItem
 import java.io.IOException
+import java.math.BigDecimal
+import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -316,6 +320,40 @@ class ChildGiftsViewModelTest {
         val vm = vm(env).apply { selectTab(GiftTab.OWNED) }
         vm.move(0, 1)
         assertNull(env.items.reordered)
+    }
+
+    // endregion
+
+    // region Conversion de devises (#74)
+
+    private val rates = ExchangeRates("EUR", "2026-10-02", mapOf("CHF" to BigDecimal("0.93")), Instant.EPOCH)
+
+    private fun plain(text: String?) = text?.replace('\u00A0', ' ')?.replace('\u202F', ' ')
+
+    @Test fun pricesInAnotherCurrencyGetAnIndicativeApproximation() = runTest {
+        // Profil en CHF ; le lien de Léa est à 100 EUR = 93 CHF.
+        val env = env { items.itemLinks.clear(); items.itemLinks += itemLink(1, 1).copy(currency = "EUR", price = BigDecimal("100")) }
+        val flow = MutableStateFlow<ExchangeRates?>(null)
+        val vm = ChildGiftsViewModel(lea, null, false, env.session, env.items, flow).also { runCurrent() }
+        val link = vm.state.linksFor(leaItems[0]).single()
+        assertEquals("CHF", vm.state.profileCurrency)
+        assertNull(vm.state.approxText(link))
+        assertNull(vm.state.rateDateText)
+        assertFalse(vm.state.hasConversion)
+        flow.value = rates
+        val approx = plain(vm.state.approxText(link))!!
+        assertTrue(approx, approx.startsWith("≈ ") && approx.contains("93") && approx.contains("CHF"))
+        assertEquals("2 octobre", vm.state.rateDateText)
+        assertTrue(vm.state.hasConversion)
+    }
+
+    @Test fun samePriceCurrencyAsTheProfileIsNeverConverted() = runTest {
+        val env = env()
+        val flow = MutableStateFlow<ExchangeRates?>(rates)
+        val vm = ChildGiftsViewModel(lea, null, false, env.session, env.items, flow).also { runCurrent() }
+        // Le lien de Léa est en CHF, comme le profil.
+        assertNull(vm.state.approxText(vm.state.linksFor(leaItems[0]).single()))
+        assertFalse(vm.state.hasConversion)
     }
 
     // endregion

@@ -1,12 +1,16 @@
 package ch.jonathanlemaine.giftmanager.data
 
+import ch.jonathanlemaine.giftmanager.core.budgets.Budget
 import ch.jonathanlemaine.giftmanager.core.gifts.LinkPreview
 import ch.jonathanlemaine.giftmanager.core.gifts.LinkPreviewService
 import ch.jonathanlemaine.giftmanager.core.gifts.NewItem
+import ch.jonathanlemaine.giftmanager.core.model.DayDate
 import ch.jonathanlemaine.giftmanager.core.model.DraftLink
 import ch.jonathanlemaine.giftmanager.core.model.IdeaReview
 import ch.jonathanlemaine.giftmanager.core.model.ItemLink
 import ch.jonathanlemaine.giftmanager.core.model.ItemStatus
+import ch.jonathanlemaine.giftmanager.core.model.MyContribution
+import ch.jonathanlemaine.giftmanager.core.model.MyReservation
 import ch.jonathanlemaine.giftmanager.core.model.PendingIdea
 import ch.jonathanlemaine.giftmanager.core.model.PotParticipant
 import ch.jonathanlemaine.giftmanager.core.model.ReservationState
@@ -229,5 +233,70 @@ class FakeLinkPreviewService(var result: LinkPreview? = null) : LinkPreviewServi
     override suspend fun preview(raw: String): LinkPreview? {
         requests += raw
         return result
+    }
+}
+
+fun myReservation(
+    n: Int,
+    child: String = "Léa",
+    childN: Int = 1,
+    status: ReservationState = ReservationState.RESERVED,
+    eventN: Int? = null,
+    eventDate: String? = null,
+    title: String = "Cadeau $n",
+) = MyReservation(
+    uuid(700 + n), title, null, status, false, uuid(400 + childN), child,
+    eventN?.let { uuid(500 + it) }, eventN?.let { "Événement $it" }, eventDate?.let(DayDate::parse),
+)
+
+fun myContribution(n: Int, amount: String = "25", currency: String = "CHF", child: String = "Léa") = MyContribution(
+    uuid(700 + n), "Cagnotte $n", null, BigDecimal(amount), currency, false, null, null, uuid(401), child,
+)
+
+class FakePurchaseRepository : PurchaseRepository {
+    var reservations = listOf<MyReservation>()
+    var contributions = listOf<MyContribution>()
+    var failure: Throwable? = null
+    var calls = 0
+
+    override suspend fun myReservations(): List<MyReservation> {
+        calls++
+        failure?.let { throw it }
+        return reservations
+    }
+
+    override suspend fun myContributions(): List<MyContribution> {
+        failure?.let { throw it }
+        return contributions
+    }
+}
+
+class FakeBudgetRepository : BudgetRepository {
+    var budgets = listOf<Budget>()
+    var failure: Throwable? = null
+    var calls = 0
+
+    /** Écritures reçues : enfant, événement, montant, devise. */
+    val saved = mutableListOf<List<Any?>>()
+    val deleted = mutableListOf<UUID>()
+
+    /** Identifiant renvoyé par `set_budget` ; le serveur renvoie celui du budget existant s'il y en a un. */
+    var nextId: UUID = uuid(950)
+
+    override suspend fun myBudgets(): List<Budget> {
+        calls++
+        failure?.let { throw it }
+        return budgets
+    }
+
+    override suspend fun setBudget(childId: UUID?, eventId: UUID?, amount: BigDecimal, currency: String): UUID {
+        failure?.let { throw it }
+        saved += listOf(childId, eventId, amount, currency)
+        return nextId
+    }
+
+    override suspend fun deleteBudget(id: UUID) {
+        failure?.let { throw it }
+        deleted += id
     }
 }

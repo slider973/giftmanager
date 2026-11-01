@@ -1,16 +1,20 @@
 package ch.jonathanlemaine.giftmanager.ui.gifts
 
 import ch.jonathanlemaine.giftmanager.core.Fixtures
+import ch.jonathanlemaine.giftmanager.core.currency.ExchangeRates
 import ch.jonathanlemaine.giftmanager.core.error.GiftError
 import ch.jonathanlemaine.giftmanager.core.model.ItemStatus
 import ch.jonathanlemaine.giftmanager.core.model.PotParticipant
 import ch.jonathanlemaine.giftmanager.core.model.ReservationState
 import ch.jonathanlemaine.giftmanager.core.model.WishItem
 import ch.jonathanlemaine.giftmanager.core.session.uuid
+import ch.jonathanlemaine.giftmanager.data.itemLink
 import ch.jonathanlemaine.giftmanager.data.wishItem
 import java.math.BigDecimal
+import java.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -307,6 +311,38 @@ class GiftDetailViewModelTest {
         assertTrue(past.uiState.value.canMarkReceived)
         assertTrue(past.uiState.value.readOnly)
         assertFalse(past.uiState.value.canEdit)
+    }
+
+    // endregion
+
+    // region Conversion de devises (#74)
+
+    @Test fun linksInAnotherCurrencyGetAnIndicativeApproximation() = runTest {
+        val env = giftsEnv {
+            items.items += wishItem(zoeItem, childN = 3)
+            items.itemLinks += itemLink(1, zoeItem).copy(currency = "EUR", price = BigDecimal("100"))
+        }
+        val flow = MutableStateFlow<ExchangeRates?>(null)
+        val vm = GiftDetailViewModel(
+            uuid(700 + zoeItem), env.session, env.items, env.reservations, env.pots, env.notifier, Fixtures.clock, flow,
+        ).also { runCurrent() }
+        val link = vm.uiState.value.links.single()
+        assertEquals("CHF", vm.uiState.value.profileCurrency)
+        assertNull(vm.uiState.value.approxText(link))
+        assertFalse(vm.uiState.value.hasConversion)
+        flow.value = ExchangeRates("EUR", "2026-10-02", mapOf("CHF" to BigDecimal("0.93")), Instant.EPOCH)
+        val approx = vm.uiState.value.approxText(link)!!.replace('\u00A0', ' ').replace('\u202F', ' ')
+        assertTrue(approx, approx.startsWith("≈ ") && approx.contains("93") && approx.contains("CHF"))
+        assertEquals("2 octobre", vm.uiState.value.rateDateText)
+        assertTrue(vm.uiState.value.hasConversion)
+    }
+
+    @Test fun withoutRatesNothingIsConverted() = runTest {
+        val (_, vm) = member(setup = { items.itemLinks += itemLink(1, zoeItem).copy(currency = "EUR") })
+        val link = vm.uiState.value.links.single()
+        assertNull(vm.uiState.value.rates)
+        assertFalse(vm.uiState.value.hasConversion)
+        assertNull(vm.uiState.value.approxText(link))
     }
 
     // endregion

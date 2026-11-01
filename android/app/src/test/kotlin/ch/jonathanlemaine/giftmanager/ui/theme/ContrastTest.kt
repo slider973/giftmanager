@@ -42,4 +42,14 @@ class ContrastTest {
     @Test fun heartMeetsNonTextContrast() {
         themes.forEach { (n, t) -> assertContrast(3.0, n, "heart/surface", t.heart, t.surface) }
     }
+
+    // Jauge des budgets (#74) : trois remplissages (à l'aise, presque atteint, dépassé) sur la piste `separator`.
+    // Contraste non textuel (3:1) : la jauge est aussi doublée d'un texte « Reste / Plus que / Dépassé ».
+    @Test fun budgetGaugeFillsStandOutFromTheTrack() {
+        themes.forEach { (n, t) ->
+            assertContrast(3.0, n, "secondary/separator (à l'aise)", t.secondary, t.separator)
+            assertContrast(3.0, n, "potFg/separator (presque atteint)", t.potFg, t.separator)
+            assertContrast(3.0, n, "takenFg/separator (dépassé)", t.takenFg, t.separator)
+        }
+    }
 }
