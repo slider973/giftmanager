@@ -65,7 +65,16 @@ android {
         warningsAsErrors = false
     }
 
+    // Le fichier de contrôle des empreintes audio n'a rien à faire dans l'APK (outil de génération, #66).
+    androidResources {
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:<dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~:!fingerprints.json"
+    }
+
     sourceSets {
+        // Père Noël vocal (#78) : script et répliques audio partagés avec iOS, sans copie. Les tests lisent le vrai JSON.
+        val santaScript = rootProject.layout.projectDirectory.dir("../ios/GiftManager/Resources/SantaScript")
+        getByName("main").assets.srcDir(santaScript)
+        getByName("test").resources.srcDir(santaScript)
         // Fixtures JSON partagées avec le reste du dépôt (supabase/fixtures/json).
         getByName("test").resources.srcDir(rootProject.layout.projectDirectory.dir("../supabase/fixtures/json"))
     }
@@ -119,6 +128,9 @@ dependencies {
 
     // Mode enfant (#75) : empreinte, visage ou code de l'appareil à la sortie (BiometricPrompt, stable 1.1.0).
     implementation(libs.androidx.biometric)
+
+    // Père Noël vocal (#78) : lecture des répliques audio livrées (pas de media3-ui : l'écran est en Compose).
+    implementation(libs.androidx.media3.exoplayer)
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
