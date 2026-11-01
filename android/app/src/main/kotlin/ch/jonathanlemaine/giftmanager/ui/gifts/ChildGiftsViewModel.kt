@@ -2,6 +2,7 @@ package ch.jonathanlemaine.giftmanager.ui.gifts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ch.jonathanlemaine.giftmanager.core.childmode.ChildModeLock
 import ch.jonathanlemaine.giftmanager.core.currency.ExchangeRates
 import ch.jonathanlemaine.giftmanager.core.currency.RatesApproximator
 import ch.jonathanlemaine.giftmanager.core.error.GiftError
@@ -59,6 +60,8 @@ data class ChildGiftsUiState(
     val hasLoaded: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: GiftError? = null,
+    /** Le mode enfant est actif sur l'appareil (#75). */
+    val childModeActive: Boolean = false,
 ) {
     val isClosed: Boolean get() = child == null
 
@@ -77,6 +80,12 @@ data class ChildGiftsUiState(
      */
     val canStartChildMode: Boolean
         get() = isParent && !readOnly && child?.isAdult == false && GiftListLogic.wishes(items).isNotEmpty()
+
+    /**
+     * Entrée « Père Noël » (#78) : seul un parent la déclenche, jamais en mode enfant ni sur un événement passé
+     * (iOS : `!readOnly && isParent && !isChildMode`). La session refuse aussi de démarrer en mode enfant.
+     */
+    val canLaunchSanta: Boolean get() = !readOnly && isParent && !childModeActive
 
     val addMode: AddMode? get() = GiftListLogic.addMode(isParent, tab, readOnly)
 
@@ -110,6 +119,8 @@ class ChildGiftsViewModel(
     private val items: ItemRepository,
     /** Taux de change courants (`CurrencyService.rates`) ; aucun par défaut. */
     private val rates: StateFlow<ExchangeRates?> = MutableStateFlow(null),
+    /** Verrou du mode enfant (#75) ; ouvert par défaut. */
+    private val childModeLock: ChildModeLock = ChildModeLock(),
 ) : ViewModel() {
     private data class Local(
         val eventId: UUID?,
@@ -124,8 +135,8 @@ class ChildGiftsViewModel(
 
     private val local = MutableStateFlow(Local(eventId = initialEventId))
 
-    val uiState: StateFlow<ChildGiftsUiState> = combine(local, session.state, rates) { l, s, r -> build(l, s, r) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, build(local.value, session.state.value, rates.value))
+    val uiState: StateFlow<ChildGiftsUiState> = combine(local, session.state, rates, childModeLock.active) { l, s, r, locked -> build(l, s, r, locked) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, build(local.value, session.state.value, rates.value, childModeLock.active.value))
 
     init {
         // Au départ, à chaque changement de cadeaux (ajout, réservation, suppression…) et à chaque changement de
@@ -136,7 +147,7 @@ class ChildGiftsViewModel(
         }
     }
 
-    private fun build(l: Local, s: SessionState, r: ExchangeRates?): ChildGiftsUiState {
+    private fun build(l: Local, s: SessionState, r: ExchangeRates?, childModeActive: Boolean): ChildGiftsUiState {
         val child = s.child(childId)
         val isParent = GiftListLogic.isParentList(child?.let { s.isParent(it) }, l.items)
         val tabs = GiftListLogic.tabs(isParent)
@@ -159,6 +170,7 @@ class ChildGiftsViewModel(
             hasLoaded = l.hasLoaded,
             isRefreshing = l.isRefreshing,
             error = l.error,
+            childModeActive = childModeActive,
         )
     }
 

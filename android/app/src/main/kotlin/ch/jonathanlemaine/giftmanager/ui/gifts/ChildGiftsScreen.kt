@@ -28,6 +28,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -106,6 +107,8 @@ data class ChildGiftsActions(
     val onDismissError: () -> Unit,
     /** Ouvre le mode enfant (#75), si [ChildGiftsUiState.canStartChildMode]. */
     val onStartChildMode: () -> Unit = {},
+    /** Lance la session du Père Noël (#78), si [ChildGiftsUiState.canLaunchSanta]. */
+    val onLaunchSanta: () -> Unit = {},
 )
 
 /**
@@ -177,6 +180,14 @@ fun ChildGiftsScreen(state: ChildGiftsUiState, actions: ChildGiftsActions, modif
                 if (state.canStartChildMode) {
                     item(key = "child-mode") {
                         ChildModeEntryCard(state.child?.firstName.orEmpty(), actions.onStartChildMode, column)
+                    }
+                }
+                if (state.canLaunchSanta) {
+                    // Câblage minimal (#78) : l'entrée définitive est dessinée par le design.
+                    item(key = "santa") {
+                        TextButton(onClick = actions.onLaunchSanta, modifier = column) {
+                            Text(stringResource(R.string.santa_entry_action, state.child?.firstName.orEmpty()))
+                        }
                     }
                 }
                 if (state.readOnly) {
