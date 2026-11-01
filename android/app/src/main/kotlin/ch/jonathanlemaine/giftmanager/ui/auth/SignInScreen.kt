@@ -21,6 +21,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -35,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import ch.jonathanlemaine.giftmanager.R
 import ch.jonathanlemaine.giftmanager.ui.components.GiftPreviews
 import ch.jonathanlemaine.giftmanager.ui.components.Illustration
+import ch.jonathanlemaine.giftmanager.ui.components.PreviewFrame
 import ch.jonathanlemaine.giftmanager.ui.components.fcScreenBackground
 import ch.jonathanlemaine.giftmanager.ui.debug.DebugEntryPoints
 import ch.jonathanlemaine.giftmanager.ui.theme.GiftManagerTheme
@@ -48,7 +53,7 @@ private val IllustrationMaxSize = 280.dp
 
 /**
  * Écran de connexion, calqué sur la dernière page de l'onboarding iOS (`OnboardingView`) : loutre
- * « surprise », « La surprise est garantie », puis le bouton Google en bas d'écran. Purement déclaratif :
+ * « surprise », « La surprise est garantie », puis les boutons Google et Apple en bas d'écran. Purement déclaratif :
  * [onSignIn] et [onDismiss] relaient vers [SignInViewModel].
  *
  * Erreur → dialogue « Oups » ([SignInErrorDialog]) ; annulation → rien (le ViewModel revient à `Idle`).
@@ -79,7 +84,7 @@ fun SignInScreen(
 
 /**
  * Contenu de l'écran de connexion, sans fond ni marges système : la page illustrée en haut (défilable en
- * paysage ou en très grande police plutôt que rognée), le bouton Google fixé en bas, à portée de pouce.
+ * paysage ou en très grande police plutôt que rognée), les boutons Google et Apple fixés en bas, à portée de pouce.
  *
  * L'onboarding (#71) en fera sa dernière page : [OnboardingPage] dans le carrousel, [SignInActions] à la
  * place du bouton « Continuer ».
@@ -178,10 +183,20 @@ fun OnboardingPage(
     }
 }
 
+/** Fournisseur dont l'utilisateur a touché le bouton : seul celui-ci affiche l'indicateur de connexion. */
+private enum class SignInProvider { Google, Apple }
+
 /**
- * Zone d'action de la page de connexion : le bouton Google, désactivé avec indicateur pendant la connexion.
- * En debug seulement, le menu des comptes de démo ([DebugEntryPoints.DemoSignIn]) s'y ajoute ; ses échecs
- * remontent par [onDemoError].
+ * Zone d'action de la page de connexion : Google puis Apple, deux pilules jumelles (même hauteur, même
+ * largeur, même typo) séparées de `m` (12 dp), pour qu'aucune ne paraisse secondaire. Pendant la connexion,
+ * le bouton touché porte l'indicateur, l'autre est désactivé.
+ *
+ * [SignInUiState.InProgress] ne dit pas quel fournisseur est en cours : la zone retient le dernier bouton
+ * touché (état d'affichage, survit à la recréation de l'activité pendant l'onglet Apple). À défaut, c'est
+ * Google, comme avant #83.
+ *
+ * En debug seulement, le menu des comptes de démo ([DebugEntryPoints.DemoSignIn]) s'y ajoute, sous les deux
+ * boutons ; ses échecs remontent par [onDemoError].
  */
 @Composable
 fun SignInActions(
@@ -191,16 +206,32 @@ fun SignInActions(
     onDemoError: (String?) -> Unit = {},
     onSignInWithApple: () -> Unit = {},
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier.fillMaxWidth()) {
-        GoogleSignInButton(onClick = onSignIn, isLoading = state is SignInUiState.InProgress)
-        // Câblage minimal (#83) : le style Apple (HIG) reste à poser par l'ui-designer.
+    var lastProvider by rememberSaveable { mutableStateOf(SignInProvider.Google) }
+    val inProgress = state is SignInUiState.InProgress
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(GiftTheme.spacing.m),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        GoogleSignInButton(
+            onClick = {
+                lastProvider = SignInProvider.Google
+                onSignIn()
+            },
+            isLoading = inProgress && lastProvider == SignInProvider.Google,
+            enabled = !inProgress,
+        )
         AppleSignInButton(
-            onClick = onSignInWithApple,
-            enabled = state !is SignInUiState.InProgress,
-            modifier = Modifier.padding(top = GiftTheme.spacing.s),
+            onClick = {
+                lastProvider = SignInProvider.Apple
+                onSignInWithApple()
+            },
+            isLoading = inProgress && lastProvider == SignInProvider.Apple,
+            enabled = !inProgress,
         )
         if (DebugEntryPoints.HAS_DEMO_SIGN_IN) {
-            DebugEntryPoints.DemoSignIn(enabled = state !is SignInUiState.InProgress, onError = onDemoError)
+            // Cible de 48 dp, libellé centré : environ 28 dp visuels sous Apple, assez pour lire un outil à part.
+            DebugEntryPoints.DemoSignIn(enabled = !inProgress, onError = onDemoError)
         }
     }
 }
@@ -262,6 +293,13 @@ private fun SignInPreviewFrame(state: SignInUiState) = GiftManagerTheme {
 @Preview(name = "Paysage", widthDp = 720, heightDp = 360)
 @Composable
 private fun SignInIdlePreview() = SignInPreviewFrame(SignInUiState.Idle)
+
+@GiftPreviews
+@Composable
+private fun SignInActionsPreview() = PreviewFrame {
+    SignInActions(state = SignInUiState.Idle, onSignIn = {})
+    SignInActions(state = SignInUiState.InProgress, onSignIn = {})
+}
 
 @GiftPreviews
 @Composable
