@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
       ? `Il te reste ${r.item_count} cadeaux réservés à acheter.`
       : "Il te reste un cadeau réservé à acheter.",
     threadId: `purchase-${r.event_id}`,
+    data: { type: "purchase", event_id: r.event_id },
   })));
   return json({ reminders: reminders.length, sent });
 });

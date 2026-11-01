@@ -7,10 +7,10 @@
 //  - pour une idée, les parents de l'enfant ne sont JAMAIS notifiés ;
 //  - aucune notification ne parle de réservation.
 //
-// Secrets (supabase secrets set) : APNS_KEY_ID, APNS_TEAM_ID, APNS_PRIVATE_KEY (contenu du .p8), APNS_TOPIC (bundle ID).
-// Sans clé APNs configurée, la fonction répond 200 sans rien envoyer.
+// Secrets (supabase secrets set) : APNS_KEY_ID, APNS_TEAM_ID, APNS_PRIVATE_KEY (contenu du .p8), APNS_TOPIC (bundle ID)
+// pour iOS ; FCM_SERVICE_ACCOUNT pour Android. Sans aucun fournisseur configuré, la fonction répond 200 sans rien envoyer.
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { importPKCS8, SignJWT } from "npm:jose@5";
+import { json, sendPush } from "../_shared/push.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
       const body = kind === "wish"
         ? `${author?.display_name || "Un parent"} a ajouté ${batch.length > 1 ? `${batch.length} cadeaux` : `« ${batch[0].title} »`} à sa liste.`
         : `${author?.display_name || "Quelqu'un"} propose ${batch.length > 1 ? `${batch.length} idées` : `« ${batch[0].title} »`} (invisible pour ses parents).`;
-      sent += await push(admin, recipients, title, body);
+      sent += await push(admin, recipients, title, body, "new-items", { type: "new-items", child_id: childId });
     }
   }
   return json({ sent });
@@ -91,7 +91,10 @@ async function notifyThanks(auth: string, itemId: string): Promise<Response> {
   const { data: contributions } = await admin.from("contributions").select("user_id").eq("item_id", itemId);
   const donors = [...new Set([...(reservation ?? []), ...(contributions ?? [])].map((d) => d.user_id))];
   const { data: author } = await admin.from("profiles").select("display_name").eq("id", caller).single();
-  const sent = await push(admin, donors, "Un grand merci 🎁", `${author?.display_name || "Un parent"} te remercie pour « ${item.title} ».`);
+  const sent = await push(
+    admin, donors, "Un grand merci 🎁", `${author?.display_name || "Un parent"} te remercie pour « ${item.title} ».`,
+    `thanks-${itemId}`, { type: "thanks", item_id: itemId },
+  );
   // Réponse identique qu'il y ait des donateurs ou non : le parent n'apprend rien.
   void sent;
   return json({ ok: true });
@@ -119,7 +122,8 @@ async function notifyReservation(auth: string, itemId: string): Promise<Response
   const left = first.available_count > 0
     ? ` Il en reste ${first.available_count} disponible${first.available_count > 1 ? "s" : ""}.`
     : " Il n'en reste aucun de disponible.";
-  await push(admin, recipients, title, taken + left);
+  // Pas d'item_id dans le payload : la notification ne désigne pas le cadeau réservé.
+  await push(admin, recipients, title, taken + left, "reservation", { type: "reservation" });
   // Réponse constante : l'appelant n'apprend ni qui a été notifié, ni combien.
   return json({ ok: true });
 }
@@ -147,50 +151,20 @@ async function notifyIdeaReview(auth: string, itemId: string, decision: string):
     owned_already: `${childName} possède déjà « ${item.title} » : ton idée a été écartée.`,
   };
   const body = verdicts[decision] ?? verdicts.rejected;
-  await push(admin, [author], "Réponse à ta proposition", body);
+  await push(admin, [author], "Réponse à ta proposition", body, `idea-review-${itemId}`, { type: "idea-review", item_id: itemId });
   return json({ ok: true });
 }
 
-async function push(admin: ReturnType<typeof createClient>, userIds: string[], title: string, body: string): Promise<number> {
-  const keyId = Deno.env.get("APNS_KEY_ID"), teamId = Deno.env.get("APNS_TEAM_ID");
-  const pem = Deno.env.get("APNS_PRIVATE_KEY"), topic = Deno.env.get("APNS_TOPIC");
-  if (!keyId || !teamId || !pem || !topic) return 0;
-
-  const { data: tokens } = await admin.from("device_tokens").select("token, environment").in("user_id", userIds);
-  if (!tokens?.length) return 0;
-
-  const jwt = await new SignJWT({ iss: teamId, iat: Math.floor(Date.now() / 1000) })
-    .setProtectedHeader({ alg: "ES256", kid: keyId })
-    .sign(await importPKCS8(pem, "ES256"));
-
-  let sent = 0;
-  for (const { token, environment } of tokens) {
-    const host = environment === "sandbox" ? "api.sandbox.push.apple.com" : "api.push.apple.com";
-    const res = await fetch(`https://${host}/3/device/${token}`, {
-      method: "POST",
-      headers: {
-        authorization: `bearer ${jwt}`,
-        "apns-topic": topic,
-        "apns-push-type": "alert",
-        "apns-priority": "5",
-      },
-      body: JSON.stringify({ aps: { alert: { title, body }, sound: "default", "thread-id": "new-items" } }),
-    });
-    if (res.ok) sent++;
-    else if (res.status === 410 || res.status === 400) {
-      // Jeton expiré ou invalide : on le retire.
-      await admin.from("device_tokens").delete().eq("token", token);
-    }
-  }
-  return sent;
+// L'envoi (APNs / FCM, nettoyage des jetons périmés) est dans _shared/push.ts.
+function push(
+  admin: Parameters<typeof sendPush>[0], userIds: string[], title: string, body: string,
+  threadId: string, data: Record<string, string>,
+): Promise<number> {
+  return sendPush(admin, userIds.map((userId) => ({ userId, title, body, threadId, data })));
 }
 
 function groupBy<T>(list: T[], key: (t: T) => string): Map<string, T[]> {
   const map = new Map<string, T[]>();
   for (const item of list) map.set(key(item), [...(map.get(key(item)) ?? []), item]);
   return map;
-}
-
-function json(payload: unknown, status = 200) {
-  return new Response(JSON.stringify(payload), { status, headers: { "Content-Type": "application/json" } });
 }

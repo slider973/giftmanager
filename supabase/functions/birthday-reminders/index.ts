@@ -22,6 +22,7 @@ Deno.serve(async (req) => {
       ? `C'est dans une semaine : il est temps de choisir un cadeau pour ${r.child_name}.`
       : `C'est dans un mois : pense à regarder la liste de ${r.child_name}.`,
     threadId: `birthday-${r.event_id}`,
+    data: { type: "birthday", event_id: r.event_id },
   })));
   return json({ reminders: reminders.length, sent });
 });

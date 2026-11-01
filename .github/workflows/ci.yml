@@ -60,3 +60,17 @@ jobs:
       - run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit
       - run: supabase db lint --fail-on error
       - run: supabase test db
+
+  edge-functions:
+    name: Edge functions — tests Deno
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Vérification des types des fonctions
+        run: deno check supabase/functions/*/index.ts
+      - name: Tests (envoi push, suivi des prix)
+        run: deno test --allow-env --allow-read supabase/functions/_shared supabase/functions/track-prices
