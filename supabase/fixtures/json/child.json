@@ -1,0 +1,10 @@
+{
+  "id": "11111111-1111-1111-1111-111111111111",
+  "household_id": "bbbbbbbb-0000-0000-0000-000000000001",
+  "first_name": "Emma",
+  "birthdate": "2018-03-12",
+  "avatar_emoji": "🦄",
+  "avatar_color": "pastelPink",
+  "avatar_url": "https://example.invalid/emma.png",
+  "is_adult": false
+}
