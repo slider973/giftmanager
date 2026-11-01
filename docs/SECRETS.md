@@ -14,7 +14,7 @@ Tous les secrets du projet sont stockés dans **1Password**, coffre **`giftmanag
 | `apple-distribution` | `certificate_id`, `p12_password`, fichier `p12` | Signature des builds TestFlight (CI) |
 | `apns` | `key_id`, `private_key` (contenu du `.p8` APNs) | Notifications push (fonction Edge `notify-new-items`), via `scripts/secrets/sync-supabase.sh` |
 | `google-oauth` | `web_client_id`, `web_client_secret`, `android_client_id_debug`, `android_client_id_release`, `sha1_debug`, `sha1_release` | Connexion Google de l'app Android (`web_client_id`), provider Google dans Supabase (`web_client_id` + `web_client_secret`) |
-| `apple-signin-web` | `services_id`, `client_id` (`bundle iOS,Services ID`), `key_id`, `team_id`, `private_key` (`.p8`), `client_secret` (JWT, 6 mois max), `enabled` | Connexion Apple web sur Android : provider Apple dans Supabase (`client_id` + `client_secret`), drapeau `APPLE_SIGN_IN_ENABLED` de l'app (`enabled`) |
+| `apple-signin-web` | `services_id`, `client_id` (`Services ID,bundle iOS`, Services ID en premier), `key_id`, `team_id`, `private_key` (`.p8`), `client_secret` (JWT, 6 mois max), `enabled` | Connexion Apple web sur Android : provider Apple dans Supabase (`client_id` + `client_secret`), drapeau `APPLE_SIGN_IN_ENABLED` de l'app (`enabled`) |
 | `android-upload` | `keystore` (fichier `.jks`), `keystore_password`, `key_alias`, `key_password`, `sha1` | Signature de l'AAB Android (clé d'**upload** Play), CI `android-release.yml` |
 | `google-play` | `service_account_json`, `package_name` | Envoi sur la piste de test interne Google Play (CI) |
 | `fcm` | `service_account` (JSON du compte de service Firebase), `project_id`, `api_key`, `app_id`, `sender_id` | Notifications push Android : `service_account` est poussé par `scripts/secrets/sync-supabase.sh` (secret `FCM_SERVICE_ACCOUNT`) ; `project_id`, `api_key`, `app_id`, `sender_id` sont lus par l'app Android au build (`FIREBASE_*`, pas de `google-services.json`) |
@@ -127,11 +127,11 @@ Procédure, à faire une fois (compte Apple Developer, <https://developer.apple.
    ```bash
    scripts/secrets/setup-1password.sh          # crée l'item apple-signin-web s'il manque
    op item edit apple-signin-web --vault giftmanager "services_id[text]=ch.jonathanlemaine.giftmanager.web" \
-     "client_id[text]=ch.jonathanlemaine.giftmanager,ch.jonathanlemaine.giftmanager.web" \
+     "client_id[text]=ch.jonathanlemaine.giftmanager.web,ch.jonathanlemaine.giftmanager" \
      "key_id[text]=<key id>" "team_id[text]=<team id>"
    op item edit apple-signin-web --vault giftmanager "private_key[concealed]=<contenu du .p8>" "client_secret[concealed]=<jwt>"
    ```
-5. **Supabase** : `[remotes.production.auth.external.apple]` lit `SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID` (`bundle iOS,Services ID`) et `SUPABASE_AUTH_EXTERNAL_APPLE_SECRET` (le JWT), alimentés par `.env.op` ; `giftmanager://login-callback` est dans `additional_redirect_urls` (local et production) :
+5. **Supabase** : `[remotes.production.auth.external.apple]` lit `SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID` (`Services ID,bundle iOS` : Supabase envoie le **premier** identifiant à Apple pour le flux web, et dans l'autre ordre Apple répond `invalid_request` ; la connexion native iOS accepte les deux, dans n'importe quel ordre) et `SUPABASE_AUTH_EXTERNAL_APPLE_SECRET` (le JWT), alimentés par `.env.op` ; `giftmanager://login-callback` est dans `additional_redirect_urls` (local et production) :
 
    ```bash
    op run --env-file=.env.op -- supabase config push --project-ref "$SUPABASE_PROJECT_REF"
