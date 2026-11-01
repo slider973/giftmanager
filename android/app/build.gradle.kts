@@ -163,6 +163,10 @@ dependencies {
     // Père Noël vocal (#78) : lecture des répliques audio livrées (pas de media3-ui : l'écran est en Compose).
     implementation(libs.androidx.media3.exoplayer)
 
+    // Widget d'écran d'accueil (#80) : rendu Glance, rafraîchi périodiquement par WorkManager.
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.work.runtime.ktx)
+
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 
