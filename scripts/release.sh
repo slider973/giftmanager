@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Publie une version : vérifie l'état du dépôt, pose un tag annoté, le pousse.
-# Le tag déclenche .github/workflows/ios-release.yml (build signé + TestFlight).
+# Le tag déclenche, en parallèle et indépendamment :
+#   - .github/workflows/ios-release.yml     (build signé + TestFlight) ;
+#   - .github/workflows/android-release.yml (AAB signé + Google Play, piste de test interne).
 #
 # Usage :
 #   scripts/release.sh 1.1.0           # pose et pousse le tag v1.1.0
@@ -8,7 +10,8 @@
 #
 # Convention (GitLab Flow) : on ne publie que depuis `main`, à jour et sans modification
 # locale. La version du tag devient la version marketing de l'app ; le numéro de build
-# reste un horodatage, toujours croissant comme l'exige App Store Connect.
+# reste un horodatage, toujours croissant comme l'exigent App Store Connect (iOS) et Google Play
+# (Android : minutes depuis 2026-01-01, voir scripts/android/version-code.sh).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -45,7 +48,7 @@ REMOTE="$(git rev-parse @{u})"
 # et a passé la CI. Un commit non poussé signalerait qu'on a contourné la protection.
 git rev-parse "$TAG" >/dev/null 2>&1 && die "Le tag $TAG existe déjà. Choisis une version supérieure."
 
-# Une version doit être supérieure à la précédente, sinon TestFlight affiche un historique incohérent.
+# Une version doit être supérieure à la précédente, sinon TestFlight et Google Play affichent un historique incohérent.
 PREVIOUS="$(git tag --list 'v*' --sort=-v:refname | head -1)"
 if [ -n "$PREVIOUS" ]; then
   HIGHEST="$(printf '%s\n%s\n' "${PREVIOUS#v}" "$VERSION" | sort -V | tail -1)"
@@ -72,5 +75,6 @@ fi
 git tag -a "$TAG" -m "$VERSION" -m "$NOTES"
 git push --quiet origin "$TAG"
 
-echo "✓ Tag $TAG poussé — le build TestFlight démarre."
-echo "  Suivi : gh run list --workflow=ios-release.yml --limit 1"
+echo "✓ Tag $TAG poussé — les builds TestFlight (iOS) et Google Play (Android) démarrent."
+echo "  Suivi iOS     : gh run list --workflow=ios-release.yml --limit 1"
+echo "  Suivi Android : gh run list --workflow=android-release.yml --limit 1"

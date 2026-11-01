@@ -1,0 +1,112 @@
+# Build Android signé (AAB) + envoi sur la piste de test interne de Google Play.
+#
+# Déclenchement (GitLab Flow), le même tag que iOS :
+#   - automatique sur tag `v*` (posé par scripts/release.sh), en parallèle de ios-release.yml ;
+#   - manuel (gh workflow run android-release.yml -f publish=false) pour rejouer un build :
+#     sans `publish=true`, l'AAB est construit et gardé en artefact mais rien n'est envoyé à Play.
+#
+# versionName = tag sans `v` (`v1.1.0` → 1.1.0). versionCode = minutes depuis 2026-01-01
+# (scripts/android/version-code.sh) : toujours croissant, sous la limite Play (2 100 000 000).
+# Les workflows iOS et Android sont indépendants : l'échec de l'un n'arrête pas l'autre.
+name: Android release (Google Play)
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Envoyer l'AAB sur la piste de test interne de Google Play"
+        type: boolean
+        default: false
+      version:
+        description: "versionName (X.Y.Z) ; vide = 0.0.0-<sha>"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  play:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Clé d'upload : jamais écrite dans le dépôt, décodée dans le dossier temporaire du runner.
+      - name: Clé d'upload
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          [ -n "$ANDROID_KEYSTORE_BASE64" ] || { echo "::error::Secret ANDROID_KEYSTORE_BASE64 absent (voir docs/SECRETS.md)"; exit 1; }
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+
+      # Tag `v1.1.0` → 1.1.0 ; lancement manuel → input `version`, sinon 0.0.0-<sha court>.
+      - name: Version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            name="${GITHUB_REF#refs/tags/v}"
+          elif [ -n "$INPUT_VERSION" ]; then
+            name="$INPUT_VERSION"
+          else
+            name="0.0.0-${GITHUB_SHA::7}"
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$(scripts/android/version-code.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Tests et AAB signé
+        working-directory: android
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: |
+          ./gradlew --no-daemon testDebugUnitTest bundleRelease \
+            -PversionName="$VERSION_NAME" -PversionCode="$VERSION_CODE"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: giftmanager-${{ steps.version.outputs.name }}-${{ steps.version.outputs.code }}.aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
+      # `draft` : la première publication d'une app doit être validée à la main dans la Play Console
+      # (Google refuse `completed` tant que l'app n'a jamais eu de version publiée). Une fois la
+      # première version de test interne publiée, passer `status` à `completed` pour que chaque
+      # tag soit directement disponible aux testeurs.
+      - name: Envoi sur la piste de test interne
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.publish == true
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ch.jonathanlemaine.giftmanager
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: draft
+
+      - name: Résumé
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+        run: echo "AAB $VERSION_NAME (versionCode $VERSION_CODE), publication Play = ${{ startsWith(github.ref, 'refs/tags/v') || inputs.publish == true }}" >> "$GITHUB_STEP_SUMMARY"

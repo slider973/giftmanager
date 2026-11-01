@@ -31,7 +31,7 @@ appliquée par le serveur et non par la discipline.
 # 1. développer sur une branche de ticket, puis ouvrir une PR vers main
 # 2. publier une version depuis main
 scripts/release.sh 1.1.0 --dry-run   # ce qui serait publié, sans rien modifier
-scripts/release.sh 1.1.0             # pose le tag v1.1.0 → build TestFlight
+scripts/release.sh 1.1.0             # pose le tag v1.1.0 → builds TestFlight (iOS) et Google Play test interne (Android)
 
 # 3. une fois la version validée à l'usage par la famille
 scripts/promote.sh 1.1.0             # avance production sur ce tag
@@ -45,14 +45,19 @@ précédente. Les notes de version sont les commits depuis le tag précédent.
 que vers un descendant. En cas de problème sur une version suivante, `production` reste le
 dernier état connu comme fonctionnel.
 
-Le tag `v1.1.0` fixe la version marketing de l'app (`MARKETING_VERSION`) : le dépôt et App
-Store Connect ne peuvent plus diverger. Le numéro de build reste un horodatage, toujours
-croissant comme l'exige Apple.
+Le tag `v1.1.0` fixe la version marketing de l'app iOS (`MARKETING_VERSION`) et le `versionName`
+Android : le dépôt, App Store Connect et Google Play ne peuvent plus diverger. Le numéro de
+build iOS reste un horodatage, toujours croissant comme l'exige Apple ; le `versionCode`
+Android est le nombre de minutes depuis le 2026-01-01 (`scripts/android/version-code.sh`),
+croissant aussi et sous la limite de Google Play. Les deux workflows (`ios-release.yml`,
+`android-release.yml`) partent du même tag et sont indépendants.
 
 Numérotation : `PATCH` pour un correctif, `MINOR` pour une fonctionnalité, `MAJOR` pour une
 rupture. Un push sur `main` ne déclenche **aucun** build — seul un tag le fait.
 
-Rejouer un build sans créer de version : `gh workflow run ios-release.yml`.
+Rejouer un build sans créer de version : `gh workflow run ios-release.yml` (iOS) ou
+`gh workflow run android-release.yml -f publish=false` (Android : construit l'AAB sans l'envoyer ;
+`-f publish=true` l'envoie sur la piste de test interne). Suivi : `gh run list --workflow=android-release.yml --limit 1`.
 
 ## Conventions
 

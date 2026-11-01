@@ -18,6 +18,18 @@ cd android
 Sans secret, le build utilise des valeurs factices : il compile et les tests passent, mais l'app ne joint pas Supabase.
 Pour de vraies valeurs : `scripts/secrets/inject.sh` génère `app/secrets.properties`.
 
+## Publication Google Play
+
+Le tag `vX.Y.Z` (`scripts/release.sh`) lance `.github/workflows/android-release.yml` : `bundleRelease` signé avec la clé d'upload, envoi sur la piste de test interne. La signature est lue dans `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` ; sans elles `bundleRelease` échoue (`checkReleaseSigning`), `assembleDebug` est inchangé.
+
+```bash
+# après scripts/secrets/inject.sh et l'export des 4 variables de signature
+cd android && ./gradlew bundleRelease -PversionName=1.1.0 -PversionCode=$(../scripts/android/version-code.sh)
+../scripts/android/version-code_test.sh   # test du calcul de versionCode
+```
+
+R8 est désactivé pour la première publication (`isMinifyEnabled = false`, voir le commentaire dans `app/build.gradle.kts`). Procédure complète et actions humaines : `docs/SECRETS.md`.
+
 ## Architecture
 
 Calquée sur l'app iOS, avec la logique séparée de l'affichage :

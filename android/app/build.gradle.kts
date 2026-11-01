@@ -33,6 +33,19 @@ val supabaseUrl = secret("SUPABASE_URL", dummyUrl)
 val supabaseKey = secret("SUPABASE_PUBLISHABLE_KEY", dummyKey)
 val googleWebClientId = secret("GOOGLE_WEB_CLIENT_ID", dummyGoogleClientId)
 
+// Clé d'upload Play (release), uniquement par variables d'environnement : en CI elles viennent des secrets
+// GitHub, en local de `op run`. Absentes, le release n'est pas signé (et bundleRelease refuse, voir plus bas).
+// Jamais lues depuis un fichier suivi par git, jamais écrites dans un log.
+fun signingEnv(name: String): String? =
+    providers.environmentVariable(name).orNull?.takeIf { it.isUsable() }
+
+val keystorePath = signingEnv("ANDROID_KEYSTORE_PATH")
+val keystorePassword = signingEnv("ANDROID_KEYSTORE_PASSWORD")
+val keyAliasName = signingEnv("ANDROID_KEY_ALIAS")
+val keyPasswordValue = signingEnv("ANDROID_KEY_PASSWORD")
+val hasReleaseSigning = keystorePath != null && keystorePassword != null &&
+    keyAliasName != null && keyPasswordValue != null
+
 android {
     namespace = "ch.jonathanlemaine.giftmanager"
     compileSdk = 36
@@ -79,8 +92,26 @@ android {
         getByName("test").resources.srcDir(rootProject.layout.projectDirectory.dir("../supabase/fixtures/json"))
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(keystorePath!!)
+                storePassword = keystorePassword
+                keyAlias = keyAliasName
+                keyPassword = keyPasswordValue
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
+            // R8 reste désactivé pour la première publication : l'app dépend de supabase-kt, Ktor,
+            // kotlinx-serialization et Coil (réflexion, services chargés dynamiquement), et un build
+            // minifié non éprouvé sur appareil risquerait de casser la production sans avertissement.
+            // À prévoir ensuite : activer isMinifyEnabled + isShrinkResources, ajouter dans
+            // proguard-rules.pro les règles de supabase-kt/Ktor/OkHttp si besoin, puis valider un AAB
+            // minifié sur appareil (connexion, realtime, photos) avant de le publier.
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
@@ -161,6 +192,26 @@ val checkReleaseSecrets by tasks.registering {
     }
 }
 
+// Garde : un AAB destiné à Google Play doit être signé avec la clé d'upload (sinon Play le refuse).
+val checkReleaseSigning by tasks.registering {
+    group = "verification"
+    description = "Échoue si la clé d'upload Play n'est pas fournie ou introuvable (bundleRelease)."
+    val configured = hasReleaseSigning
+    val path = keystorePath
+    doLast {
+        if (!configured) {
+            throw GradleException(
+                "Signature release absente : définis ANDROID_KEYSTORE_PATH, ANDROID_KEYSTORE_PASSWORD, " +
+                    "ANDROID_KEY_ALIAS et ANDROID_KEY_PASSWORD (clé d'upload, voir docs/SECRETS.md)."
+            )
+        }
+        if (!file(path!!).isFile) {
+            throw GradleException("Keystore introuvable à l'emplacement ANDROID_KEYSTORE_PATH.")
+        }
+    }
+}
+
 tasks.configureEach {
     if (name == "assembleRelease" || name == "bundleRelease") dependsOn(checkReleaseSecrets)
+    if (name == "bundleRelease") dependsOn(checkReleaseSigning)
 }
