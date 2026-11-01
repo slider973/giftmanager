@@ -37,9 +37,15 @@ import ch.jonathanlemaine.giftmanager.ui.theme.GiftTheme
 /**
  * Écran purement déclaratif : toute la logique vit dans [HomeViewModel].
  * [onOpenGallery] n'est fourni qu'en debug (galerie du design system) ; `null` → aucun lien.
+ * [onSignOut] déconnecte l'utilisateur ; `null` → aucun bouton.
  */
 @Composable
-fun HomeScreen(state: HomeUiState, modifier: Modifier = Modifier, onOpenGallery: (() -> Unit)? = null) {
+fun HomeScreen(
+    state: HomeUiState,
+    modifier: Modifier = Modifier,
+    onOpenGallery: (() -> Unit)? = null,
+    onSignOut: (() -> Unit)? = null,
+) {
     val spacing = GiftTheme.spacing
     Column(
         modifier = modifier
@@ -63,6 +69,13 @@ fun HomeScreen(state: HomeUiState, modifier: Modifier = Modifier, onOpenGallery:
                     modifier = Modifier.widthIn(max = 420.dp),
                 ) { HomeContent(state) }
             }
+        }
+        if (onSignOut != null && state is HomeUiState.SignedIn) {
+            TextLinkButton(
+                text = stringResource(R.string.sign_out),
+                onClick = onSignOut,
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = spacing.s),
+            )
         }
         if (onOpenGallery != null) {
             TextLinkButton(

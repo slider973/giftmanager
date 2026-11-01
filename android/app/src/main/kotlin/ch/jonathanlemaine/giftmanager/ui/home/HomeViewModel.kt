@@ -3,13 +3,17 @@ package ch.jonathanlemaine.giftmanager.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.jonathanlemaine.giftmanager.data.GiftRepository
+import ch.jonathanlemaine.giftmanager.data.auth.AuthRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class HomeViewModel(private val repository: GiftRepository) : ViewModel() {
+class HomeViewModel(
+    private val repository: GiftRepository,
+    private val auth: AuthRepository,
+) : ViewModel() {
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
@@ -32,7 +36,7 @@ class HomeViewModel(private val repository: GiftRepository) : ViewModel() {
     fun signOut() {
         viewModelScope.launch {
             _uiState.value = try {
-                repository.signOut()
+                auth.signOut()
                 HomeUiState.SignedOut
             } catch (e: CancellationException) {
                 throw e
