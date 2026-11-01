@@ -2,6 +2,8 @@ package ch.jonathanlemaine.giftmanager.ui.gifts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ch.jonathanlemaine.giftmanager.core.currency.ExchangeRates
+import ch.jonathanlemaine.giftmanager.core.currency.RatesApproximator
 import ch.jonathanlemaine.giftmanager.core.error.GiftError
 import ch.jonathanlemaine.giftmanager.core.error.runCatchingCancellable
 import ch.jonathanlemaine.giftmanager.core.gifts.GiftActionReducer
@@ -55,6 +57,10 @@ data class GiftDetailUiState(
      */
     val isParentView: Boolean = true,
     val isMyUserId: UUID? = null,
+    /** Devise du profil : les prix d'une autre devise y sont convertis à titre indicatif (#74). */
+    val profileCurrency: String? = null,
+    /** Taux courants ; `null` tant qu'aucun n'est connu (aucune conversion affichée). */
+    val rates: ExchangeRates? = null,
     val readOnly: Boolean = false,
     val eventDate: DayDate? = null,
     val participants: List<PotParticipant> = emptyList(),
@@ -81,6 +87,16 @@ data class GiftDetailUiState(
 
     val canToggleFavorite: Boolean get() = item?.let { GiftListLogic.canToggleFavorite(it, isParentView, readOnly) } ?: false
 
+    /** « ≈ 214 € » à côté du prix d'un lien dans une autre devise que celle du profil, sinon `null`. */
+    fun approxText(link: ItemLink): String? = RatesApproximator(rates).approxText(link.price, link.currency, profileCurrency)
+
+    /** Date des taux (« 2 octobre »), pour la mention « conversion indicative » ; `null` si aucun taux. */
+    val rateDateText: String? get() = rates?.publicationText
+
+    /** Au moins un prix de la fiche est converti : la mention « conversion indicative » est due. */
+    val hasConversion: Boolean
+        get() = RatesApproximator(rates).hasConversion(links.map { it.price to it.currency }, profileCurrency)
+
     /** Cagnotte à afficher ; jamais pour un parent (le serveur ne renseigne rien non plus). */
     val potProgress: PotProgress? get() = if (isParentView) null else item?.let { PotProgress.make(it, links) }
 
@@ -97,22 +113,26 @@ class GiftDetailViewModel(
     private val pots: PotRepository,
     private val notifier: ItemNotifier,
     private val clock: Clock = Clock.systemDefaultZone(),
+    /** Taux de change courants (`CurrencyService.rates`) ; aucun par défaut. */
+    private val rates: StateFlow<ExchangeRates?> = MutableStateFlow(null),
 ) : ViewModel() {
     private val loader = ItemLoader(items, clock)
 
     private val _local = MutableStateFlow(GiftDetailUiState(isMyUserId = session.state.value.userId))
 
-    val uiState: StateFlow<GiftDetailUiState> = combine(_local, session.state) { local, s -> derive(local, s) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, derive(_local.value, session.state.value))
+    val uiState: StateFlow<GiftDetailUiState> = combine(_local, session.state, rates) { local, s, r -> derive(local, s, r) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, derive(_local.value, session.state.value, rates.value))
 
     /** Le pays du lecteur et l'appartenance de l'enfant suivent la session. */
-    private fun derive(local: GiftDetailUiState, s: SessionState): GiftDetailUiState {
+    private fun derive(local: GiftDetailUiState, s: SessionState, r: ExchangeRates?): GiftDetailUiState {
         val item = local.item
         val parentView = isParentView(s, item)
         return local.copy(
             child = item?.let { s.child(it.childId) },
             isParentView = parentView,
             isMyUserId = s.userId,
+            profileCurrency = s.profile?.currency,
+            rates = r,
             links = StoreCatalog.sorted(local.links, s.profile?.country),
             canMarkReceived = item?.let { ReceiptRules.canMarkReceived(parentView, it.kind, it.owned, local.eventDate, clock) } ?: false,
             canSendThanks = item?.let { ReceiptRules.canSendThanks(parentView, it.kind, it.owned, local.eventDate, clock) } ?: false,

@@ -2,6 +2,8 @@ package ch.jonathanlemaine.giftmanager.ui.gifts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ch.jonathanlemaine.giftmanager.core.currency.ExchangeRates
+import ch.jonathanlemaine.giftmanager.core.currency.RatesApproximator
 import ch.jonathanlemaine.giftmanager.core.error.GiftError
 import ch.jonathanlemaine.giftmanager.core.error.runCatchingCancellable
 import ch.jonathanlemaine.giftmanager.core.gifts.AddMode
@@ -47,6 +49,10 @@ data class ChildGiftsUiState(
     val items: List<WishItem> = emptyList(),
     val links: Map<UUID, List<ItemLink>> = emptyMap(),
     val preferredCountry: String? = null,
+    /** Devise du profil : les prix d'une autre devise y sont convertis à titre indicatif (#74). */
+    val profileCurrency: String? = null,
+    /** Taux courants ; `null` tant qu'aucun n'est connu (aucune conversion affichée). */
+    val rates: ExchangeRates? = null,
     val currentUserId: UUID? = null,
     val tab: GiftTab = GiftTab.WISHES,
     val isLoading: Boolean = true,
@@ -72,6 +78,16 @@ data class ChildGiftsUiState(
     /** Liens d'un cadeau, ceux du pays du lecteur d'abord ; le premier donne le prix de la carte. */
     fun linksFor(item: WishItem): List<ItemLink> = StoreCatalog.sorted(links[item.id].orEmpty(), preferredCountry)
 
+    /** « ≈ 214 € » à côté du prix d'un lien dans une autre devise que celle du profil, sinon `null`. */
+    fun approxText(link: ItemLink): String? = RatesApproximator(rates).approxText(link.price, link.currency, profileCurrency)
+
+    /** Date des taux (« 2 octobre »), pour la mention « conversion indicative » ; `null` si aucun taux. */
+    val rateDateText: String? get() = rates?.publicationText
+
+    /** Au moins un prix de la liste est converti : la mention « conversion indicative » est due. */
+    val hasConversion: Boolean
+        get() = RatesApproximator(rates).hasConversion(links.values.flatten().map { it.price to it.currency }, profileCurrency)
+
     fun canEdit(item: WishItem): Boolean = GiftListLogic.canEdit(item, isParent, currentUserId, readOnly)
 
     fun canToggleOwned(item: WishItem): Boolean = !readOnly && GiftListLogic.canToggleOwned(item, isParent)
@@ -85,6 +101,8 @@ class ChildGiftsViewModel(
     private val readOnly: Boolean,
     private val session: AppSession,
     private val items: ItemRepository,
+    /** Taux de change courants (`CurrencyService.rates`) ; aucun par défaut. */
+    private val rates: StateFlow<ExchangeRates?> = MutableStateFlow(null),
 ) : ViewModel() {
     private data class Local(
         val eventId: UUID?,
@@ -99,8 +117,8 @@ class ChildGiftsViewModel(
 
     private val local = MutableStateFlow(Local(eventId = initialEventId))
 
-    val uiState: StateFlow<ChildGiftsUiState> = combine(local, session.state) { l, s -> build(l, s) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, build(local.value, session.state.value))
+    val uiState: StateFlow<ChildGiftsUiState> = combine(local, session.state, rates) { l, s, r -> build(l, s, r) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, build(local.value, session.state.value, rates.value))
 
     init {
         // Au départ, à chaque changement de cadeaux (ajout, réservation, suppression…) et à chaque changement de
@@ -111,7 +129,7 @@ class ChildGiftsViewModel(
         }
     }
 
-    private fun build(l: Local, s: SessionState): ChildGiftsUiState {
+    private fun build(l: Local, s: SessionState, r: ExchangeRates?): ChildGiftsUiState {
         val child = s.child(childId)
         val isParent = GiftListLogic.isParentList(child?.let { s.isParent(it) }, l.items)
         val tabs = GiftListLogic.tabs(isParent)
@@ -125,6 +143,8 @@ class ChildGiftsViewModel(
             items = l.items,
             links = l.links,
             preferredCountry = s.profile?.country,
+            profileCurrency = s.profile?.currency,
+            rates = r,
             currentUserId = s.userId,
             // L'onglet Idées n'existe pas côté parents : on retombe sur la liste.
             tab = l.tab.takeIf { it in tabs } ?: GiftTab.WISHES,

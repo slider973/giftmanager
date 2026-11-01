@@ -74,6 +74,7 @@ import ch.jonathanlemaine.giftmanager.ui.components.FCNoticeTone
 import ch.jonathanlemaine.giftmanager.ui.components.GiftIcons
 import ch.jonathanlemaine.giftmanager.ui.components.GiftLoadingView
 import ch.jonathanlemaine.giftmanager.ui.components.GiftPreviews
+import ch.jonathanlemaine.giftmanager.ui.components.IndicativeRateNote
 import ch.jonathanlemaine.giftmanager.ui.components.Illustration
 import ch.jonathanlemaine.giftmanager.ui.components.PotProgressCard
 import ch.jonathanlemaine.giftmanager.ui.components.PrimaryButton
@@ -327,9 +328,11 @@ private fun LinksSection(state: GiftDetailUiState) {
                 store = link.store ?: StoreCatalog.store(link.url)?.name ?: fallback,
                 countryCode = link.country,
                 priceText = link.priceText,
+                approxPriceText = state.approxText(link),
                 onClick = { openInBrowser(context, link.url) },
             )
         }
+        if (state.hasConversion) IndicativeRateNote(state.rateDateText)
     }
 }
 

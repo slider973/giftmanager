@@ -456,6 +456,7 @@ private fun GiftRow(
             priceText = link?.priceText,
             storeText = link?.store,
             countryCode = link?.country,
+            approxPriceText = link?.let(state::approxText),
             isFavorite = item.isFavorite,
             status = GiftActionReducer.badge(item, isParentView = state.isParent),
             modifier = Modifier
