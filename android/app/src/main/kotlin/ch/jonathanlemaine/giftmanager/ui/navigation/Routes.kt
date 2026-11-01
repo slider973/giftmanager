@@ -42,9 +42,38 @@ data class EventEditorRoute(val eventId: String? = null)
 
 /**
  * Liste de cadeaux d'un enfant, dans le contexte d'un événement (`null` : sans filtre). `readOnly` pour un
- * événement passé. La signature est figée : #73 remplace l'écran sans changer la route.
+ * événement passé (#73).
  */
 @Serializable
 data class ChildGiftsRoute(val childId: String, val eventId: String?, val readOnly: Boolean)
+
+/**
+ * Fiche d'un cadeau. Le cadeau se charge par son seul identifiant (l'enfant peut être hors de la famille
+ * courante) : c'est le point d'entrée des notifications (#76, #77).
+ */
+@Serializable
+data class GiftDetailRoute(val itemId: String)
+
+/**
+ * Ajout (`itemId == null`) ou modification d'un cadeau. [kind] vaut « wish » ou « idea » ([KIND_WISH], [KIND_IDEA]) ;
+ * [owned] : cadeau que l'enfant possède déjà ; [eventId] : événement proposé par défaut.
+ */
+@Serializable
+data class AddGiftRoute(
+    val childId: String,
+    val kind: String,
+    val eventId: String?,
+    val owned: Boolean,
+    val itemId: String?,
+) {
+    companion object {
+        const val KIND_WISH = "wish"
+        const val KIND_IDEA = "idea"
+    }
+}
+
+/** Idées proposées pour mes enfants, en attente de mon verdict (#57, #73). */
+@Serializable
+data object PendingIdeasRoute
 
 // endregion

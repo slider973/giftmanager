@@ -139,6 +139,8 @@ data class FamilyHomeActions(
     val onEditChild: (UUID) -> Unit = {},
     val onAddChild: () -> Unit = {},
     val onAddAdult: () -> Unit = {},
+    /** Ouvre les idées en attente de mon verdict (bandeau « N idées attendent ton avis »). */
+    val onOpenPendingIdeas: () -> Unit = {},
 )
 
 private const val TAB_EVENTS = 0
@@ -187,6 +189,7 @@ fun FamilyHomeScreen(state: FamilyHomeUiState, actions: FamilyHomeActions, modif
                     .padding(start = spacing.xl, end = spacing.xl, top = spacing.l, bottom = spacing.xxl),
             ) {
                 Header(state)
+                if (state.pendingIdeasCount > 0) PendingIdeasBanner(state.pendingIdeasCount, actions.onOpenPendingIdeas)
                 SegmentedTabs(
                     selectedIndex = state.tab,
                     onSelect = actions.onSelectTab,
@@ -223,6 +226,37 @@ private fun Header(state: FamilyHomeUiState) {
                 color = GiftTheme.colors.textSecondary,
             )
         }
+    }
+}
+
+/**
+ * Bandeau « N idées attendent ton avis » (#57) : carte `surface` qui mène aux idées proposées pour mes enfants.
+ * Ampoule `potFg` sur disque `potBg`, compte au pluriel en `headline`, précision en légende, chevron. Toute la
+ * carte est la cible, lue d'un bloc (« 2 idées attendent ton avis, … , bouton »).
+ */
+@Composable
+private fun PendingIdeasBanner(count: Int, onClick: () -> Unit) {
+    val colors = GiftTheme.colors
+    val type = GiftTheme.type
+    val spacing = GiftTheme.spacing
+    val disk = 40.dp.scaledByFont(1.3f)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(spacing.m),
+        modifier = Modifier
+            .fillMaxWidth()
+            .fcClickable(onClick = onClick, shape = GiftTheme.radius.cardShape, pressedScale = 0.98f)
+            .fcCard(padding = spacing.m)
+            .semantics(mergeDescendants = true) { },
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(disk).background(colors.potBg, CircleShape)) {
+            Icon(GiftIcons.Lightbulb, contentDescription = null, tint = colors.potFg, modifier = Modifier.size(disk * 0.55f))
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+            Text(pluralStringResource(R.plurals.family_pending_ideas, count, count), style = type.headline, color = colors.textPrimary)
+            Text(stringResource(R.string.family_pending_ideas_hint), style = type.caption, color = colors.textSecondary)
+        }
+        Icon(GiftIcons.ChevronRight, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(type.callout.glyphSize(1.3f)))
     }
 }
 
@@ -738,7 +772,7 @@ private val previewActions = FamilyHomeActions({}, {}, {}, {}, {}, {}, {}, {}, {
 
 @GiftPreviews
 @Composable
-private fun FamilyHomeEventsPreview() = ScreenPreviewFrame(height = 1100.dp) { FamilyHomeScreen(previewState, previewActions) }
+private fun FamilyHomeEventsPreview() = ScreenPreviewFrame(height = 1200.dp) { FamilyHomeScreen(previewState.copy(pendingIdeasCount = 2), previewActions) }
 
 @GiftPreviews
 @Composable
