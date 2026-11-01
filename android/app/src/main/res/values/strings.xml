@@ -31,10 +31,19 @@
     <string name="channel_birthdays_description">Rappels des anniversaires à venir.</string>
     <string name="channel_family_name">Famille</string>
     <string name="channel_family_description">Nouvelles envies, réponses à tes idées, remerciements et réservations.</string>
-    <!-- Feuille d'explication avant la demande d'autorisation (câblage minimal, à habiller par le design). -->
-    <string name="notif_prompt_title">Activer les notifications ?</string>
-    <string name="notif_prompt_message">Pour être prévenu d\'un anniversaire, d\'une baisse de prix ou de la réponse à une idée. Aucune notification ne dit qui a réservé quoi.</string>
-    <string name="notif_prompt_enable">Activer</string>
+    <!-- Feuille d'explication avant la demande d'autorisation (#76). -->
+    <string name="notif_prompt_title">On te prévient au bon moment</string>
+    <string name="notif_prompt_message">Quelques notifications bien choisies, jamais de bruit. Tu règles chaque type dans ton profil.</string>
+    <string name="notif_prompt_message_denied">Les notifications sont coupées pour Gift Manager. Tu peux les réactiver dans les réglages d\'Android.</string>
+    <string name="notif_prompt_purchases_title">Rappels d\'achats</string>
+    <string name="notif_prompt_purchases_subtitle">Avant chaque fête, un rappel pour les cadeaux que tu as réservés.</string>
+    <string name="notif_prompt_birthdays_title">Anniversaires</string>
+    <string name="notif_prompt_birthdays_subtitle">Un mois et une semaine avant, pour ne rien oublier.</string>
+    <string name="notif_prompt_news_title">Nouvelles envies</string>
+    <string name="notif_prompt_news_subtitle">Quand quelqu\'un de la famille ajoute une idée ou une envie.</string>
+    <string name="notif_prompt_surprise">Aucune notification ne dit qui a réservé quoi : la surprise reste entière.</string>
+    <string name="notif_prompt_enable">Activer les notifications</string>
+    <string name="notif_prompt_open_settings">Ouvrir les réglages</string>
     <string name="notif_prompt_later">Plus tard</string>
 
     <!-- Connexion Google -->

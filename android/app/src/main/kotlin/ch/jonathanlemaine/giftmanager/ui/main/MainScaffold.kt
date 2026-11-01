@@ -70,6 +70,8 @@ import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddSheet
 import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddTarget
 import ch.jonathanlemaine.giftmanager.ui.gifts.QuickAddViewModel
 import ch.jonathanlemaine.giftmanager.push.NotificationTarget
+import ch.jonathanlemaine.giftmanager.push.notificationSettingsIntent
+import ch.jonathanlemaine.giftmanager.ui.notifications.NotificationPromptSheet
 import ch.jonathanlemaine.giftmanager.ui.notifications.NotificationsViewModel
 import ch.jonathanlemaine.giftmanager.ui.navigation.AddGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.ChildEditorRoute
@@ -135,6 +137,8 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
     val notifications: NotificationsViewModel = viewModel(factory = viewModelFactory)
     val notificationTarget by notifications.pendingTarget.collectAsStateWithLifecycle()
     val notificationPromptVisible by notifications.promptVisible.collectAsStateWithLifecycle()
+    val notificationPermission by notifications.permission.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     LaunchedEffect(Unit) { notifications.onMainScreenReached() }
     // MainScaffold n'existe qu'en phase Ready, et le modèle ne publie rien pendant le mode enfant : la destination attend.
     LaunchedEffect(notificationTarget) {
@@ -325,15 +329,15 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
         )
     }
 
-    // Câblage minimal : le design remplace cette boîte par une feuille d'explication.
     if (notificationPromptVisible) {
-        GiftAlertDialog(
-            title = stringResource(R.string.notif_prompt_title),
-            message = stringResource(R.string.notif_prompt_message),
-            confirmLabel = stringResource(R.string.notif_prompt_enable),
-            onConfirm = notifications::requestPermission,
-            onDismiss = notifications::dismissPrompt,
-            dismissLabel = stringResource(R.string.notif_prompt_later),
+        NotificationPromptSheet(
+            permission = notificationPermission,
+            onEnable = notifications::requestPermission,
+            onOpenSettings = {
+                notifications.dismissPrompt()
+                context.startActivity(notificationSettingsIntent(context))
+            },
+            onLater = notifications::dismissPrompt,
         )
     }
 
