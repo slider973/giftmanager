@@ -18,9 +18,13 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class SignInViewModelTest {
     private val auth = FakeAuthRepository()
-    private val viewModel = SignInViewModel(auth)
+    private lateinit var viewModel: SignInViewModel
 
-    @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
+    // Le ViewModel collecte les échecs de retour du navigateur dès sa création : Main doit déjà être posé.
+    @Before fun setUp() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        viewModel = SignInViewModel(auth)
+    }
 
     @After fun tearDown() = Dispatchers.resetMain()
 
@@ -95,6 +99,54 @@ class SignInViewModelTest {
         viewModel.signIn(fakeContext())
         assertEquals(2, auth.signInCalls)
         assertEquals(SignInUiState.Idle, viewModel.uiState.value)
+    }
+
+    private fun appleFailWith(error: Throwable, expected: SignInUiState) {
+        auth.appleFailure = error
+        viewModel.signInWithApple()
+        assertEquals(expected, viewModel.uiState.value)
+    }
+
+    @Test fun appleSuccessReturnsToIdle() = runTest {
+        viewModel.signInWithApple()
+        assertEquals(1, auth.appleCalls)
+        assertEquals(0, auth.signInCalls)
+        assertEquals(SignInUiState.Idle, viewModel.uiState.value)
+    }
+
+    @Test fun appleCancellationIsSilent() = runTest {
+        appleFailWith(AuthError.Cancelled(), SignInUiState.Idle)
+    }
+
+    @Test fun appleNotConfigured() = runTest {
+        appleFailWith(AuthError.AppleNotConfigured(), SignInUiState.Error(SignInUiState.Kind.AppleNotConfigured))
+    }
+
+    @Test fun appleNetwork() = runTest {
+        appleFailWith(AuthError.Network(), SignInUiState.Error(SignInUiState.Kind.Network))
+    }
+
+    @Test fun appleFailureAndUnknownErrorsAreAppleFailed() = runTest {
+        appleFailWith(AuthError.Failed(), SignInUiState.Error(SignInUiState.Kind.AppleFailed))
+        appleFailWith(IllegalStateException("inattendu"), SignInUiState.Error(SignInUiState.Kind.AppleFailed))
+    }
+
+    @Test fun appleIgnoredWhileInProgress() = runTest {
+        auth.appleGate = CompletableDeferred()
+        viewModel.signInWithApple()
+        assertEquals(SignInUiState.InProgress, viewModel.uiState.value)
+        viewModel.signInWithApple()
+        viewModel.signIn(fakeContext())
+        assertEquals(1, auth.appleCalls)
+        assertEquals(0, auth.signInCalls)
+    }
+
+    @Test fun failureAfterBrowserReturnIsShown() = runTest {
+        auth.callbackFailureFlow.emit(AuthError.Failed())
+        assertEquals(SignInUiState.Error(SignInUiState.Kind.AppleFailed), viewModel.uiState.value)
+        viewModel.dismissMessage()
+        auth.callbackFailureFlow.emit(AuthError.Network())
+        assertEquals(SignInUiState.Error(SignInUiState.Kind.Network), viewModel.uiState.value)
     }
 
     @Test fun showErrorKeepsSupabaseMessageAndCanBeDismissed() = runTest {

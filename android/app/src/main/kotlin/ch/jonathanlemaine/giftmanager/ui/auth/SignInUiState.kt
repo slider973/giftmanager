@@ -8,5 +8,5 @@ sealed interface SignInUiState {
 
     data class Error(val kind: Kind, val detail: String? = null) : SignInUiState
 
-    enum class Kind { NoGoogleAccount, Network, NotConfigured, GoogleUnavailable, Generic }
+    enum class Kind { NoGoogleAccount, Network, NotConfigured, GoogleUnavailable, Generic, AppleNotConfigured, AppleFailed }
 }

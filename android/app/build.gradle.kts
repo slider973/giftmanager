@@ -9,6 +9,7 @@ plugins {
 
 // Configuration Supabase (valeurs publiques côté client), par ordre de priorité :
 // (idem pour GOOGLE_WEB_CLIENT_ID, l'ID client OAuth « Web » utilisé comme serverClientId de Credential Manager,
+// et pour APPLE_SIGN_IN_ENABLED (« true » une fois le Services ID Apple configuré, voir docs/SECRETS.md),
 // et pour FIREBASE_API_KEY / FIREBASE_APP_ID / FIREBASE_PROJECT_ID / FIREBASE_SENDER_ID, la configuration Firebase
 // des notifications push : pas de plugin google-services, l'app initialise Firebase elle-même depuis BuildConfig, #76)
 //   1. app/secrets.properties, généré par scripts/secrets/inject.sh depuis 1Password (ignoré par git) ;
@@ -35,6 +36,8 @@ fun secret(name: String, fallback: String): String =
 val supabaseUrl = secret("SUPABASE_URL", dummyUrl)
 val supabaseKey = secret("SUPABASE_PUBLISHABLE_KEY", dummyKey)
 val googleWebClientId = secret("GOOGLE_WEB_CLIENT_ID", dummyGoogleClientId)
+// Connexion Apple par le web (#83) : option, fausse par défaut tant que le Services ID n'est pas configuré.
+val appleSignInEnabled = secret("APPLE_SIGN_IN_ENABLED", "false").equals("true", ignoreCase = true)
 val firebaseApiKey = secret("FIREBASE_API_KEY", dummyFirebaseValue)
 val firebaseAppId = secret("FIREBASE_APP_ID", dummyFirebaseValue)
 val firebaseProjectId = secret("FIREBASE_PROJECT_ID", dummyFirebaseValue)
@@ -68,6 +71,7 @@ android {
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabaseKey\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
+        buildConfigField("boolean", "APPLE_SIGN_IN_ENABLED", "$appleSignInEnabled")
         buildConfigField("String", "FIREBASE_API_KEY", "\"$firebaseApiKey\"")
         buildConfigField("String", "FIREBASE_APP_ID", "\"$firebaseAppId\"")
         buildConfigField("String", "FIREBASE_PROJECT_ID", "\"$firebaseProjectId\"")

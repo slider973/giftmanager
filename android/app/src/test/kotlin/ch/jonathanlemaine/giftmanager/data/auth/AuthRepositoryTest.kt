@@ -1,6 +1,7 @@
 package ch.jonathanlemaine.giftmanager.data.auth
 
 import android.content.Context
+import android.content.Intent
 import ch.jonathanlemaine.giftmanager.core.config.AppConfig
 import io.github.jan.supabase.auth.status.SessionSource
 import io.github.jan.supabase.auth.status.SessionStatus
@@ -9,6 +10,9 @@ import io.github.jan.supabase.auth.user.UserSession
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -35,6 +39,19 @@ class AuthRepositoryTest {
         var receivedToken: String? = null
         var receivedNonce: String? = null
         var signOutCalls = 0
+        var appleCalls = 0
+        var callbackIntent: Intent? = null
+        var callbackError: Throwable? = null
+
+        override suspend fun signInWithApple() {
+            appleCalls++
+            failure?.let { throw it }
+        }
+
+        override fun handleCallback(intent: Intent, onError: (Throwable) -> Unit) {
+            callbackIntent = intent
+            callbackError?.let(onError)
+        }
 
         override suspend fun signInWithGoogle(idToken: String, nonce: String) {
             receivedToken = idToken
@@ -111,6 +128,52 @@ class AuthRepositoryTest {
             fail("Failed attendu")
         } catch (_: AuthError.Failed) {
         }
+    }
+
+    private val appleEnabled = configured.copy(appleSignInEnabled = true)
+
+    @Test fun appleDisabledFailsBeforeAnyBackendCall() = runTest {
+        val backend = FakeBackend()
+        try {
+            repository(backend).signInWithApple()
+            fail("AppleNotConfigured attendu")
+        } catch (_: AuthError.AppleNotConfigured) {
+            assertEquals(0, backend.appleCalls)
+        }
+    }
+
+    @Test fun appleEnabledOpensTheBrowserFlow() = runTest {
+        val backend = FakeBackend()
+        repository(backend, config = appleEnabled).signInWithApple()
+        assertEquals(1, backend.appleCalls)
+    }
+
+    @Test fun appleIoFailureBecomesNetworkAndOtherFailed() = runTest {
+        val backend = FakeBackend().apply { failure = IOException("hors ligne") }
+        try {
+            repository(backend, config = appleEnabled).signInWithApple()
+            fail("Network attendu")
+        } catch (_: AuthError.Network) {
+        }
+        backend.failure = IllegalStateException("refusé")
+        try {
+            repository(backend, config = appleEnabled).signInWithApple()
+            fail("Failed attendu")
+        } catch (_: AuthError.Failed) {
+        }
+    }
+
+    @Test fun callbackFailuresAreMappedAndPublished() = runTest {
+        val backend = FakeBackend().apply { callbackError = IllegalStateException("code refusé") }
+        val repo = repository(backend, config = appleEnabled)
+        val failures = mutableListOf<AuthError>()
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) { repo.callbackFailures.toList(failures) }
+        repo.handleCallback(Intent())
+        assertTrue(failures.single() is AuthError.Failed)
+        backend.callbackError = IOException("hors ligne")
+        repo.handleCallback(Intent())
+        assertTrue(failures.last() is AuthError.Network)
+        job.cancel()
     }
 
     @Test fun signOutDelegatesToBackend() = runTest {

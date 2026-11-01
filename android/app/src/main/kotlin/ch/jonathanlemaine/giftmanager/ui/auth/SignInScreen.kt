@@ -61,11 +61,13 @@ fun SignInScreen(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     onDemoError: (String?) -> Unit = {},
+    onSignInWithApple: () -> Unit = {},
 ) {
     SignInContent(
         state = state,
         onSignIn = onSignIn,
         onDemoError = onDemoError,
+        onSignInWithApple = onSignInWithApple,
         modifier = modifier
             .fcScreenBackground()
             .windowInsetsPadding(WindowInsets.safeDrawing),
@@ -83,7 +85,13 @@ fun SignInScreen(
  * place du bouton « Continuer ».
  */
 @Composable
-fun SignInContent(state: SignInUiState, onSignIn: () -> Unit, modifier: Modifier = Modifier, onDemoError: (String?) -> Unit = {}) {
+fun SignInContent(
+    state: SignInUiState,
+    onSignIn: () -> Unit,
+    modifier: Modifier = Modifier,
+    onDemoError: (String?) -> Unit = {},
+    onSignInWithApple: () -> Unit = {},
+) {
     val spacing = GiftTheme.spacing
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -112,6 +120,7 @@ fun SignInContent(state: SignInUiState, onSignIn: () -> Unit, modifier: Modifier
             state = state,
             onSignIn = onSignIn,
             onDemoError = onDemoError,
+            onSignInWithApple = onSignInWithApple,
             modifier = Modifier
                 .widthIn(max = ContentMaxWidth)
                 .padding(start = spacing.xl, end = spacing.xl, top = spacing.l, bottom = spacing.l),
@@ -180,9 +189,16 @@ fun SignInActions(
     onSignIn: () -> Unit,
     modifier: Modifier = Modifier,
     onDemoError: (String?) -> Unit = {},
+    onSignInWithApple: () -> Unit = {},
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier.fillMaxWidth()) {
         GoogleSignInButton(onClick = onSignIn, isLoading = state is SignInUiState.InProgress)
+        // Câblage minimal (#83) : le style Apple (HIG) reste à poser par l'ui-designer.
+        AppleSignInButton(
+            onClick = onSignInWithApple,
+            enabled = state !is SignInUiState.InProgress,
+            modifier = Modifier.padding(top = GiftTheme.spacing.s),
+        )
         if (DebugEntryPoints.HAS_DEMO_SIGN_IN) {
             DebugEntryPoints.DemoSignIn(enabled = state !is SignInUiState.InProgress, onError = onDemoError)
         }
@@ -230,6 +246,8 @@ private fun SignInUiState.Kind.messageRes(): Int = when (this) {
     SignInUiState.Kind.NotConfigured -> R.string.sign_in_error_not_configured
     SignInUiState.Kind.GoogleUnavailable -> R.string.sign_in_error_unavailable
     SignInUiState.Kind.Generic -> R.string.sign_in_error_generic
+    SignInUiState.Kind.AppleNotConfigured -> R.string.sign_in_error_apple_not_configured
+    SignInUiState.Kind.AppleFailed -> R.string.sign_in_error_apple_failed
 }
 
 /** Cadre d'aperçu plein écran : hauteur de téléphone bornée, pour que le bouton reste en bas. */
