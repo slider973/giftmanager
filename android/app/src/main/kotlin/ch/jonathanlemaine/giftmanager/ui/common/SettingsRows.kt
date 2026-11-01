@@ -152,11 +152,13 @@ fun ToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    iconTint: Color = GiftTheme.colors.textSecondary,
 ) {
     val colors = GiftTheme.colors
     val source = remember { MutableInteractionSource() }
     SettingsRow(
         icon = icon,
+        iconTint = iconTint,
         modifier = modifier
             .fcPressable(source, GiftTheme.radius.fieldShape, pressedScale = 1f)
             .toggleable(

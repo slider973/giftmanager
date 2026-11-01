@@ -3,6 +3,7 @@ package ch.jonathanlemaine.giftmanager.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -39,6 +40,9 @@ internal const val ACCESSIBILITY_FONT_SCALE = 1.5f
  * plutôt que d'écraser le titre.
  *
  * Le cœur est un indicateur : la carte entière est la cible ([onClick]). TalkBack lit la carte d'un bloc.
+ *
+ * [trailingAction] : petite action posée en bas à droite, après le badge (menu ⋮ des actions d'une ligne,
+ * #73). Elle garde son propre nœud TalkBack : un élément cliquable n'est pas fusionné dans la carte.
  */
 @Composable
 fun GiftCard(
@@ -52,6 +56,7 @@ fun GiftCard(
     modifier: Modifier = Modifier,
     approxPriceText: String? = null,
     onClick: (() -> Unit)? = null,
+    trailingAction: (@Composable () -> Unit)? = null,
 ) {
     val spacing = GiftTheme.spacing
     val isAccessibilitySize = LocalDensity.current.fontScale >= ACCESSIBILITY_FONT_SCALE
@@ -80,7 +85,13 @@ fun GiftCard(
                 PriorityHeart(isOn = isFavorite, modifier = Modifier.bleed(top = spacing.s, end = spacing.s))
             }
             Details(title, priceText, storeText, countryCode, approxPriceText, maxTitleLines = Int.MAX_VALUE)
-            status?.let { StatusBadge(it) }
+            if (status != null || trailingAction != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    status?.let { StatusBadge(it) }
+                    Spacer(Modifier.weight(1f))
+                    trailingAction?.let { Box(Modifier.bleed(end = spacing.s)) { it() } }
+                }
+            }
         }
     } else {
         Row(
@@ -104,6 +115,7 @@ fun GiftCard(
             ) {
                 PriorityHeart(isOn = isFavorite, modifier = Modifier.bleed(top = spacing.s, end = spacing.s))
                 status?.let { StatusBadge(it, modifier = Modifier.padding(top = spacing.s)) }
+                trailingAction?.let { Box(Modifier.bleed(end = spacing.s)) { it() } }
             }
         }
     }

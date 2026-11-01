@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
@@ -64,6 +66,9 @@ object GiftIcons {
     val More: ImageVector get() = Icons.Filled.MoreVert
     val Calendar: ImageVector get() = Icons.Filled.DateRange
     val SignOut: ImageVector get() = Icons.AutoMirrored.Filled.ExitToApp
+    /** Monter / descendre un souhait (mode « Ordonner »). */
+    val MoveUp: ImageVector get() = Icons.Filled.KeyboardArrowUp
+    val MoveDown: ImageVector get() = Icons.Filled.KeyboardArrowDown
 
     val Gift: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_gift)
     val Bag: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_shopping_bag)
@@ -83,4 +88,15 @@ object GiftIcons {
     val Code: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_tag)
     val Money: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_payments)
     val Hourglass: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_hourglass)
+    /** Idée (`lightbulb`). */
+    val Lightbulb: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_lightbulb)
+    val Camera: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_photo_camera)
+    val Paste: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_content_paste)
+    val RemoveCircle: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_remove_circle)
+    /** « Ordonner » (`arrow.up.arrow.down`). */
+    val Reorder: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_swap_vert)
+    /** « Remettre dans la liste » (`arrow.uturn.left`). */
+    val Undo: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_undo)
+    /** « Il l'a déjà » (`checkmark.seal`). */
+    val Verified: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_verified)
 }
