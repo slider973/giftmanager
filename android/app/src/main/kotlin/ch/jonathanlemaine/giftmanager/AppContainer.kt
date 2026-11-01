@@ -236,6 +236,8 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
 
     /** Appelé une fois au lancement de l'app : canaux, suivi du jeton et de la déconnexion. */
     fun startPush() {
+        // Initialise Firebase dès le démarrage (idempotent) : un service FCM lancé à froid le trouve prêt.
+        pushRuntime.isAvailable
         notificationPresenter.ensureChannels()
         appScope.launch { notificationPermission.refresh() }
         deviceTokenRegistrar.start(appScope)
