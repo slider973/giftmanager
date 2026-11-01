@@ -14,6 +14,7 @@ Tous les secrets du projet sont stockés dans **1Password**, coffre **`giftmanag
 | `apple-distribution` | `certificate_id`, `p12_password`, fichier `p12` | Signature des builds TestFlight (CI) |
 | `apns` | `key_id`, `private_key` (contenu du `.p8` APNs) | Notifications push (fonction Edge `notify-new-items`), via `scripts/secrets/sync-supabase.sh` |
 | `google-oauth` | `web_client_id`, `web_client_secret`, `android_client_id_debug`, `android_client_id_release`, `sha1_debug`, `sha1_release` | Connexion Google de l'app Android (`web_client_id`), provider Google dans Supabase (`web_client_id` + `web_client_secret`) |
+| `apple-signin-web` | `services_id`, `client_id` (`bundle iOS,Services ID`), `key_id`, `team_id`, `private_key` (`.p8`), `client_secret` (JWT, 6 mois max), `enabled` | Connexion Apple web sur Android : provider Apple dans Supabase (`client_id` + `client_secret`), drapeau `APPLE_SIGN_IN_ENABLED` de l'app (`enabled`) |
 | `android-upload` | `keystore` (fichier `.jks`), `keystore_password`, `key_alias`, `key_password`, `sha1` | Signature de l'AAB Android (clé d'**upload** Play), CI `android-release.yml` |
 | `google-play` | `service_account_json`, `package_name` | Envoi sur la piste de test interne Google Play (CI) |
 | `fcm` | `service_account` (JSON du compte de service Firebase), `project_id`, `api_key`, `app_id`, `sender_id` | Notifications push Android : `service_account` est poussé par `scripts/secrets/sync-supabase.sh` (secret `FCM_SERVICE_ACCOUNT`) ; `project_id`, `api_key`, `app_id`, `sender_id` sont lus par l'app Android au build (`FIREBASE_*`, pas de `google-services.json`) |
@@ -63,7 +64,7 @@ Puis relancer `scripts/secrets/inject.sh` et `scripts/secrets/sync-github.sh`.
 
 ## App Android
 
-`android/app/build.gradle.kts` injecte `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `GOOGLE_WEB_CLIENT_ID` et `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID`, `FIREBASE_SENDER_ID` dans `BuildConfig`, dans cet ordre de priorité :
+`android/app/build.gradle.kts` injecte `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `GOOGLE_WEB_CLIENT_ID` et `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID`, `FIREBASE_SENDER_ID` dans `BuildConfig` (ainsi que le drapeau `APPLE_SIGN_IN_ENABLED`, `false` par défaut, voir « Connexion Apple sur Android (web) »), dans cet ordre de priorité :
 
 1. `android/app/secrets.properties` (généré par `scripts/secrets/inject.sh`, ignoré par git) ;
 2. les variables d'environnement du même nom ;
@@ -111,6 +112,35 @@ Procédure, à faire une fois (console Google Cloud, projet dédié à l'app) :
 
    (ou, à la main : tableau de bord Supabase > Authentication > Sign In / Providers > Google, avec le client Web). En local, le provider reste désactivé.
 6. Un build **release** refuse un `GOOGLE_WEB_CLIENT_ID` factice (`checkReleaseSecrets`).
+
+## Connexion Apple sur Android (web)
+
+Un compte créé avec Apple sur iPhone s'ouvre sur Android par le flux OAuth web d'Apple via Supabase : l'app ouvre un Custom Tab (`signInWith(Apple)`, PKCE), Apple renvoie vers Supabase (`https://hbqihybpawkzhfbrtbyt.supabase.co/auth/v1/callback`), puis Supabase redirige vers `giftmanager://login-callback?code=…` ; `MainActivity` échange le code contre une session (`handleDeeplinks`). C'est le même compte Supabase que sur iOS. Tant que `APPLE_SIGN_IN_ENABLED` n'est pas `true`, le bouton affiche « La connexion Apple n'est pas encore configurée… » (option, y compris en release).
+
+Procédure, à faire une fois (compte Apple Developer, <https://developer.apple.com/account>) :
+
+1. **Services ID** (Certificates, Identifiers & Profiles > Identifiers > « + » > Services IDs) : identifiant `ch.jonathanlemaine.giftmanager.web`. L'activer puis *Sign in with Apple > Configure* : *Primary App ID* = l'App ID de l'app iOS, **Domains** = `hbqihybpawkzhfbrtbyt.supabase.co`, **Return URLs** = `https://hbqihybpawkzhfbrtbyt.supabase.co/auth/v1/callback` (référence du projet : `project_id` de `[remotes.production]` dans `supabase/config.toml`).
+2. **Clé Sign in with Apple** (Keys > « + », cocher *Sign in with Apple*, App ID principal = l'app iOS) : télécharger le fichier `.p8` (une seule fois), noter le *Key ID*. Le *Team ID* est celui de l'item `apple-developer`.
+3. **Secret client** : Apple n'accepte qu'un JWT signé (ES256) avec cette clé, valable **6 mois au maximum** : `iss` = Team ID, `sub` = Services ID, `aud` = `https://appleid.apple.com`, `kid` = Key ID. Générer le JWT (outil de la documentation Supabase « Login with Apple » ou tout script ES256), puis le stocker. **Mettre un rappel dans 5 mois : à l'expiration, la connexion Apple Android cesse de fonctionner (iOS natif non concerné).**
+4. **1Password** (item `apple-signin-web`, jamais de valeur dans le dépôt ni dans l'historique du shell) :
+
+   ```bash
+   scripts/secrets/setup-1password.sh          # crée l'item apple-signin-web s'il manque
+   op item edit apple-signin-web --vault giftmanager "services_id[text]=ch.jonathanlemaine.giftmanager.web" \
+     "client_id[text]=ch.jonathanlemaine.giftmanager,ch.jonathanlemaine.giftmanager.web" \
+     "key_id[text]=<key id>" "team_id[text]=<team id>"
+   op item edit apple-signin-web --vault giftmanager "private_key[concealed]=<contenu du .p8>" "client_secret[concealed]=<jwt>"
+   ```
+5. **Supabase** : `[remotes.production.auth.external.apple]` lit `SUPABASE_AUTH_EXTERNAL_APPLE_CLIENT_ID` (`bundle iOS,Services ID`) et `SUPABASE_AUTH_EXTERNAL_APPLE_SECRET` (le JWT), alimentés par `.env.op` ; `giftmanager://login-callback` est dans `additional_redirect_urls` (local et production) :
+
+   ```bash
+   op run --env-file=.env.op -- supabase config push --project-ref "$SUPABASE_PROJECT_REF"
+   ```
+
+   (ou, à la main : Authentication > Sign In / Providers > Apple, *Client IDs* et *Secret Key*, puis Authentication > URL Configuration > Redirect URLs.) En local, le provider garde le seul bundle ID : `supabase start` n'a besoin d'aucune variable.
+6. **Activer le bouton** : `op item edit apple-signin-web --vault giftmanager "enabled[text]=true"`, puis `scripts/secrets/inject.sh && scripts/secrets/sync-github.sh` (secret GitHub `APPLE_SIGN_IN_ENABLED`, lu par le workflow de publication Android).
+
+Le drapeau `APPLE_SIGN_IN_ENABLED` suit la même priorité que les autres valeurs (fichier, variable d'environnement, défaut `false`).
 
 ## Publication Google Play (test interne)
 
