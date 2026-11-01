@@ -112,6 +112,11 @@ dependencies {
     implementation(libs.supabase.functions)
     implementation(libs.ktor.client.okhttp)
 
+    // Aperçu de lien (#73) : HTTP explicite, analyse HTML et orientation EXIF des photos choisies.
+    implementation(libs.okhttp)
+    implementation(libs.jsoup)
+    implementation(libs.androidx.exifinterface)
+
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 
