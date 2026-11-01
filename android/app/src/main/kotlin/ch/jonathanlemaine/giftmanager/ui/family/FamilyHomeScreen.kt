@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardActions
@@ -60,6 +61,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.jonathanlemaine.giftmanager.R
+import ch.jonathanlemaine.giftmanager.core.format.Formatting
+import ch.jonathanlemaine.giftmanager.core.model.Child
 import ch.jonathanlemaine.giftmanager.core.model.FamilyGroup
 import ch.jonathanlemaine.giftmanager.core.model.Household
 import ch.jonathanlemaine.giftmanager.ui.common.GiftAlertDialog
@@ -69,6 +72,7 @@ import ch.jonathanlemaine.giftmanager.ui.common.ScreenPreviewFrame
 import ch.jonathanlemaine.giftmanager.ui.common.ScreenTitle
 import ch.jonathanlemaine.giftmanager.ui.common.spelledOut
 import ch.jonathanlemaine.giftmanager.ui.components.AvatarStack
+import ch.jonathanlemaine.giftmanager.ui.components.EventRow
 import ch.jonathanlemaine.giftmanager.ui.components.CountryFlag
 import ch.jonathanlemaine.giftmanager.ui.components.EmptyStateView
 import ch.jonathanlemaine.giftmanager.ui.components.FCPillLabel
@@ -87,6 +91,29 @@ import ch.jonathanlemaine.giftmanager.ui.components.fcScreenBackground
 import ch.jonathanlemaine.giftmanager.ui.theme.CapsuleShape
 import ch.jonathanlemaine.giftmanager.ui.theme.GiftTheme
 import ch.jonathanlemaine.giftmanager.ui.theme.HitTarget
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import ch.jonathanlemaine.giftmanager.core.model.DayDate
+import ch.jonathanlemaine.giftmanager.core.model.GiftEvent
+import ch.jonathanlemaine.giftmanager.core.model.GiftEventKind
+import ch.jonathanlemaine.giftmanager.ui.children.ChildRow
+import ch.jonathanlemaine.giftmanager.ui.components.bleed
+import ch.jonathanlemaine.giftmanager.ui.components.fcDesaturated
+import ch.jonathanlemaine.giftmanager.ui.components.glyphSize
+import ch.jonathanlemaine.giftmanager.ui.components.scaledByFont
+import java.time.LocalDate
 import java.util.UUID
 
 /** Actions de [FamilyHomeScreen], reliées à [FamilyHomeViewModel]. */
@@ -104,6 +131,14 @@ data class FamilyHomeActions(
     val onDismissError: () -> Unit,
     /** Tirer pour actualiser (iOS : `.refreshable`). */
     val onRefresh: () -> Unit = {},
+    val onOpenEvent: (UUID) -> Unit = {},
+    val onNewEvent: () -> Unit = {},
+    val onEditEvent: (UUID) -> Unit = {},
+    /** Ouvre la liste d'un enfant (dans le contexte de l'événement courant). */
+    val onOpenChild: (UUID) -> Unit = {},
+    val onEditChild: (UUID) -> Unit = {},
+    val onAddChild: () -> Unit = {},
+    val onAddAdult: () -> Unit = {},
 )
 
 private const val TAB_EVENTS = 0
@@ -114,7 +149,7 @@ private const val TAB_MEMBERS = 1
  * avatars empilés + « N membres · M foyers », onglets Événements / Membres / Paramètres. Tirer vers le bas
  * recharge la famille.
  *
- * Les événements arrivent avec #72 (état vide provisoire), comme les enfants dans les cartes des foyers.
+ * Événements et listes des foyers : #72.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -162,7 +197,7 @@ fun FamilyHomeScreen(state: FamilyHomeUiState, actions: FamilyHomeActions, modif
                     ),
                 )
                 when (state.tab) {
-                    TAB_EVENTS -> EventsTab()
+                    TAB_EVENTS -> EventsTab(state, actions)
                     TAB_MEMBERS -> MembersTab(state.households, actions)
                     else -> SettingsTab(state, actions)
                 }
@@ -193,15 +228,112 @@ private fun Header(state: FamilyHomeUiState) {
 
 // region Événements
 
-/** Provisoire jusqu'à #72 : titre de section d'iOS et loutre endormie. */
+/**
+ * Événements à venir (« + » ouvre l'éditeur), état vide avec action, puis les événements passés, désaturés
+ * comme sur iOS (texte intact : une opacité casserait le contraste AA). Une carte ouvre la fiche ; un appui
+ * long sur un événement modifiable ouvre le menu « Modifier » (iOS : menu contextuel), aussi proposé à
+ * TalkBack comme action.
+ */
 @Composable
-private fun EventsTab() {
-    SectionHeader(title = stringResource(R.string.family_events_upcoming))
-    EmptyStateView(
-        illustration = Illustration.MASCOT_SLEEPING,
-        title = stringResource(R.string.family_events_soon_title),
-        message = stringResource(R.string.family_events_placeholder),
+private fun EventsTab(state: FamilyHomeUiState, actions: FamilyHomeActions) {
+    SectionHeader(
+        title = stringResource(R.string.family_events_upcoming),
+        actionIcon = GiftIcons.Add,
+        onAction = actions.onNewEvent,
+        actionLabel = stringResource(R.string.family_events_add),
     )
+    if (state.upcomingEvents.isEmpty()) {
+        EmptyStateView(
+            illustration = Illustration.MASCOT_SLEEPING,
+            title = stringResource(R.string.family_events_empty_title),
+            message = stringResource(R.string.family_events_empty_message),
+            actionLabel = stringResource(R.string.family_events_add),
+            onAction = actions.onNewEvent,
+        )
+    }
+    state.upcomingEvents.forEach { EventItemRow(it, actions) }
+    if (state.pastEvents.isNotEmpty()) {
+        SectionHeader(title = stringResource(R.string.family_events_past), modifier = Modifier.padding(top = GiftTheme.spacing.s))
+        state.pastEvents.forEach { EventItemRow(it, actions, Modifier.fcDesaturated()) }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun EventItemRow(item: EventItem, actions: FamilyHomeActions, modifier: Modifier = Modifier) {
+    val event = item.event
+    // « Dans 12 jours · 8 ans » ; rien de relatif pour un événement passé.
+    val subtitle = listOfNotNull(
+        if (item.isPast) null else Formatting.countdownText(item.daysRemaining),
+        Formatting.ageText(item.age),
+    ).joinToString(" · ").ifEmpty { null }
+    val open = { actions.onOpenEvent(event.id) }
+    if (!item.canEdit) {
+        EventRow(
+            title = event.title,
+            dateText = Formatting.dateText(event.eventDate),
+            subtitle = subtitle,
+            kind = event.kind,
+            avatarNames = item.avatarNames,
+            onClick = open,
+            modifier = modifier,
+        )
+        return
+    }
+    var menuOpen by remember { mutableStateOf(false) }
+    val haptics = LocalHapticFeedback.current
+    val source = remember { MutableInteractionSource() }
+    val editLabel = stringResource(R.string.family_event_edit)
+    val edit = { actions.onEditEvent(event.id) }
+    Box(modifier = modifier) {
+        EventRow(
+            title = event.title,
+            dateText = Formatting.dateText(event.eventDate),
+            subtitle = subtitle,
+            kind = event.kind,
+            avatarNames = item.avatarNames,
+            modifier = Modifier
+                .fcPressable(source, GiftTheme.radius.cardShape, pressedScale = 0.98f)
+                .combinedClickable(
+                    interactionSource = source,
+                    indication = null,
+                    role = Role.Button,
+                    onClickLabel = stringResource(R.string.event_open),
+                    onLongClickLabel = editLabel,
+                    onLongClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        menuOpen = true
+                    },
+                    onClick = open,
+                )
+                .semantics {
+                    customActions = listOf(
+                        CustomAccessibilityAction(editLabel) {
+                            edit()
+                            true
+                        },
+                    )
+                },
+        )
+        Box(modifier = Modifier.align(Alignment.BottomEnd).padding(end = GiftTheme.spacing.l)) {
+            DropdownMenu(
+                expanded = menuOpen,
+                onDismissRequest = { menuOpen = false },
+                shape = GiftTheme.radius.fieldShape,
+                containerColor = GiftTheme.colors.surface,
+            ) {
+                DropdownMenuItem(
+                    text = { Text(editLabel, style = GiftTheme.type.callout, color = GiftTheme.colors.textPrimary) },
+                    leadingIcon = { Icon(GiftIcons.Edit, contentDescription = null, tint = GiftTheme.colors.primary) },
+                    onClick = {
+                        menuOpen = false
+                        edit()
+                    },
+                    modifier = Modifier.heightIn(min = HitTarget.minimum),
+                )
+            }
+        }
+    }
 }
 
 // endregion
@@ -218,12 +350,17 @@ private fun MembersTab(households: List<HouseholdItem>, actions: FamilyHomeActio
         )
         return
     }
-    households.forEach { item -> HouseholdCard(item, onShareText = actions.onShareText) }
+    households.forEach { item -> HouseholdCard(item, actions) }
 }
 
-/** Carte d'un foyer : drapeau, nom (titre TalkBack), badge « Mon foyer », parents ; code à partager si c'est le mien. */
+/**
+ * Carte d'un foyer : drapeau, nom (titre TalkBack), badge « Mon foyer », parents, puis ses listes (enfants et
+ * adultes). Pour mon foyer : crayon sur chaque liste, « Ajouter un enfant », « Créer une liste d'adulte » et
+ * le code à partager avec mon conjoint.
+ */
 @Composable
-private fun HouseholdCard(item: HouseholdItem, onShareText: (String) -> Unit) {
+private fun HouseholdCard(item: HouseholdItem, actions: FamilyHomeActions) {
+    val onShareText = actions.onShareText
     val colors = GiftTheme.colors
     val type = GiftTheme.type
     val spacing = GiftTheme.spacing
@@ -242,10 +379,90 @@ private fun HouseholdCard(item: HouseholdItem, onShareText: (String) -> Unit) {
         if (item.parentNames.isNotEmpty()) {
             Text(text = item.parentNames.joinToString(" & "), style = type.caption, color = colors.textSecondary)
         }
-        val code = household.inviteCode
-        if (item.isMine && code != null) {
+        item.children.forEach { child -> ChildLine(child, canEdit = item.isMine, actions = actions) }
+        if (item.isMine) {
             HorizontalDivider(thickness = 1.dp, color = colors.separator)
-            HouseholdCodeRow(household, code, onShareText)
+            Column {
+                HouseholdAction(GiftIcons.AddCircle, stringResource(R.string.family_add_child), onClick = actions.onAddChild)
+                HouseholdAction(
+                    icon = GiftIcons.PersonAdd,
+                    text = stringResource(R.string.family_add_adult),
+                    hint = stringResource(R.string.family_add_adult_hint),
+                    onClick = actions.onAddAdult,
+                )
+                household.inviteCode?.let { code -> HouseholdCodeRow(household, code, onShareText) }
+            }
+        }
+    }
+}
+
+/**
+ * Une liste du foyer : la ligne (avatar, prénom, âge ou « Liste d'adulte », chevron) ouvre la liste dans le
+ * contexte de l'événement courant ; le crayon (mon foyer seulement) ouvre l'éditeur. Le foyer n'est pas
+ * répété sous le prénom : la carte le dit déjà.
+ */
+@Composable
+private fun ChildLine(child: Child, canEdit: Boolean, actions: FamilyHomeActions) {
+    val colors = GiftTheme.colors
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(GiftTheme.spacing.s)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(GiftTheme.spacing.s),
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = HitTarget.minimum)
+                .fcClickable(
+                    onClick = { actions.onOpenChild(child.id) },
+                    onClickLabel = stringResource(R.string.event_open_list),
+                    shape = GiftTheme.radius.fieldShape,
+                    pressedScale = 0.98f,
+                ),
+        ) {
+            ChildRow(child, modifier = Modifier.weight(1f))
+            Icon(
+                GiftIcons.ChevronRight,
+                contentDescription = null,
+                tint = colors.textSecondary,
+                modifier = Modifier.size(GiftTheme.type.callout.glyphSize(1.4f)),
+            )
+        }
+        if (canEdit) {
+            val label = stringResource(R.string.family_child_edit, child.firstName)
+            val disc = 34.dp.scaledByFont(1.3f)
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .bleed(end = GiftTheme.spacing.s)
+                    .sizeIn(minWidth = HitTarget.minimum, minHeight = HitTarget.minimum)
+                    .fcClickable(onClick = { actions.onEditChild(child.id) }, shape = CircleShape, pressedScale = 0.9f)
+                    .semantics { contentDescription = label },
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(disc).background(colors.background, CircleShape)) {
+                    Icon(GiftIcons.Edit, contentDescription = null, tint = colors.primary, modifier = Modifier.size(disc * 0.53f))
+                }
+            }
+        }
+    }
+}
+
+/** Action du foyer (« Ajouter un enfant ») : icône et libellé `primary`, précision facultative en légende. */
+@Composable
+private fun HouseholdAction(icon: ImageVector, text: String, onClick: () -> Unit, hint: String? = null) {
+    val colors = GiftTheme.colors
+    val type = GiftTheme.type
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(GiftTheme.spacing.m),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = HitTarget.minimum)
+            .fcClickable(onClick = onClick, shape = GiftTheme.radius.fieldShape, pressedScale = 1f)
+            .padding(vertical = GiftTheme.spacing.xs),
+    ) {
+        Icon(icon, contentDescription = null, tint = colors.primary, modifier = Modifier.size(type.callout.glyphSize(1.4f)))
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+            Text(text = text, style = type.callout.copy(fontWeight = FontWeight.Medium), color = colors.primary)
+            hint?.let { Text(text = it, style = type.caption, color = colors.textSecondary) }
         }
     }
 }
@@ -471,30 +688,67 @@ private fun previewId(seed: String): UUID = UUID.nameUUIDFromBytes(seed.toByteAr
 private val previewGroup = FamilyGroup(previewId("g1"), "Famille Lemaine", "K7Q2XM")
 private val previewOtherGroup = FamilyGroup(previewId("g2"), "Famille Martin", "P3D9LA")
 
+private fun previewChild(name: String, household: String, emoji: String?, color: String, born: LocalDate?, adult: Boolean = false) =
+    Child(previewId(name), previewId(household), name, born?.let(::DayDate), emoji, color, isAdult = adult)
+
+private val previewLeo = previewChild("Léo", "h1", "🦊", "pastelPeach", LocalDate.of(2018, 3, 12))
+private val previewEmma = previewChild("Emma", "h1", "🦄", "pastelPink", LocalDate.of(2021, 6, 2))
+private val previewMarie = previewChild("Marie", "h1", null, "pastelLavender", null, adult = true)
+private val previewZoe = previewChild("Zoé", "h2", "🐼", "pastelMint", LocalDate.of(2019, 4, 2))
+
+private fun previewEvent(seed: String, kind: GiftEventKind, title: String, date: LocalDate) =
+    GiftEvent(previewId(seed), previewId("g1"), kind, title, DayDate(date))
+
 private val previewState = FamilyHomeUiState(
     group = previewGroup,
     memberNames = listOf("Jonathan", "Marie", "Claire", "Paul", "Mamie", "Papi", "Léa"),
     memberCount = 7,
     householdCount = 3,
     households = listOf(
-        HouseholdItem(Household(previewId("h1"), "Foyer de Jonathan", "CH", "AB12CD34"), isMine = true, listOf("Jonathan", "Marie")),
-        HouseholdItem(Household(previewId("h2"), "Claire & Paul", "FR"), isMine = false, listOf("Claire", "Paul")),
+        HouseholdItem(
+            Household(previewId("h1"), "Foyer de Jonathan", "CH", "AB12CD34"),
+            isMine = true,
+            listOf("Jonathan", "Marie"),
+            listOf(previewLeo, previewEmma, previewMarie),
+        ),
+        HouseholdItem(Household(previewId("h2"), "Claire & Paul", "FR"), isMine = false, listOf("Claire", "Paul"), listOf(previewZoe)),
         HouseholdItem(Household(previewId("h3"), "Mamie et Papi", "BE"), isMine = false, listOf("Mamie", "Papi")),
     ),
     groups = listOf(previewGroup, previewOtherGroup),
     rename = RenameGroupState(previewGroup.name, "Famille Lemaine-Martin"),
     inviteMessage = "Rejoins notre famille",
+    upcomingEvents = listOf(
+        EventItem(previewEvent("e1", GiftEventKind.BIRTHDAY, "Anniversaire de Zoé", LocalDate.of(2026, 11, 13)), listOf("Zoé"), false, 12, 7, canEdit = false),
+        EventItem(
+            previewEvent("e2", GiftEventKind.CHRISTMAS, "Noël 2026", LocalDate.of(2026, 12, 25)),
+            listOf("Léo", "Emma", "Zoé", "Marie"),
+            isPast = false,
+            daysRemaining = 54,
+            age = null,
+            canEdit = false,
+        ),
+        EventItem(previewEvent("e3", GiftEventKind.OTHER, "Fête chez Mamie", LocalDate.of(2027, 1, 9)), emptyList(), false, 69, null, canEdit = true),
+    ),
+    pastEvents = listOf(
+        EventItem(previewEvent("e4", GiftEventKind.BIRTHDAY, "Anniversaire de Léo", LocalDate.of(2026, 3, 12)), listOf("Léo"), true, -234, 8, canEdit = false),
+    ),
 )
 
 private val previewActions = FamilyHomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {})
 
 @GiftPreviews
 @Composable
-private fun FamilyHomeEventsPreview() = ScreenPreviewFrame { FamilyHomeScreen(previewState, previewActions) }
+private fun FamilyHomeEventsPreview() = ScreenPreviewFrame(height = 1100.dp) { FamilyHomeScreen(previewState, previewActions) }
 
 @GiftPreviews
 @Composable
-private fun FamilyHomeMembersPreview() = ScreenPreviewFrame { FamilyHomeScreen(previewState.copy(tab = TAB_MEMBERS), previewActions) }
+private fun FamilyHomeEventsEmptyPreview() = ScreenPreviewFrame {
+    FamilyHomeScreen(previewState.copy(upcomingEvents = emptyList(), pastEvents = emptyList()), previewActions)
+}
+
+@GiftPreviews
+@Composable
+private fun FamilyHomeMembersPreview() = ScreenPreviewFrame(height = 1300.dp) { FamilyHomeScreen(previewState.copy(tab = TAB_MEMBERS), previewActions) }
 
 @GiftPreviews
 @Composable

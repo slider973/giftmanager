@@ -26,4 +26,8 @@ object Formatting {
 object AvatarPalette {
     val colors: List<String> = listOf("pastelPink", "pastelMint", "pastelBlue", "pastelPeach", "pastelLavender")
     val emojis: List<String> = listOf("🦖", "🦄", "⚽️", "🐻", "🐱", "🚀", "🌸", "🦊", "🐼", "🎨", "🏰", "🧸")
+
+    /** Valeurs proposées à la création d'un enfant (iOS : `emojis.first`, `colors[1]`). */
+    val defaultEmoji: String = emojis.first()
+    val defaultColor: String = colors[1]
 }

@@ -3,10 +3,20 @@ package ch.jonathanlemaine.giftmanager.ui.family
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.jonathanlemaine.giftmanager.core.error.GiftError
+import ch.jonathanlemaine.giftmanager.core.model.Child
 import ch.jonathanlemaine.giftmanager.core.model.FamilyGroup
+import ch.jonathanlemaine.giftmanager.core.model.GiftEvent
+import ch.jonathanlemaine.giftmanager.core.model.GiftEventKind
 import ch.jonathanlemaine.giftmanager.core.model.Household
 import ch.jonathanlemaine.giftmanager.core.session.AppSession
 import ch.jonathanlemaine.giftmanager.core.session.InviteLink
+import ch.jonathanlemaine.giftmanager.core.session.canEdit
+import ch.jonathanlemaine.giftmanager.core.session.child
+import ch.jonathanlemaine.giftmanager.core.session.children
+import ch.jonathanlemaine.giftmanager.core.session.currentEvent
+import ch.jonathanlemaine.giftmanager.core.session.pastEvents
+import ch.jonathanlemaine.giftmanager.core.session.upcomingEvents
+import java.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +46,21 @@ data class HouseholdItem(
     val household: Household,
     val isMine: Boolean,
     val parentNames: List<String>,
+    /** Enfants puis listes d'adultes du foyer. */
+    val children: List<Child> = emptyList(),
+)
+
+/** Un événement de la liste, avec ce que la ligne affiche (iOS : `eventRow`). */
+data class EventItem(
+    val event: GiftEvent,
+    /** Prénoms des listes concernées (avatars de la ligne). */
+    val avatarNames: List<String>,
+    val isPast: Boolean,
+    val daysRemaining: Int,
+    /** Âge fêté, pour un anniversaire dont on connaît la date de naissance. */
+    val age: Int?,
+    /** Vrai pour un événement de type « autre » à venir : seul cas où Android propose « Modifier ». */
+    val canEdit: Boolean,
 )
 
 data class FamilyHomeUiState(
@@ -48,6 +73,11 @@ data class FamilyHomeUiState(
     /** Mon foyer en premier. */
     val households: List<HouseholdItem> = emptyList(),
     val groups: List<FamilyGroup> = emptyList(),
+    val upcomingEvents: List<EventItem> = emptyList(),
+    /** Du plus récent au plus ancien. */
+    val pastEvents: List<EventItem> = emptyList(),
+    /** Événement ouvert avec une liste depuis « Membres » : le prochain Noël, sinon le prochain événement. */
+    val currentEventId: java.util.UUID? = null,
     val rename: RenameGroupState? = null,
     val inviteMessage: String? = null,
     val showJoinDialog: Boolean = false,
@@ -59,8 +89,11 @@ data class FamilyHomeUiState(
     val canJoin: Boolean get() = joinCode.trim().length >= GroupSetupUiState.GROUP_CODE_LENGTH && !isBusy
 }
 
-/** « Notre famille » : membres et paramètres (iOS : `FamilyHomeView`) ; les événements arrivent avec #72. */
-class FamilyHomeViewModel(private val session: AppSession) : ViewModel() {
+/** « Notre famille » : événements, membres et paramètres (iOS : `FamilyHomeView`). */
+class FamilyHomeViewModel(
+    private val session: AppSession,
+    private val clock: Clock = Clock.systemDefaultZone(),
+) : ViewModel() {
     private data class Local(
         val tab: Int = 0,
         val renameEdit: Pair<UUID, String>? = null,
@@ -76,7 +109,21 @@ class FamilyHomeViewModel(private val session: AppSession) : ViewModel() {
     val uiState: StateFlow<FamilyHomeUiState> = combine(local, session.state) { l, s ->
         val group = s.currentGroup
         val mine = s.myHousehold
-        val items = s.households.map { HouseholdItem(it, it.id == mine?.id, s.parents(it).map { p -> p.displayName }) }
+        val items = s.households.map {
+            HouseholdItem(it, it.id == mine?.id, s.parents(it).map { p -> p.displayName }, s.children(it))
+        }
+        fun item(event: GiftEvent): EventItem {
+            val isPast = event.isPast(clock)
+            val age = if (event.kind == GiftEventKind.BIRTHDAY) s.child(event.childId)?.age(on = event.eventDate.date) else null
+            return EventItem(
+                event = event,
+                avatarNames = s.children(event).map { it.firstName },
+                isPast = isPast,
+                daysRemaining = event.daysRemaining(clock),
+                age = age,
+                canEdit = s.canEdit(event, clock),
+            )
+        }
         FamilyHomeUiState(
             tab = l.tab,
             group = group,
@@ -85,6 +132,9 @@ class FamilyHomeViewModel(private val session: AppSession) : ViewModel() {
             householdCount = s.households.size,
             households = items.sortedByDescending { it.isMine },
             groups = s.groups,
+            upcomingEvents = s.upcomingEvents(clock).map(::item),
+            pastEvents = s.pastEvents(clock).map(::item),
+            currentEventId = s.currentEvent(clock)?.id,
             // Recréé à chaque changement de famille : une saisie n'est reprise que pour la même famille.
             rename = group?.let { g ->
                 val edit = l.renameEdit?.takeIf { it.first == g.id }

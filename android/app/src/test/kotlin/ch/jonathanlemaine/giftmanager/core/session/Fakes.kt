@@ -6,6 +6,13 @@ import ch.jonathanlemaine.giftmanager.core.model.Household
 import ch.jonathanlemaine.giftmanager.core.model.HouseholdGroup
 import ch.jonathanlemaine.giftmanager.core.model.HouseholdMember
 import ch.jonathanlemaine.giftmanager.core.model.Profile
+import ch.jonathanlemaine.giftmanager.core.model.Child
+import ch.jonathanlemaine.giftmanager.core.model.DayDate
+import ch.jonathanlemaine.giftmanager.core.model.GiftEventKind
+import ch.jonathanlemaine.giftmanager.core.model.GiftEvent
+import ch.jonathanlemaine.giftmanager.core.model.ReservationCounts
+import ch.jonathanlemaine.giftmanager.data.ChildRepository
+import ch.jonathanlemaine.giftmanager.data.EventRepository
 import ch.jonathanlemaine.giftmanager.data.FamilyRepository
 import ch.jonathanlemaine.giftmanager.data.HouseholdRepository
 import ch.jonathanlemaine.giftmanager.data.ProfileRepository
@@ -30,6 +37,23 @@ fun profile(
 fun group(n: Int, name: String = "Famille $n", code: String = "CODE0$n") = FamilyGroup(uuid(100 + n), name, code)
 
 fun household(n: Int, name: String = "Foyer $n") = Household(uuid(200 + n), name, "CH", "HH00000$n")
+
+fun testChild(
+    n: Int,
+    householdN: Int = 1,
+    name: String = "Enfant $n",
+    adult: Boolean = false,
+    birthdate: String? = "2018-03-12",
+) = Child(uuid(400 + n), uuid(200 + householdN), name, birthdate?.let(DayDate::parse), isAdult = adult)
+
+fun testEvent(
+    n: Int,
+    date: String,
+    kind: GiftEventKind = GiftEventKind.OTHER,
+    childId: UUID? = null,
+    createdBy: UUID? = null,
+    groupId: UUID? = uuid(101),
+) = GiftEvent(uuid(500 + n), if (kind == GiftEventKind.OTHER) groupId else null, kind, "Événement $n", DayDate.parse(date), childId, createdBy)
 
 class FakeProfileRepository(var me: Profile? = profile()) : ProfileRepository {
     val others = mutableListOf<Profile>()
@@ -179,6 +203,75 @@ class FakeHouseholdRepository : HouseholdRepository {
         calls += "unshare:$groupId"
         failure?.let { throw it }
         shares.removeAll { it.groupId == groupId }
+    }
+}
+
+class FakeChildRepository : ChildRepository {
+    /** Enfants renvoyés tels quels (doublons possibles, comme avec plusieurs partages). */
+    val all = mutableListOf<Child>()
+    val saved = mutableListOf<Child>()
+    val deleted = mutableListOf<UUID>()
+    var failure: Throwable? = null
+    var loads = 0
+
+    override suspend fun children(groupId: UUID): List<Child> {
+        loads++
+        failure?.let { throw it }
+        return all.toList()
+    }
+
+    override suspend fun saveChild(child: Child) {
+        failure?.let { throw it }
+        saved += child
+        all.removeAll { it.id == child.id }
+        all += child
+    }
+
+    override suspend fun deleteChild(childId: UUID) {
+        failure?.let { throw it }
+        deleted += childId
+        all.removeAll { it.id == childId }
+    }
+}
+
+class FakeEventRepository : EventRepository {
+    val all = mutableListOf<GiftEvent>()
+    val saved = mutableListOf<GiftEvent>()
+    val deleted = mutableListOf<UUID>()
+    var failure: Throwable? = null
+    var countsFailure: Throwable? = null
+    var counts = listOf<ReservationCounts>()
+    val countsCalls = mutableListOf<UUID?>()
+    var ensureCalls = 0
+    var ensureFailure: Throwable? = null
+
+    override suspend fun events(): List<GiftEvent> {
+        failure?.let { throw it }
+        return all.toList()
+    }
+
+    override suspend fun saveEvent(event: GiftEvent) {
+        failure?.let { throw it }
+        saved += event
+        all.removeAll { it.id == event.id }
+        all += event
+    }
+
+    override suspend fun deleteEvent(eventId: UUID) {
+        failure?.let { throw it }
+        deleted += eventId
+        all.removeAll { it.id == eventId }
+    }
+
+    override suspend fun reservationCounts(eventId: UUID?): List<ReservationCounts> {
+        countsCalls += eventId
+        countsFailure?.let { throw it }
+        return counts
+    }
+
+    override suspend fun ensureBirthdayEvents(groupId: UUID) {
+        ensureCalls++
+        ensureFailure?.let { throw it }
     }
 }
 

@@ -14,6 +14,8 @@ class RpcTest {
         assertEquals("share_household_with_group", Rpc.SHARE_HOUSEHOLD)
         assertEquals("unshare_household_from_group", Rpc.UNSHARE_HOUSEHOLD)
         assertEquals("delete_account", Rpc.DELETE_ACCOUNT)
+        assertEquals("children_reservation_counts", Rpc.CHILDREN_RESERVATION_COUNTS)
+        assertEquals("ensure_birthday_events", Rpc.ENSURE_BIRTHDAY_EVENTS)
     }
 
     @Test fun parameterNames() {
@@ -22,6 +24,7 @@ class RpcTest {
         assertEquals("p_country", Rpc.P_COUNTRY)
         assertEquals("p_code", Rpc.P_CODE)
         assertEquals("p_group", Rpc.P_GROUP)
+        assertEquals("p_event", Rpc.P_EVENT)
     }
 
     @Test fun everyNameExistsInTheMigrations() {
@@ -30,9 +33,10 @@ class RpcTest {
             .listFiles { f -> f.extension == "sql" }!!.joinToString("\n") { it.readText() }
         listOf(
             Rpc.CREATE_GROUP, Rpc.JOIN_GROUP, Rpc.CREATE_HOUSEHOLD, Rpc.JOIN_HOUSEHOLD,
-            Rpc.SHARE_HOUSEHOLD, Rpc.UNSHARE_HOUSEHOLD, Rpc.DELETE_ACCOUNT,
+            Rpc.SHARE_HOUSEHOLD, Rpc.UNSHARE_HOUSEHOLD, Rpc.DELETE_ACCOUNT, Rpc.CHILDREN_RESERVATION_COUNTS,
+            Rpc.ENSURE_BIRTHDAY_EVENTS,
         ).forEach { assert("function public.$it(" in sql) { it }; }
-        listOf(Rpc.P_NAME, Rpc.P_HOUSEHOLD_NAME, Rpc.P_COUNTRY, Rpc.P_CODE, Rpc.P_GROUP).forEach { assert(it in sql) { it } }
+        listOf(Rpc.P_NAME, Rpc.P_HOUSEHOLD_NAME, Rpc.P_COUNTRY, Rpc.P_CODE, Rpc.P_GROUP, Rpc.P_EVENT).forEach { assert(it in sql) { it } }
     }
 
     @Test fun uuidReturnedByRpcIsAJsonString() {
@@ -43,5 +47,14 @@ class RpcTest {
     @Test fun joinedSelectColumnsMatchIos() {
         assertEquals("id, name, country, invite_code, household_groups!inner(group_id)", SupabaseHouseholdRepository.HOUSEHOLDS_COLUMNS)
         assertEquals("household_id, user_id, households!inner(household_groups!inner(group_id))", SupabaseHouseholdRepository.MEMBERS_COLUMNS)
+    }
+
+    @Test fun childAndEventSelectColumnsMatchIos() {
+        assertEquals(
+            "id, household_id, first_name, birthdate, avatar_emoji, avatar_color, avatar_url, is_adult, " +
+                "households!inner(household_groups!inner(group_id))",
+            SupabaseChildRepository.COLUMNS,
+        )
+        assertEquals("id, group_id, kind, title, event_date, child_id, created_by", SupabaseEventRepository.COLUMNS)
     }
 }

@@ -1,6 +1,12 @@
 package ch.jonathanlemaine.giftmanager.ui.main
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -56,7 +62,11 @@ import ch.jonathanlemaine.giftmanager.ui.debug.DebugEntryPoints
 import ch.jonathanlemaine.giftmanager.ui.family.FamilyHomeActions
 import ch.jonathanlemaine.giftmanager.ui.family.FamilyHomeScreen
 import ch.jonathanlemaine.giftmanager.ui.family.FamilyHomeViewModel
+import ch.jonathanlemaine.giftmanager.ui.navigation.ChildEditorRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.ChildGiftsRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.DebugGallery
+import ch.jonathanlemaine.giftmanager.ui.navigation.EventDetailRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.EventEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.FamilyHome
 import ch.jonathanlemaine.giftmanager.ui.navigation.HomeGraph
 import ch.jonathanlemaine.giftmanager.ui.navigation.ProfileTab
@@ -67,11 +77,15 @@ import ch.jonathanlemaine.giftmanager.ui.profile.ProfileScreen
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileViewModel
 import ch.jonathanlemaine.giftmanager.ui.theme.GiftTheme
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 /**
  * Écran principal (iOS : `MainTabView`) : barre d'onglets Accueil · Recherche · « + » · Mes achats · Profil
  * ([MainNavigationBar]). L'état de chaque onglet est conservé quand on en change. « + » n'est pas une
  * destination : il ouvre une feuille (provisoire jusqu'à #73).
+ *
+ * La barre reste affichée sur les écrans poussés de consultation (fiche d'un événement, liste d'un enfant),
+ * comme sur iOS, et s'efface sur les formulaires plein écran (éditeurs d'enfant et d'événement).
  *
  * Bord à bord : le `Scaffold` réserve la barre d'état et la barre d'onglets, et **consomme** ces marges ;
  * les écrans posent `safeDrawing` sans les compter deux fois (seul le clavier reste à leur charge).
@@ -90,11 +104,20 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
     Scaffold(
         containerColor = GiftTheme.colors.background,
         bottomBar = {
-            MainNavigationBar(
-                current = currentTab,
-                onSelect = { tab -> navController.switchTab(tab.route) },
-                onAdd = { showAddSheet = true },
-            )
+            // Masquée sur les formulaires plein écran (éditeurs) : ils se ferment par ✕ ou Retour, pas en
+            // changeant d'onglet. Visible sur les écrans poussés de consultation (fiche, liste).
+            val reduceMotion = GiftTheme.reduceMotion
+            AnimatedVisibility(
+                visible = backStackEntry?.destination?.isFullScreenForm() != true,
+                enter = if (reduceMotion) EnterTransition.None else expandVertically(tween(200), expandFrom = Alignment.Top),
+                exit = if (reduceMotion) ExitTransition.None else shrinkVertically(tween(200), shrinkTowards = Alignment.Top),
+            ) {
+                MainNavigationBar(
+                    current = currentTab,
+                    onSelect = { tab -> navController.switchTab(tab.route) },
+                    onAdd = { showAddSheet = true },
+                )
+            }
         },
     ) { padding ->
         NavHost(
@@ -103,7 +126,33 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
         ) {
             navigation<HomeGraph>(startDestination = FamilyHome) {
-                composable<FamilyHome> { FamilyHomeRoute(viewModelFactory) }
+                composable<FamilyHome> {
+                    FamilyHomeRoute(
+                        viewModelFactory,
+                        onOpenEvent = { navController.navigate(EventDetailRoute(it.toString())) },
+                        onNewEvent = { navController.navigate(EventEditorRoute()) },
+                        onEditEvent = { navController.navigate(EventEditorRoute(it.toString())) },
+                        onOpenChild = { childId, eventId ->
+                            navController.navigate(ChildGiftsRoute(childId.toString(), eventId?.toString(), readOnly = false))
+                        },
+                        onEditChild = { navController.navigate(ChildEditorRoute(childId = it.toString())) },
+                        onAddChild = { navController.navigate(ChildEditorRoute()) },
+                        onAddAdult = { navController.navigate(ChildEditorRoute(adult = true)) },
+                    )
+                }
+                composable<EventDetailRoute> {
+                    EventDetailDestination(
+                        viewModelFactory,
+                        onBack = { navController.popBackStack() },
+                        onEdit = { navController.navigate(EventEditorRoute(it.toString())) },
+                        onOpenChild = { childId, eventId, readOnly ->
+                            navController.navigate(ChildGiftsRoute(childId.toString(), eventId.toString(), readOnly))
+                        },
+                    )
+                }
+                composable<ChildEditorRoute> { ChildEditorDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
+                composable<EventEditorRoute> { EventEditorDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
+                composable<ChildGiftsRoute> { ChildGiftsDestination(viewModelFactory, onBack = { navController.popBackStack() }) }
             }
             composable<Search> {
                 ComingSoonScreen(Illustration.MASCOT_THINKING, stringResource(R.string.tab_search), stringResource(R.string.search_coming_soon))
@@ -160,6 +209,9 @@ private fun NavDestination.mainTab(): MainTab? = when {
     hierarchy.any { it.hasRoute(ProfileTab::class) || it.hasRoute(DebugGallery::class) } -> MainTab.Profile
     else -> null
 }
+
+/** Formulaire plein écran (création / modification) : la barre d'onglets s'efface (Material : full-screen dialog). */
+private fun NavDestination.isFullScreenForm(): Boolean = hasRoute(ChildEditorRoute::class) || hasRoute(EventEditorRoute::class)
 
 /** Change d'onglet en sauvegardant l'état de celui qu'on quitte et en restaurant celui qu'on rejoint. */
 private fun NavController.switchTab(route: Any) {
@@ -225,7 +277,16 @@ private fun AddGiftSheetContent(onClose: () -> Unit) {
 }
 
 @Composable
-private fun FamilyHomeRoute(viewModelFactory: ViewModelProvider.Factory) {
+private fun FamilyHomeRoute(
+    viewModelFactory: ViewModelProvider.Factory,
+    onOpenEvent: (UUID) -> Unit,
+    onNewEvent: () -> Unit,
+    onEditEvent: (UUID) -> Unit,
+    onOpenChild: (childId: UUID, eventId: UUID?) -> Unit,
+    onEditChild: (UUID) -> Unit,
+    onAddChild: () -> Unit,
+    onAddAdult: () -> Unit,
+) {
     val viewModel: FamilyHomeViewModel = viewModel(factory = viewModelFactory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -246,6 +307,14 @@ private fun FamilyHomeRoute(viewModelFactory: ViewModelProvider.Factory) {
             onJoin = viewModel::joinOtherGroup,
             onDismissError = viewModel::dismissError,
             onRefresh = viewModel::refresh,
+            onOpenEvent = onOpenEvent,
+            onNewEvent = onNewEvent,
+            onEditEvent = onEditEvent,
+            // Une liste s'ouvre dans le contexte de l'événement courant (prochain Noël, sinon prochain événement).
+            onOpenChild = { childId -> onOpenChild(childId, state.currentEventId) },
+            onEditChild = onEditChild,
+            onAddChild = onAddChild,
+            onAddAdult = onAddAdult,
         ),
     )
 }

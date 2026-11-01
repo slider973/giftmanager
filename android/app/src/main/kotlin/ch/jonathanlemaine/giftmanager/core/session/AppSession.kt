@@ -4,6 +4,8 @@ import ch.jonathanlemaine.giftmanager.core.error.runCatchingCancellable
 import ch.jonathanlemaine.giftmanager.core.format.Countries
 import ch.jonathanlemaine.giftmanager.core.model.FamilyGroup
 import ch.jonathanlemaine.giftmanager.core.model.HouseholdGroup
+import ch.jonathanlemaine.giftmanager.data.ChildRepository
+import ch.jonathanlemaine.giftmanager.data.EventRepository
 import ch.jonathanlemaine.giftmanager.data.FamilyRepository
 import ch.jonathanlemaine.giftmanager.data.HouseholdRepository
 import ch.jonathanlemaine.giftmanager.data.ProfileRepository
@@ -29,17 +31,19 @@ import java.util.UUID
  * référence. Les actions sont des `suspend` qui renvoient un [Result] : l'appelant décide d'afficher
  * l'erreur ([ch.jonathanlemaine.giftmanager.core.error.GiftError.from]). Les rechargements sont sérialisés.
  *
- * [ensureBirthdayEvents] est le point d'accroche de #72 (anniversaires automatiques) : appelé avant chaque
- * chargement de la famille, ses erreurs sont ignorées.
+ * Avant chaque chargement de la famille, `ensureBirthdayEvents` (anniversaires automatiques, #43) est appelé ;
+ * ses erreurs sont ignorées. Les lectures dérivées (enfants de mon foyer, événements à venir…) sont dans
+ * `SessionSelectors.kt`.
  */
 class AppSession(
     private val auth: AuthRepository,
     private val profileRepo: ProfileRepository,
     private val familyRepo: FamilyRepository,
     private val householdRepo: HouseholdRepository,
+    private val childRepo: ChildRepository,
+    private val eventRepo: EventRepository,
     private val currentGroupStore: CurrentGroupStore,
     private val scope: CoroutineScope,
-    private val ensureBirthdayEvents: suspend (groupId: UUID) -> Unit = {},
 ) {
     private val _state = MutableStateFlow(SessionState())
     val state: StateFlow<SessionState> = _state.asStateFlow()
@@ -48,6 +52,14 @@ class AppSession(
 
     /** Code reçu par lien, utilisé par l'écran « Rejoindre » ou la confirmation de l'écran principal. */
     val pendingInviteCode: StateFlow<String?> = _pendingInviteCode.asStateFlow()
+
+    private val _itemsRevision = MutableStateFlow(0)
+
+    /**
+     * Compteur incrémenté quand les cadeaux ont pu changer ([itemsChanged]) : les écrans qui affichent des
+     * données dérivées des listes (compteurs d'équilibre, #41) se rechargent en l'observant.
+     */
+    val itemsRevision: StateFlow<Int> = _itemsRevision.asStateFlow()
 
     private val lock = Mutex()
     private var started = false
@@ -91,6 +103,14 @@ class AppSession(
         runCatchingCancellable { loadGroupData(group) }
     }
 
+    /** Recharge les données de la famille courante après une modification (enfant, événement). */
+    suspend fun reloadGroup(): Result<Unit> = refreshGroupData()
+
+    /** Signale que des cadeaux ont changé (voir [itemsRevision]). */
+    fun itemsChanged() {
+        _itemsRevision.update { it + 1 }
+    }
+
     private suspend fun loadAll(): Result<Unit> {
         val userId = _state.value.userId ?: return Result.success(Unit)
         return try {
@@ -126,8 +146,10 @@ class AppSession(
     private suspend fun loadGroupData(group: FamilyGroup) {
         val userId = _state.value.userId
         // Anniversaires automatiques : une erreur ici ne doit pas bloquer le chargement.
-        runCatchingCancellable { ensureBirthdayEvents(group.id) }
+        runCatchingCancellable { eventRepo.ensureBirthdayEvents(group.id) }
         coroutineScope {
+            val children = async { childRepo.children(group.id) }
+            val events = async { eventRepo.events() }
             val households = async { householdRepo.households(group.id) }
             val householdMembers = async { householdRepo.householdMembers(group.id) }
             val groupMembers = async { familyRepo.groupMembers(group.id) }
@@ -136,12 +158,17 @@ class AppSession(
             val loadedHouseholdMembers = householdMembers.await()
             val members = profileRepo.profiles(groupMembers.await().map { it.userId })
             val sharing: List<HouseholdGroup> = householdGroups.await().getOrDefault(emptyList())
+            // Un enfant peut remonter plusieurs fois s'il est visible via plusieurs partages (#60).
+            val loadedChildren = children.await().distinctBy { it.id }
+            val loadedEvents = events.await()
             updateFor(userId) {
                 it.copy(
                     households = loadedHouseholds,
                     householdMembers = loadedHouseholdMembers,
                     householdGroups = sharing,
                     members = members,
+                    children = loadedChildren,
+                    events = loadedEvents,
                 )
             }
         }

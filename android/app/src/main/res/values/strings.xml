@@ -121,8 +121,15 @@
         <item quantity="other">%d foyers</item>
     </plurals>
     <string name="family_events_upcoming">Événements à venir</string>
-    <string name="family_events_soon_title">Bientôt ici</string>
-    <string name="family_events_placeholder">Anniversaires, Noël et fêtes de famille : tu pourras bientôt les préparer ici.</string>
+    <string name="family_events_past">Événements passés</string>
+    <string name="family_events_add">Ajouter un événement</string>
+    <string name="family_events_empty_title">Aucun événement</string>
+    <string name="family_events_empty_message">Ajoute un anniversaire ou une fête.</string>
+    <string name="family_event_edit">Modifier</string>
+    <string name="family_add_child">Ajouter un enfant</string>
+    <string name="family_add_adult">Créer une liste d\'adulte</string>
+    <string name="family_add_adult_hint">Ta liste ou celle de ton conjoint, avec le même mode surprise que pour les enfants</string>
+    <string name="family_child_edit">Modifier %1$s</string>
     <string name="family_members_empty_title">Aucun foyer pour l\'instant</string>
     <string name="family_members_empty_message">Invite les autres foyers avec le code de la famille, dans Paramètres.</string>
     <string name="family_my_household">Mon foyer</string>
@@ -198,6 +205,75 @@
     <string name="event_kind_other">Événement</string>
     <string name="event_open">voir l\'événement</string>
     <string name="gift_open">voir le cadeau</string>
+
+    <!-- Enfants (éditeur) -->
+    <string name="child_editor_title_new">Nouvel enfant</string>
+    <string name="child_editor_title_new_adult">Nouvelle liste d\'adulte</string>
+    <string name="child_name">Prénom</string>
+    <string name="child_name_adult">Nom affiché</string>
+    <string name="child_name_prompt">Ex. Léo</string>
+    <string name="child_name_prompt_adult">Ex. Papa, Mamie Jo, Claire</string>
+    <string name="child_adult_notice">Comme pour les enfants : personne de ton foyer ne verra ce qui est réservé sur cette liste, ni les idées proposées.</string>
+    <string name="child_birthdate_toggle">Date de naissance</string>
+    <string name="child_birthdate_label">Née / né le</string>
+    <string name="child_birthdate_label_adult">Anniversaire</string>
+    <string name="child_avatar_title">Avatar</string>
+    <string name="child_avatar_a11y">Avatar %1$s</string>
+    <string name="child_color_a11y">Couleur %1$s</string>
+    <string name="child_color_pink">rose</string>
+    <string name="child_color_mint">menthe</string>
+    <string name="child_color_blue">bleu</string>
+    <string name="child_color_peach">pêche</string>
+    <string name="child_color_lavender">lavande</string>
+    <string name="child_save_create">Ajouter</string>
+    <string name="child_save_create_adult">Créer la liste</string>
+    <string name="child_save_edit">Enregistrer</string>
+    <string name="child_delete">Supprimer %1$s</string>
+    <string name="child_delete_title">Supprimer %1$s ?</string>
+    <string name="child_delete_confirm_child">Supprimer l\'enfant et sa liste</string>
+    <string name="child_delete_confirm_adult">Supprimer la liste</string>
+    <string name="child_delete_message">Sa liste de cadeaux, ses idées et les réservations associées seront supprimées.</string>
+    <string name="child_gifts_soon_title">La liste arrive bientôt</string>
+    <string name="child_gifts_soon_message">La liste de cadeaux de %1$s sera bientôt ici.</string>
+
+    <!-- Événements (éditeur et fiche) -->
+    <string name="event_editor_title_new">Nouvel événement</string>
+    <string name="event_editor_title_edit">Modifier</string>
+    <string name="event_title_label">Titre</string>
+    <string name="event_title_prompt">Ex. Fête de fin d\'année</string>
+    <string name="event_date_label">Date</string>
+    <string name="event_save">Enregistrer</string>
+    <string name="event_delete">Supprimer l\'événement</string>
+    <string name="event_delete_title">Supprimer cet événement ?</string>
+    <string name="event_delete_confirm">Supprimer</string>
+    <string name="event_delete_footer">Les cadeaux restent dans les listes des enfants.</string>
+    <string name="event_past">Événement passé</string>
+    <string name="event_past_notice">Événement passé : les listes sont archivées en lecture seule.</string>
+    <string name="event_birthday_upcoming">%1$s fête ses %2$s</string>
+    <string name="event_birthday_past">%1$s a fêté ses %2$s</string>
+    <plurals name="event_age">
+        <item quantity="one">%d an</item>
+        <item quantity="other">%d ans</item>
+    </plurals>
+    <string name="event_section_kids">Les listes des enfants</string>
+    <string name="event_section_adults">Les listes des adultes</string>
+    <string name="event_section_mine_kids">Mes enfants</string>
+    <string name="event_section_mine_household">Mon foyer</string>
+    <string name="event_notice_surprise_kids">Mode surprise : tu ne vois pas ce qui a été réservé pour tes enfants.</string>
+    <string name="event_notice_surprise_household">Mode surprise : tu ne vois pas ce qui a été réservé sur les listes de ton foyer.</string>
+    <string name="event_empty_title">Aucune liste</string>
+    <string name="event_empty_message">Ajoute les enfants ou une liste d\'adulte dans Famille › Membres.</string>
+    <string name="event_balance_a11y">Équilibre : %1$s</string>
+    <string name="event_edit">Modifier</string>
+    <string name="date_picker_ok">OK</string>
+    <string name="date_field_choose">choisir une date</string>
+    <string name="child_adult_list">Liste d\'adulte</string>
+    <string name="event_title_counter">%1$d / %2$d</string>
+    <plurals name="event_title_counter_a11y">
+        <item quantity="one">%1$d caractère sur %2$d</item>
+        <item quantity="other">%1$d caractères sur %2$d</item>
+    </plurals>
+    <string name="event_open_list">ouvrir la liste</string>
 
     <!-- Avatars -->
     <string name="avatars_none">Aucun participant</string>

@@ -13,7 +13,9 @@ class SessionFixture(scope: CoroutineScope, auth: AuthState = AuthState.SignedOu
     val families = FakeFamilyRepository()
     val households = FakeHouseholdRepository()
     val store = FakeCurrentGroupStore()
-    var birthdayCalls = 0
+    val childRepo = FakeChildRepository()
+    val eventRepo = FakeEventRepository()
+    val birthdayCalls: Int get() = eventRepo.ensureCalls
 
     init {
         families.onJoin = { groupId ->
@@ -21,7 +23,7 @@ class SessionFixture(scope: CoroutineScope, auth: AuthState = AuthState.SignedOu
             if (mine != null) households.shares += HouseholdGroup(mine, groupId)
         }
     }
-    val session = AppSession(authRepo, profiles, families, households, store, scope) { birthdayCalls++ }
+    val session = AppSession(authRepo, profiles, families, households, childRepo, eventRepo, store, scope)
 
     /** Utilisateur 1 dans les familles [groupNumbers], avec son foyer partagé dans chacune. */
     fun seedReady(vararg groupNumbers: Int = intArrayOf(1)) {

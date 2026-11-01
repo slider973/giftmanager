@@ -17,12 +17,15 @@ object Rpc {
     const val SHARE_HOUSEHOLD = "share_household_with_group"
     const val UNSHARE_HOUSEHOLD = "unshare_household_from_group"
     const val DELETE_ACCOUNT = "delete_account"
+    const val CHILDREN_RESERVATION_COUNTS = "children_reservation_counts"
+    const val ENSURE_BIRTHDAY_EVENTS = "ensure_birthday_events"
 
     const val P_NAME = "p_name"
     const val P_HOUSEHOLD_NAME = "p_household_name"
     const val P_COUNTRY = "p_country"
     const val P_CODE = "p_code"
     const val P_GROUP = "p_group"
+    const val P_EVENT = "p_event"
 }
 
 /** Réponse d'une RPC qui renvoie un `uuid` : PostgREST le sérialise en chaîne JSON (`"3f2a…"`). */
