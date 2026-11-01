@@ -1,0 +1,18 @@
+[
+  {
+    "link_id": "88888888-0000-0000-0000-000000000001",
+    "url": "https://www.galaxus.ch/p/1",
+    "price": 169.00,
+    "currency": "CHF",
+    "in_stock": true,
+    "checked_at": "2026-10-04T06:00:00.123456+00:00"
+  },
+  {
+    "link_id": "88888888-0000-0000-0000-000000000001",
+    "url": "https://www.galaxus.ch/p/1",
+    "price": null,
+    "currency": null,
+    "in_stock": null,
+    "checked_at": "2026-10-03T06:00:00+00:00"
+  }
+]

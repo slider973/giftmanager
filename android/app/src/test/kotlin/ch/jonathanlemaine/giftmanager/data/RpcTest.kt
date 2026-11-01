@@ -34,6 +34,7 @@ class RpcTest {
         assertEquals("my_thanks", Rpc.MY_THANKS)
         assertEquals("reveal_myself", Rpc.REVEAL_MYSELF)
         assertEquals("item_donors", Rpc.ITEM_DONORS)
+        assertEquals("my_price_history", Rpc.MY_PRICE_HISTORY)
     }
 
     @Test fun parameterNames() {
@@ -67,6 +68,7 @@ class RpcTest {
             Rpc.SET_RESERVATION_PURCHASED, Rpc.JOIN_POT, Rpc.LEAVE_POT, Rpc.POT_PARTICIPANTS, Rpc.REVIEW_IDEA,
             Rpc.PENDING_IDEAS, Rpc.IDEA_AUDIENCE, Rpc.MY_RESERVATIONS, Rpc.MY_CONTRIBUTIONS, Rpc.MY_BUDGETS, Rpc.SET_BUDGET,
             Rpc.SEND_THANKS, Rpc.MY_THANKS, Rpc.REVEAL_MYSELF, Rpc.ITEM_DONORS,
+            Rpc.MY_PRICE_HISTORY,
         ).forEach { assert("function public.$it(" in sql) { it }; }
         listOf(
             Rpc.P_NAME, Rpc.P_HOUSEHOLD_NAME, Rpc.P_COUNTRY, Rpc.P_CODE, Rpc.P_GROUP, Rpc.P_EVENT, Rpc.P_CHILD, Rpc.P_KIND,
@@ -81,7 +83,7 @@ class RpcTest {
             .map { java.io.File(it, "supabase/migrations") }.first { it.isDirectory }
             .listFiles { f -> f.extension == "sql" }!!.sortedBy { it.name }.joinToString("\n") { it.readText() }
         fun signature(fn: String): String =
-            Regex("""function public\.$fn\(([^)]*)\)""").findAll(sql).last().groupValues[1]
+            Regex("""create (?:or replace )?function public\.$fn\(([^)]*)\)""", RegexOption.IGNORE_CASE).findAll(sql).last().groupValues[1]
         assertParams(signature(Rpc.CHILD_ITEMS), Rpc.P_CHILD, Rpc.P_EVENT, Rpc.P_KIND)
         assertParams(signature(Rpc.RESERVE_ITEM), Rpc.P_ITEM)
         assertParams(signature(Rpc.CANCEL_RESERVATION), Rpc.P_ITEM)
@@ -100,6 +102,7 @@ class RpcTest {
         assertParams(signature(Rpc.MY_THANKS))
         assertParams(signature(Rpc.REVEAL_MYSELF), Rpc.P_ITEM, Rpc.P_REVEAL)
         assertParams(signature(Rpc.ITEM_DONORS), Rpc.P_ITEM)
+        assertParams(signature(Rpc.MY_PRICE_HISTORY), Rpc.P_ITEM)
     }
 
     private fun assertParams(signature: String, vararg expected: String) {

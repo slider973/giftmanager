@@ -202,6 +202,17 @@ class ModelDecodingTest {
         assertNull(decode<ItemLink>(base.replace("\"230.00\"", "null")).price)
     }
 
+    @Test fun priceHistoryDecoding() {
+        val checks = Fixtures.decode<List<PriceCheck>>("price_history.json")
+        assertEquals(2, checks.size)
+        assertDecimal("169.00", checks[0].price)
+        assertEquals("CHF", checks[0].currency)
+        assertEquals(true, checks[0].inStock)
+        assertNull(checks[1].price)
+        assertNull(checks[1].inStock)
+        assertEquals(Instant.parse("2026-10-03T06:00:00Z"), checks[1].checkedAt)
+    }
+
     @Test fun myReservationDecoding() {
         val reservation = Fixtures.decode<MyReservation>("my_reservation.json")
         assertEquals(ReservationState.RESERVED, reservation.status)
