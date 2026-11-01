@@ -311,6 +311,60 @@ class AppSessionTest {
         assertNull(f.session.pendingInviteCode.value)
     }
 
+    // region Partage (#79)
+
+    @Test fun sharedLinkSurvivesOutsideReadyPhase() = runTest {
+        val f = started { seedReady(); profiles.me = profile(onboarded = false) }
+        assertEquals(SessionPhase.NeedsProfile, f.session.state.value.phase)
+        f.session.handleSharedLink("https://shop.example/velo")
+        f.session.refreshAll()
+        assertEquals("https://shop.example/velo", f.session.pendingSharedLink.value)
+    }
+
+    @Test fun clearForgetsTheSharedLink() = runTest {
+        val f = started()
+        f.session.handleSharedLink("https://shop.example/velo")
+        f.session.clearPendingSharedLink()
+        assertNull(f.session.pendingSharedLink.value)
+    }
+
+    @Test fun signOutForgetsTheSharedLink() = runTest {
+        val f = started()
+        f.session.handleSharedLink("https://shop.example/velo")
+        f.session.handleShareWithoutLink()
+        f.session.handleSharedLink("https://shop.example/velo")
+        f.session.signOut()
+        assertNull(f.session.pendingSharedLink.value)
+        assertFalse(f.session.shareWithoutLink.value)
+    }
+
+    @Test fun anAuthSignOutKeepsTheLinkForTheNextSignIn() = runTest {
+        val f = started()
+        f.session.handleSharedLink("https://shop.example/velo")
+        f.authRepo.stateFlow.value = AuthState.SignedOut
+        runCurrent()
+        assertEquals("https://shop.example/velo", f.session.pendingSharedLink.value)
+    }
+
+    @Test fun aNewShareReplacesTheOldOne() = runTest {
+        val f = started()
+        f.session.handleSharedLink("https://a.example")
+        f.session.handleSharedLink("https://b.example")
+        assertEquals("https://b.example", f.session.pendingSharedLink.value)
+    }
+
+    @Test fun aShareWithoutLinkIsFlagged() = runTest {
+        val f = started()
+        f.session.handleSharedLink("https://a.example")
+        f.session.handleShareWithoutLink()
+        assertNull(f.session.pendingSharedLink.value)
+        assertTrue(f.session.shareWithoutLink.value)
+        f.session.clearShareWithoutLink()
+        assertFalse(f.session.shareWithoutLink.value)
+    }
+
+    // endregion
+
     // region Enfants et événements (#72)
 
     @Test fun loadsChildrenAndEventsOfTheGroup() = runTest {
