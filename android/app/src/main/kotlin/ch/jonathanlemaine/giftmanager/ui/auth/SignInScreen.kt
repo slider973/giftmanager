@@ -36,6 +36,7 @@ import ch.jonathanlemaine.giftmanager.R
 import ch.jonathanlemaine.giftmanager.ui.components.GiftPreviews
 import ch.jonathanlemaine.giftmanager.ui.components.Illustration
 import ch.jonathanlemaine.giftmanager.ui.components.fcScreenBackground
+import ch.jonathanlemaine.giftmanager.ui.debug.DebugEntryPoints
 import ch.jonathanlemaine.giftmanager.ui.theme.GiftManagerTheme
 import ch.jonathanlemaine.giftmanager.ui.theme.GiftTheme
 
@@ -54,16 +55,23 @@ private val IllustrationMaxSize = 280.dp
  * Bord à bord : les marges `safeDrawing` sont posées ici, une seule fois.
  */
 @Composable
-fun SignInScreen(state: SignInUiState, onSignIn: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+fun SignInScreen(
+    state: SignInUiState,
+    onSignIn: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    onDemoError: (String?) -> Unit = {},
+) {
     SignInContent(
         state = state,
         onSignIn = onSignIn,
+        onDemoError = onDemoError,
         modifier = modifier
             .fcScreenBackground()
             .windowInsetsPadding(WindowInsets.safeDrawing),
     )
     if (state is SignInUiState.Error) {
-        SignInErrorDialog(kind = state.kind, onDismiss = onDismiss)
+        SignInErrorDialog(kind = state.kind, onDismiss = onDismiss, detail = state.detail)
     }
 }
 
@@ -75,7 +83,7 @@ fun SignInScreen(state: SignInUiState, onSignIn: () -> Unit, onDismiss: () -> Un
  * place du bouton « Continuer ».
  */
 @Composable
-fun SignInContent(state: SignInUiState, onSignIn: () -> Unit, modifier: Modifier = Modifier) {
+fun SignInContent(state: SignInUiState, onSignIn: () -> Unit, modifier: Modifier = Modifier, onDemoError: (String?) -> Unit = {}) {
     val spacing = GiftTheme.spacing
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -103,6 +111,7 @@ fun SignInContent(state: SignInUiState, onSignIn: () -> Unit, modifier: Modifier
         SignInActions(
             state = state,
             onSignIn = onSignIn,
+            onDemoError = onDemoError,
             modifier = Modifier
                 .widthIn(max = ContentMaxWidth)
                 .padding(start = spacing.xl, end = spacing.xl, top = spacing.l, bottom = spacing.l),
@@ -160,17 +169,29 @@ fun OnboardingPage(
     }
 }
 
-/** Zone d'action de la page de connexion : le bouton Google, désactivé avec indicateur pendant la connexion. */
+/**
+ * Zone d'action de la page de connexion : le bouton Google, désactivé avec indicateur pendant la connexion.
+ * En debug seulement, le menu des comptes de démo ([DebugEntryPoints.DemoSignIn]) s'y ajoute ; ses échecs
+ * remontent par [onDemoError].
+ */
 @Composable
-fun SignInActions(state: SignInUiState, onSignIn: () -> Unit, modifier: Modifier = Modifier) {
+fun SignInActions(
+    state: SignInUiState,
+    onSignIn: () -> Unit,
+    modifier: Modifier = Modifier,
+    onDemoError: (String?) -> Unit = {},
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier.fillMaxWidth()) {
         GoogleSignInButton(onClick = onSignIn, isLoading = state is SignInUiState.InProgress)
+        if (DebugEntryPoints.HAS_DEMO_SIGN_IN) {
+            DebugEntryPoints.DemoSignIn(enabled = state !is SignInUiState.InProgress, onError = onDemoError)
+        }
     }
 }
 
 /** Alerte d'échec, comme l'alerte iOS : « Oups », le message propre au [kind], et « OK ». */
 @Composable
-fun SignInErrorDialog(kind: SignInUiState.Kind, onDismiss: () -> Unit) {
+fun SignInErrorDialog(kind: SignInUiState.Kind, onDismiss: () -> Unit, detail: String? = null) {
     val colors = GiftTheme.colors
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -192,7 +213,7 @@ fun SignInErrorDialog(kind: SignInUiState.Kind, onDismiss: () -> Unit) {
         },
         text = {
             Text(
-                text = stringResource(kind.messageRes()),
+                text = detail ?: stringResource(kind.messageRes()),
                 style = GiftTheme.type.callout,
                 color = colors.textSecondary,
             )

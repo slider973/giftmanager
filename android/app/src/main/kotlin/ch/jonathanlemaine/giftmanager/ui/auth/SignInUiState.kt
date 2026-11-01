@@ -6,7 +6,7 @@ sealed interface SignInUiState {
 
     data object InProgress : SignInUiState
 
-    data class Error(val kind: Kind) : SignInUiState
+    data class Error(val kind: Kind, val detail: String? = null) : SignInUiState
 
     enum class Kind { NoGoogleAccount, Network, NotConfigured, GoogleUnavailable, Generic }
 }

@@ -30,6 +30,21 @@ cd android && ./gradlew bundleRelease -PversionName=1.1.0 -PversionCode=$(../scr
 
 R8 est désactivé pour la première publication (`isMinifyEnabled = false`, voir le commentaire dans `app/build.gradle.kts`). Procédure complète et actions humaines : `docs/SECRETS.md`.
 
+## Tester sans Google (debug)
+
+Les builds **debug** (et eux seuls) proposent, sous le bouton Google de la dernière page d'onboarding, un menu
+« Compte de démo (dev) » qui connecte `alice`, `bob` ou `carol` (`<nom>@demo.local`, mot de passe `demo1234`,
+voir `supabase/seed.sql`) sur la base Supabase locale. Le menu, la connexion par e-mail et le mot de passe
+n'existent pas dans le release ; le HTTP en clair n'est autorisé qu'en debug, vers `10.0.2.2` et `localhost`.
+
+```bash
+supabase start
+supabase db reset
+SUPABASE_URL=http://10.0.2.2:55421 SUPABASE_PUBLISHABLE_KEY=$(supabase status -o json | jq -r .ANON_KEY) ./gradlew assembleDebug
+```
+
+`10.0.2.2` est l'adresse de la machine hôte vue depuis l'émulateur ; `55421` est le port API de `supabase/config.toml`.
+
 ## Architecture
 
 Calquée sur l'app iOS, avec la logique séparée de l'affichage :

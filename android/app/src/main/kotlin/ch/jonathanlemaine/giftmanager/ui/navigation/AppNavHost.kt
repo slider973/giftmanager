@@ -110,6 +110,7 @@ private fun OnboardingRoute(viewModelFactory: ViewModelProvider.Factory) {
         signInState = state.value,
         onSignIn = { viewModel.signIn(context) },
         onDismissSignInError = viewModel::dismissMessage,
+        onDemoError = viewModel::showError,
     )
 }
 

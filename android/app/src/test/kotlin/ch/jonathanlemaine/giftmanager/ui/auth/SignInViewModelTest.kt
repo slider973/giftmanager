@@ -96,4 +96,11 @@ class SignInViewModelTest {
         assertEquals(2, auth.signInCalls)
         assertEquals(SignInUiState.Idle, viewModel.uiState.value)
     }
+
+    @Test fun showErrorKeepsSupabaseMessageAndCanBeDismissed() = runTest {
+        viewModel.showError("Invalid login credentials")
+        assertEquals(SignInUiState.Error(SignInUiState.Kind.Generic, "Invalid login credentials"), viewModel.uiState.value)
+        viewModel.dismissMessage()
+        assertEquals(SignInUiState.Idle, viewModel.uiState.value)
+    }
 }
