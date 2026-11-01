@@ -38,6 +38,12 @@ create app-store-connect --category "API Credential" \
   "key_id[text]=$P" "issuer_id[text]=$P" "private_key[concealed]=$P" \
   "notesPlain=Clé API App Store Connect (rôle App Manager) pour l'upload TestFlight. private_key = contenu du fichier AuthKey_XXXX.p8."
 
+create google-oauth --category "API Credential" \
+  "web_client_id[text]=$P" "web_client_secret[concealed]=$P" \
+  "android_client_id_debug[text]=$P" "android_client_id_release[text]=$P" \
+  "sha1_debug[text]=$P" "sha1_release[text]=$P" \
+  "notesPlain=Connexion Google (Android). Client Web : web_client_id = serverClientId de l'app et client_id du provider Supabase, web_client_secret = secret du provider (serveur uniquement, jamais dans l'app). Clients Android debug/release : package ch.jonathanlemaine.giftmanager + empreinte SHA-1 correspondante (procédure dans docs/SECRETS.md)."
+
 create cron --category Password --generate-password='letters,digits,40' \
   "notesPlain=Secret partagé pg_cron -> fonctions Edge planifiées (CRON_SECRET et secret Vault cron_secret)."
 

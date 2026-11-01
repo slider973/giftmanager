@@ -20,6 +20,7 @@ SECRETS=(
   "ASC_PRIVATE_KEY=op://giftmanager/app-store-connect/private_key"
   "SUPABASE_PUBLISHABLE_KEY=op://giftmanager/supabase/publishable_key"
   "APP_BUNDLE_ID=op://giftmanager/apple-developer/bundle_id"
+  "GOOGLE_WEB_CLIENT_ID=op://giftmanager/google-oauth/web_client_id"
   "DIST_P12_PASSWORD=op://giftmanager/apple-distribution/p12_password"
 )
 

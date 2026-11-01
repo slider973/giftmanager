@@ -9,11 +9,22 @@ import ch.jonathanlemaine.giftmanager.BuildConfig
 data class AppConfig(
     val supabaseUrl: String,
     val supabasePublishableKey: String,
+    /** ID client OAuth « Web » Google (serverClientId de Credential Manager). */
+    val googleWebClientId: String = "",
 ) {
+    /** Faux tant que l'ID client Google est vide ou factice (build local sans secrets, CI). */
+    val isGoogleConfigured: Boolean
+        get() = googleWebClientId.isNotBlank() &&
+            !googleWebClientId.contains("dummy") &&
+            googleWebClientId != PLACEHOLDER
+
     companion object {
+        private const val PLACEHOLDER = "A_RENSEIGNER"
+
         fun fromBuildConfig(): AppConfig = AppConfig(
             supabaseUrl = BuildConfig.SUPABASE_URL,
             supabasePublishableKey = BuildConfig.SUPABASE_PUBLISHABLE_KEY,
+            googleWebClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID,
         )
     }
 }

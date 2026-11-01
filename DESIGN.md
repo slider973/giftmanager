@@ -234,6 +234,13 @@ Un fichier par composant dans `ui/components/`, chacun avec `modifier: Modifier 
 
 `DesignSystemGallery` vit **uniquement** dans `android/app/src/debug/kotlin/…/ui/debug/` ; `src/release` fournit un `DebugEntryPoints` vide de même API, si bien que le build release ne contient aucune classe de la galerie. Accès : lien « Galerie du design system » en bas de l'écran d'accueil (debug seulement). Sections dans l'ordre iOS, plus la cagnotte ; barre fixe avec bascule clair / sombre et curseur de taille du texte 100 → 200 % pour éprouver les grandes polices sans changer les réglages du téléphone.
 
+### Connexion Google (#70)
+
+- **Écran** (`ui/auth/SignInScreen.kt`) : la dernière page de l'onboarding iOS — `mascot_surprise` (280 dp au plus, réduite à 40 % de la hauteur en paysage), « La surprise est garantie » en `title`, message en `body` / `textSecondary` (320 dp de large), page défilable ; bouton Google fixé en bas, marge `xl`. Contenu réutilisable par l'onboarding (#71) : `OnboardingPage` (une page du carrousel) et `SignInActions` (zone d'action), assemblés par `SignInContent`.
+- **Bouton** (`GoogleSignInButton`) : règles de marque « Sign in with Google », variante Android. Pilule de `HitTarget.button`, logo « G » officiel (`res/drawable/ic_google_g.xml`, jamais teinté), libellé « Se connecter avec Google » en police système Medium (`callout`, 16 sp plutôt que les 14 sp de Google, pour la lisibilité). Clair : fond `#FFFFFF`, bordure 1 dp `#747775`, texte `#1F1F1F` ; sombre : `#131314` / `#8E918F` / `#E3E3E3`. **Seule exception aux tokens** : couleurs imposées par Google, isolées dans `GoogleButtonColors` et le drawable, vérifiées par `GoogleSignInButtonContrastTest`. Le thème suit l'app (`GiftTheme.colors.isDark`). En cours : désactivé, le logo cède sa place à un indicateur de même taille, libellé à 60 %, TalkBack annonce « Connexion en cours ».
+- **Erreurs** : `AlertDialog` « Oups » (comme l'alerte iOS), message selon la cause, « OK ». Annulation : rien.
+- **Déconnexion** (provisoire jusqu'au Profil, #71) : `TextLinkButton` « Se déconnecter » sous « Connecté en tant que … » sur l'accueil.
+
 ## Mode enfant (#36)
 
 Écran plein écran (`fullScreenCover`) ouvert depuis la carte « Mode enfant » en tête de la liste d'un de mes enfants (`ChildModeEntryCard`, visible seulement pour ses parents, hors archive, liste non vide).

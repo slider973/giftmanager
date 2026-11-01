@@ -37,9 +37,15 @@ import ch.jonathanlemaine.giftmanager.ui.theme.GiftTheme
 /**
  * Écran purement déclaratif : toute la logique vit dans [HomeViewModel].
  * [onOpenGallery] n'est fourni qu'en debug (galerie du design system) ; `null` → aucun lien.
+ * [onSignOut] déconnecte l'utilisateur (lien sous « Connecté en tant que … ») ; `null` → aucun lien.
  */
 @Composable
-fun HomeScreen(state: HomeUiState, modifier: Modifier = Modifier, onOpenGallery: (() -> Unit)? = null) {
+fun HomeScreen(
+    state: HomeUiState,
+    modifier: Modifier = Modifier,
+    onOpenGallery: (() -> Unit)? = null,
+    onSignOut: (() -> Unit)? = null,
+) {
     val spacing = GiftTheme.spacing
     Column(
         modifier = modifier
@@ -61,7 +67,7 @@ fun HomeScreen(state: HomeUiState, modifier: Modifier = Modifier, onOpenGallery:
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(spacing.l),
                     modifier = Modifier.widthIn(max = 420.dp),
-                ) { HomeContent(state) }
+                ) { HomeContent(state, onSignOut) }
             }
         }
         if (onOpenGallery != null) {
@@ -75,7 +81,7 @@ fun HomeScreen(state: HomeUiState, modifier: Modifier = Modifier, onOpenGallery:
 }
 
 @Composable
-private fun HomeContent(state: HomeUiState) {
+private fun HomeContent(state: HomeUiState, onSignOut: (() -> Unit)?) {
     val colors = GiftTheme.colors
     val type = GiftTheme.type
     val spacing = GiftTheme.spacing
@@ -107,7 +113,14 @@ private fun HomeContent(state: HomeUiState) {
             modifier = live,
         )
         HomeUiState.SignedOut -> StatusLine(stringResource(R.string.home_signed_out), live)
-        is HomeUiState.SignedIn -> StatusLine(stringResource(R.string.home_signed_in, state.displayName), live)
+        // Compte et déconnexion groupés : l'action suit l'information qu'elle modifie. Provisoire, jusqu'à
+        // l'écran Profil (#71).
+        is HomeUiState.SignedIn -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            StatusLine(stringResource(R.string.home_signed_in, state.displayName), live)
+            if (onSignOut != null) {
+                TextLinkButton(text = stringResource(R.string.sign_out), onClick = onSignOut)
+            }
+        }
         HomeUiState.Loading -> Unit
     }
 }
@@ -129,7 +142,7 @@ private fun HomeLoadingPreview() = GiftManagerTheme { HomeScreen(HomeUiState.Loa
 
 @Preview(name = "Connecté", widthDp = 360, heightDp = 640)
 @Composable
-private fun HomeSignedInPreview() = GiftManagerTheme { HomeScreen(HomeUiState.SignedIn("Jonathan"), onOpenGallery = {}) }
+private fun HomeSignedInPreview() = GiftManagerTheme { HomeScreen(HomeUiState.SignedIn("Jonathan"), onOpenGallery = {}, onSignOut = {}) }
 
 @Preview(name = "Erreur, sombre", widthDp = 360, heightDp = 640, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable

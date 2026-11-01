@@ -8,24 +8,30 @@ plugins {
 }
 
 // Configuration Supabase (valeurs publiques côté client), par ordre de priorité :
+// (idem pour GOOGLE_WEB_CLIENT_ID, l'ID client OAuth « Web » utilisé comme serverClientId de Credential Manager)
 //   1. app/secrets.properties, généré par scripts/secrets/inject.sh depuis 1Password (ignoré par git) ;
 //   2. variables d'environnement SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY (CI) ;
 //   3. valeurs factices, qui suffisent à compiler et tester mais font échouer le build release.
 val dummyUrl = "https://example.invalid"
 val dummyKey = "sb_publishable_dummy"
+val dummyGoogleClientId = "dummy.apps.googleusercontent.com"
 
 val secrets = Properties().apply {
     val file = layout.projectDirectory.file("secrets.properties").asFile
     if (file.exists()) file.inputStream().use { load(it) }
 }
 
+// A_RENSEIGNER : valeur d'attente de 1Password (scripts/secrets/setup-1password.sh), traitée comme absente.
+fun String.isUsable() = isNotBlank() && this != "A_RENSEIGNER"
+
 fun secret(name: String, fallback: String): String =
-    secrets.getProperty(name)?.takeIf { it.isNotBlank() }
-        ?: providers.environmentVariable(name).orNull?.takeIf { it.isNotBlank() }
+    secrets.getProperty(name)?.takeIf { it.isUsable() }
+        ?: providers.environmentVariable(name).orNull?.takeIf { it.isUsable() }
         ?: fallback
 
 val supabaseUrl = secret("SUPABASE_URL", dummyUrl)
 val supabaseKey = secret("SUPABASE_PUBLISHABLE_KEY", dummyKey)
+val googleWebClientId = secret("GOOGLE_WEB_CLIENT_ID", dummyGoogleClientId)
 
 android {
     namespace = "ch.jonathanlemaine.giftmanager"
@@ -41,6 +47,7 @@ android {
 
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabaseKey\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 
     buildFeatures {
@@ -88,6 +95,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
 
@@ -109,13 +120,19 @@ dependencies {
 // Garde : un build de diffusion ne doit jamais embarquer les valeurs factices.
 val checkReleaseSecrets by tasks.registering {
     group = "verification"
-    description = "Échoue si la configuration Supabase est factice (build release)."
+    description = "Échoue si la configuration Supabase ou Google est factice (build release)."
     val url = supabaseUrl
     val key = supabaseKey
+    val googleId = googleWebClientId
     doLast {
         if (url == dummyUrl || key == dummyKey || url.endsWith(".invalid") || key.contains("dummy")) {
             throw GradleException(
                 "Configuration Supabase factice : lance scripts/secrets/inject.sh (voir docs/SECRETS.md) avant un build release."
+            )
+        }
+        if (googleId == dummyGoogleClientId || googleId.contains("dummy")) {
+            throw GradleException(
+                "GOOGLE_WEB_CLIENT_ID factice : renseigne op://giftmanager/google-oauth/web_client_id puis lance scripts/secrets/inject.sh (voir docs/SECRETS.md)."
             )
         }
     }

@@ -11,8 +11,6 @@ import kotlinx.coroutines.flow.first
 interface GiftRepository {
     /** Profil de l'utilisateur connecté, ou `null` sans session. */
     suspend fun currentProfile(): Profile?
-
-    suspend fun signOut()
 }
 
 class SupabaseGiftRepository(private val client: SupabaseClient) : GiftRepository {
@@ -23,9 +21,5 @@ class SupabaseGiftRepository(private val client: SupabaseClient) : GiftRepositor
         return client.from("profiles")
             .select { filter { eq("id", user.id) } }
             .decodeSingleOrNull<Profile>()
-    }
-
-    override suspend fun signOut() {
-        client.auth.signOut()
     }
 }

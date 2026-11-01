@@ -3,6 +3,8 @@ package ch.jonathanlemaine.giftmanager.ui
 import ch.jonathanlemaine.giftmanager.core.Fixtures
 import ch.jonathanlemaine.giftmanager.core.model.Profile
 import ch.jonathanlemaine.giftmanager.data.GiftRepository
+import ch.jonathanlemaine.giftmanager.data.auth.AuthState
+import ch.jonathanlemaine.giftmanager.data.auth.FakeAuthRepository
 import ch.jonathanlemaine.giftmanager.ui.home.HomeUiState
 import ch.jonathanlemaine.giftmanager.ui.home.HomeViewModel
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +18,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.util.UUID
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
@@ -23,17 +26,10 @@ class HomeViewModelTest {
         var profile: Profile? = null,
         var failure: Exception? = null,
     ) : GiftRepository {
-        var signOutCalls = 0
 
         override suspend fun currentProfile(): Profile? {
             failure?.let { throw it }
             return profile
-        }
-
-        override suspend fun signOut() {
-            failure?.let { throw it }
-            signOutCalls++
-            profile = null
         }
     }
 
@@ -42,23 +38,23 @@ class HomeViewModelTest {
     @After fun tearDown() = Dispatchers.resetMain()
 
     @Test fun signedInStateCarriesDisplayName() = runTest {
-        val viewModel = HomeViewModel(FakeRepository(profile = Fixtures.decode("profile.json")))
+        val viewModel = HomeViewModel(FakeRepository(profile = Fixtures.decode("profile.json")), FakeAuthRepository())
         assertEquals(HomeUiState.SignedIn("Jonathan"), viewModel.uiState.value)
     }
 
     @Test fun noProfileMeansSignedOut() = runTest {
-        val viewModel = HomeViewModel(FakeRepository())
+        val viewModel = HomeViewModel(FakeRepository(), FakeAuthRepository())
         assertEquals(HomeUiState.SignedOut, viewModel.uiState.value)
     }
 
     @Test fun repositoryFailureBecomesErrorState() = runTest {
-        val viewModel = HomeViewModel(FakeRepository(failure = IllegalStateException("réseau")))
+        val viewModel = HomeViewModel(FakeRepository(failure = IllegalStateException("réseau")), FakeAuthRepository())
         assertEquals(HomeUiState.Error, viewModel.uiState.value)
     }
 
     @Test fun refreshRecoversFromError() = runTest {
         val repository = FakeRepository(failure = IllegalStateException("réseau"))
-        val viewModel = HomeViewModel(repository)
+        val viewModel = HomeViewModel(repository, FakeAuthRepository())
         assertTrue(viewModel.uiState.value is HomeUiState.Error)
         repository.failure = null
         repository.profile = Fixtures.decode("profile.json")
@@ -66,11 +62,19 @@ class HomeViewModelTest {
         assertEquals(HomeUiState.SignedIn("Jonathan"), viewModel.uiState.value)
     }
 
-    @Test fun signOutClearsSession() = runTest {
-        val repository = FakeRepository(profile = Fixtures.decode("profile.json"))
-        val viewModel = HomeViewModel(repository)
+    @Test fun signOutFailureBecomesErrorState() = runTest {
+        val auth = FakeAuthRepository().apply { signOutFailure = IllegalStateException("réseau") }
+        val viewModel = HomeViewModel(FakeRepository(profile = Fixtures.decode("profile.json")), auth)
         viewModel.signOut()
-        assertEquals(1, repository.signOutCalls)
+        assertEquals(HomeUiState.Error, viewModel.uiState.value)
+    }
+
+    @Test fun signOutClearsSession() = runTest {
+        val auth = FakeAuthRepository(AuthState.SignedIn(UUID.randomUUID()))
+        val viewModel = HomeViewModel(FakeRepository(profile = Fixtures.decode("profile.json")), auth)
+        viewModel.signOut()
+        assertEquals(1, auth.signOutCalls)
+        assertEquals(AuthState.SignedOut, auth.stateFlow.value)
         assertEquals(HomeUiState.SignedOut, viewModel.uiState.value)
     }
 }

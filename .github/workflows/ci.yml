@@ -45,6 +45,7 @@ jobs:
           # Valeurs factices : la CI ne diffuse rien et n'a besoin d'aucun secret.
           SUPABASE_URL: https://ci.invalid
           SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_dummy
+          GOOGLE_WEB_CLIENT_ID: ci-dummy.apps.googleusercontent.com
         run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug
 
   supabase:
