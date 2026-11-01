@@ -26,6 +26,10 @@ class RpcTest {
         assertEquals("review_idea", Rpc.REVIEW_IDEA)
         assertEquals("pending_ideas", Rpc.PENDING_IDEAS)
         assertEquals("idea_audience", Rpc.IDEA_AUDIENCE)
+        assertEquals("my_reservations", Rpc.MY_RESERVATIONS)
+        assertEquals("my_contributions", Rpc.MY_CONTRIBUTIONS)
+        assertEquals("my_budgets", Rpc.MY_BUDGETS)
+        assertEquals("set_budget", Rpc.SET_BUDGET)
     }
 
     @Test fun parameterNames() {
@@ -54,7 +58,7 @@ class RpcTest {
             Rpc.SHARE_HOUSEHOLD, Rpc.UNSHARE_HOUSEHOLD, Rpc.DELETE_ACCOUNT, Rpc.CHILDREN_RESERVATION_COUNTS,
             Rpc.ENSURE_BIRTHDAY_EVENTS, Rpc.CHILD_ITEMS, Rpc.RESERVE_ITEM, Rpc.CANCEL_RESERVATION,
             Rpc.SET_RESERVATION_PURCHASED, Rpc.JOIN_POT, Rpc.LEAVE_POT, Rpc.POT_PARTICIPANTS, Rpc.REVIEW_IDEA,
-            Rpc.PENDING_IDEAS, Rpc.IDEA_AUDIENCE,
+            Rpc.PENDING_IDEAS, Rpc.IDEA_AUDIENCE, Rpc.MY_RESERVATIONS, Rpc.MY_CONTRIBUTIONS, Rpc.MY_BUDGETS, Rpc.SET_BUDGET,
         ).forEach { assert("function public.$it(" in sql) { it }; }
         listOf(
             Rpc.P_NAME, Rpc.P_HOUSEHOLD_NAME, Rpc.P_COUNTRY, Rpc.P_CODE, Rpc.P_GROUP, Rpc.P_EVENT, Rpc.P_CHILD, Rpc.P_KIND,
@@ -79,6 +83,10 @@ class RpcTest {
         assertParams(signature(Rpc.REVIEW_IDEA), Rpc.P_ITEM, Rpc.P_DECISION, Rpc.P_NOTE)
         assertParams(signature(Rpc.PENDING_IDEAS))
         assertParams(signature(Rpc.IDEA_AUDIENCE), Rpc.P_CHILD)
+        assertParams(signature(Rpc.MY_RESERVATIONS))
+        assertParams(signature(Rpc.MY_CONTRIBUTIONS))
+        assertParams(signature(Rpc.MY_BUDGETS))
+        assertParams(signature(Rpc.SET_BUDGET), Rpc.P_CHILD, Rpc.P_EVENT, Rpc.P_AMOUNT, Rpc.P_CURRENCY)
     }
 
     private fun assertParams(signature: String, vararg expected: String) {
