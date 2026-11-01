@@ -1,9 +1,22 @@
 package ch.jonathanlemaine.giftmanager.ui.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Lock
@@ -30,6 +43,21 @@ object GiftIcons {
     val Search: ImageVector get() = Icons.Filled.Search
     val Share: ImageVector get() = Icons.Filled.Share
     val Warning: ImageVector get() = Icons.Filled.Warning
+    /** Coche simple (famille choisie, élément sélectionné d'un menu). */
+    val Checkmark: ImageVector get() = Icons.Filled.Check
+    /** Flèche « valider et continuer » (`arrow.right`), inversée en droite-à-gauche. */
+    val ArrowForward: ImageVector get() = Icons.AutoMirrored.Filled.ArrowForward
+    val DropDown: ImageVector get() = Icons.Filled.ArrowDropDown
+    val Home: ImageVector get() = Icons.Filled.Home
+    val Person: ImageVector get() = Icons.Filled.Person
+    val Profile: ImageVector get() = Icons.Filled.AccountCircle
+    val Mail: ImageVector get() = Icons.Filled.MailOutline
+    val Info: ImageVector get() = Icons.Filled.Info
+    val Edit: ImageVector get() = Icons.Filled.Edit
+    val Delete: ImageVector get() = Icons.Filled.Delete
+    val More: ImageVector get() = Icons.Filled.MoreVert
+    val Calendar: ImageVector get() = Icons.Filled.DateRange
+    val SignOut: ImageVector get() = Icons.AutoMirrored.Filled.ExitToApp
 
     val Gift: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_gift)
     val Bag: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_shopping_bag)
@@ -42,4 +70,10 @@ object GiftIcons {
     val Error: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_error)
     val Shield: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_verified_user)
     val Clear: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_cancel)
+    val Sparkles: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_auto_awesome)
+    val Cake: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_cake)
+    val PersonAdd: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_person_add)
+    val Key: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_key)
+    val Code: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_tag)
+    val Money: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_payments)
 }

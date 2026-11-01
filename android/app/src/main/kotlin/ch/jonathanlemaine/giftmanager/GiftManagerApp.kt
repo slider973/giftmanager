@@ -9,6 +9,6 @@ class GiftManagerApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(AppConfig.fromBuildConfig())
+        container = AppContainer(AppConfig.fromBuildConfig(), this)
     }
 }
