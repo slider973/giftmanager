@@ -20,18 +20,43 @@ object Rpc {
     const val CHILDREN_RESERVATION_COUNTS = "children_reservation_counts"
     const val ENSURE_BIRTHDAY_EVENTS = "ensure_birthday_events"
 
+    // Cadeaux, réservations, cagnottes et validation des idées (#73).
+    const val CHILD_ITEMS = "child_items"
+    const val RESERVE_ITEM = "reserve_item"
+    const val CANCEL_RESERVATION = "cancel_reservation"
+    const val SET_RESERVATION_PURCHASED = "set_reservation_purchased"
+    const val JOIN_POT = "join_pot"
+    const val LEAVE_POT = "leave_pot"
+    const val POT_PARTICIPANTS = "pot_participants"
+    const val REVIEW_IDEA = "review_idea"
+    const val PENDING_IDEAS = "pending_ideas"
+    const val IDEA_AUDIENCE = "idea_audience"
+
     const val P_NAME = "p_name"
     const val P_HOUSEHOLD_NAME = "p_household_name"
     const val P_COUNTRY = "p_country"
     const val P_CODE = "p_code"
     const val P_GROUP = "p_group"
     const val P_EVENT = "p_event"
+    const val P_CHILD = "p_child"
+    const val P_KIND = "p_kind"
+    const val P_ITEM = "p_item"
+    const val P_PURCHASED = "p_purchased"
+    const val P_AMOUNT = "p_amount"
+    const val P_CURRENCY = "p_currency"
+    const val P_DECISION = "p_decision"
+    const val P_NOTE = "p_note"
 }
 
 /** Réponse d'une RPC qui renvoie un `uuid` : PostgREST le sérialise en chaîne JSON (`"3f2a…"`). */
 fun parseRpcUuid(body: String): UUID = UUID.fromString(GiftJson.read.decodeFromString<String>(body))
 
+/** Réponse d'une RPC qui renvoie un `integer` (ex. `idea_audience`) : un nombre JSON nu. */
+fun parseRpcInt(body: String): Int = GiftJson.read.decodeFromString<Int>(body.trim())
+
 internal fun PostgrestResult.rpcUuid(): UUID = parseRpcUuid(data)
+
+internal fun PostgrestResult.rpcInt(): Int = parseRpcInt(data)
 
 /** Décode une réponse en liste avec la lecture tolérante de l'app (clés de jointure inconnues ignorées). */
 internal inline fun <reified T> PostgrestResult.decodeTolerantList(): List<T> = GiftJson.read.decodeFromString(data)
