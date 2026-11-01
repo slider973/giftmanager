@@ -622,24 +622,35 @@
         <item quantity="other">%1$s, %2$d cadeaux</item>
     </plurals>
 
-    <!-- Père Noël vocal (#78) : textes de câblage, à reprendre par le design -->
+    <!-- Père Noël vocal (#78) : textes de SantaSessionView / SantaSuggestionsView / ChildGiftsView (iOS). -->
     <string name="santa_entry_action">Demander à %1$s avec le Père Noël</string>
-    <string name="santa_title">Le Père Noël et %1$s</string>
+    <string name="santa_title">Le Père Noël</string>
     <string name="santa_close">Fermer</string>
-    <string name="santa_speaking">Le Père Noël parle…</string>
-    <string name="santa_audio_unavailable">Voix indisponible : lis la réplique à voix haute.</string>
+    <string name="santa_status_speaking">Le Père Noël parle…</string>
+    <string name="santa_status_answer">À %1$s de répondre</string>
+    <string name="santa_audio_unavailable">Lis ce texte à voix haute</string>
     <string name="santa_replay">Réécouter</string>
-    <string name="santa_skip_speaking">Passer la voix</string>
-    <string name="santa_answer_label">Réponse de l\'enfant</string>
+    <string name="santa_skip_speaking">Passer</string>
+    <string name="santa_continue">Continuer</string>
+    <string name="santa_answer_label">Réponse</string>
     <string name="santa_answer_send">Valider</string>
     <string name="santa_answer_skip">Passer</string>
-    <string name="santa_suggestions_title">Idées de cadeaux</string>
-    <string name="santa_suggestion_store">%1$s</string>
-    <string name="santa_suggestion_approve">Ajouter à la liste</string>
+    <string name="santa_suggestions_title">Ce que %1$s a demandé</string>
+    <string name="santa_suggestions_wish">« %1$s »</string>
+    <string name="santa_suggestions_hint">Ouvre une boutique pour vérifier, puis retiens ce qui convient. Rien n\'est ajouté sans ton accord.</string>
+    <string name="santa_suggestion_open">Voir la boutique</string>
+    <string name="santa_suggestion_approve">Retenir</string>
+    <string name="santa_suggestion_approve_a11y">Retenir cette piste pour %1$s</string>
     <string name="santa_suggestion_reject">Écarter</string>
-    <string name="santa_finish">Terminer</string>
-    <string name="santa_done_saved">%1$d idée(s) ajoutée(s) à la liste.</string>
-    <string name="santa_done_none">Aucune idée ajoutée.</string>
+    <string name="santa_suggestion_reject_a11y">Écarter cette piste</string>
+    <string name="santa_finish">Terminer sans en retenir d\'autre</string>
+    <plurals name="santa_done_saved">
+        <item quantity="one">%d idée enregistrée</item>
+        <item quantity="other">%d idées enregistrées</item>
+    </plurals>
+    <string name="santa_done_none">Session terminée</string>
+    <string name="santa_done_action">Terminer</string>
+    <string name="santa_blocked_title">Session impossible</string>
     <string name="santa_blocked_child_mode">La session du Père Noël se lance depuis l\'espace parent.</string>
     <string name="santa_blocked_empty_script">Le script du Père Noël est vide.</string>
     <string name="santa_blocked_no_store">Aucune boutique n\'est configurée pour le pays du foyer.</string>
