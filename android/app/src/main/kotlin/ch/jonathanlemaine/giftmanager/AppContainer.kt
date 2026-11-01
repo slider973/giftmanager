@@ -8,8 +8,8 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.navigation.toRoute
 import ch.jonathanlemaine.giftmanager.core.config.AppConfig
 import ch.jonathanlemaine.giftmanager.core.gifts.AndroidImageResizer
+import ch.jonathanlemaine.giftmanager.core.gifts.HttpLinkPreviewService
 import ch.jonathanlemaine.giftmanager.core.gifts.LinkPreviewService
-import ch.jonathanlemaine.giftmanager.core.gifts.NoLinkPreview
 import ch.jonathanlemaine.giftmanager.core.gifts.NoPriceApproximation
 import ch.jonathanlemaine.giftmanager.core.gifts.PriceApproximator
 import ch.jonathanlemaine.giftmanager.core.model.WishKind
@@ -47,6 +47,7 @@ import ch.jonathanlemaine.giftmanager.data.prefs.DataStoreCurrentGroupStore
 import ch.jonathanlemaine.giftmanager.data.prefs.DataStoreLocalPrefs
 import ch.jonathanlemaine.giftmanager.data.prefs.LocalPrefs
 import ch.jonathanlemaine.giftmanager.data.prefs.giftDataStore
+import ch.jonathanlemaine.giftmanager.net.OkHttpLinkFetcher
 import ch.jonathanlemaine.giftmanager.ui.auth.SignInViewModel
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorMode
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorViewModel
@@ -100,8 +101,8 @@ class AppContainer(private val config: AppConfig, private val context: Context) 
     /** Notifications de la famille : envoyées sur le scope de l'app, sans qu'aucun écran n'attende. */
     val itemNotifier: ItemNotifier by lazy { SupabaseItemNotifier(supabase, appScope) }
 
-    /** Aperçu de lien : aucun pour l'instant, l'analyse des pages le remplace. */
-    val linkPreviewService: LinkPreviewService = NoLinkPreview
+    /** Aperçu de lien : page relue en HTTP (garde SSRF), analysée localement. */
+    val linkPreviewService: LinkPreviewService by lazy { HttpLinkPreviewService(OkHttpLinkFetcher()) }
 
     /** Prix converti indicatif : aucun tant que les taux de change ne sont pas là (#74). */
     val priceApproximator: PriceApproximator = NoPriceApproximation
