@@ -39,6 +39,11 @@ class SignInViewModel(private val auth: AuthRepository) : ViewModel() {
         }
     }
 
+    /** Affiche l'échec d'une connexion hors Google (comptes de démo en debug) : [detail] ou le message générique. */
+    fun showError(detail: String?) {
+        _uiState.value = SignInUiState.Error(SignInUiState.Kind.Generic, detail)
+    }
+
     /** Ferme le message d'erreur affiché. */
     fun dismissMessage() {
         if (_uiState.value is SignInUiState.Error) _uiState.value = SignInUiState.Idle

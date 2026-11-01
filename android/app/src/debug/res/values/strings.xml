@@ -20,4 +20,5 @@
     <string name="gallery_section_avatars">Avatars</string>
     <string name="gallery_section_features">Pastilles</string>
     <string name="gallery_section_empty">État vide</string>
+    <string name="demo_sign_in_title">Compte de démo (dev)</string>
 </resources>

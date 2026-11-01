@@ -126,6 +126,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import io.github.jan.supabase.SupabaseClient
 import okhttp3.OkHttpClient
 import java.lang.ref.WeakReference
 import java.math.BigDecimal
@@ -135,6 +136,9 @@ import java.util.UUID
 /** Injection de dépendances manuelle : un seul conteneur, créé au lancement de l'app. */
 class AppContainer(private val config: AppConfig, private val context: Context) {
     private val supabase by lazy { SupabaseProvider.create(config) }
+
+    /** Client Supabase partagé, exposé pour les outils de debug (connexion aux comptes de démo, #100). */
+    val supabaseClient: SupabaseClient get() = supabase
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 

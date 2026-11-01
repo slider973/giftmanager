@@ -6,7 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
@@ -41,6 +41,9 @@ enum class MainTab { Home, Search, Purchases, Profile }
 
 /** Diamètre du disque « + » central. */
 private val AddDiscSize = 48.dp
+
+/** Hauteur du conteneur de NavigationBar Material 3. */
+private val NavigationBarCellHeight = 80.dp
 
 /**
  * Barre d'onglets (iOS : `MainTabView`) : Accueil · Recherche · « + » · Mes achats · Profil.
@@ -92,7 +95,9 @@ private fun RowScope.AddItem(onAdd: () -> Unit) {
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .weight(1f)
-            .fillMaxHeight()
+            // Hauteur fixe de la barre Material 3 (80 dp) : `fillMaxHeight` ferait occuper tout l'écran à la
+            // barre quand elle est la `bottomBar` d'un Scaffold (la NavigationBar n'a qu'une hauteur minimale).
+            .height(NavigationBarCellHeight)
             .clickable(interactionSource = source, indication = null, role = Role.Button, onClick = onAdd)
             .clearAndSetSemantics {
                 contentDescription = description
