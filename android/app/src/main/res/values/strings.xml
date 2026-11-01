@@ -144,8 +144,6 @@
     <string name="tab_search">Recherche</string>
     <string name="tab_purchases">Mes achats</string>
     <string name="tab_profile">Profil</string>
-    <string name="tab_add">Ajouter</string>
-    <string name="placeholder_coming_soon">Bientôt disponible.</string>
     <string name="tab_add_description">Ajouter un cadeau</string>
     <string name="coming_soon_title">Bientôt ici</string>
     <string name="search_coming_soon">Tu pourras bientôt chercher un cadeau dans toutes les listes de la famille.</string>

@@ -1,7 +1,18 @@
 package ch.jonathanlemaine.giftmanager.ui.navigation
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -12,10 +23,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ch.jonathanlemaine.giftmanager.R
 import ch.jonathanlemaine.giftmanager.ui.auth.SignInViewModel
-import ch.jonathanlemaine.giftmanager.ui.common.BodyText
-import ch.jonathanlemaine.giftmanager.ui.common.ScreenColumn
+import ch.jonathanlemaine.giftmanager.ui.common.ScreenPreviewFrame
+import ch.jonathanlemaine.giftmanager.ui.components.EmptyStateView
 import ch.jonathanlemaine.giftmanager.ui.components.GiftLoadingView
-import ch.jonathanlemaine.giftmanager.ui.components.PrimaryButton
+import ch.jonathanlemaine.giftmanager.ui.components.GiftPreviews
+import ch.jonathanlemaine.giftmanager.ui.components.Illustration
 import ch.jonathanlemaine.giftmanager.ui.components.TextLinkButton
 import ch.jonathanlemaine.giftmanager.ui.components.fcScreenBackground
 import ch.jonathanlemaine.giftmanager.ui.family.GroupSetupActions
@@ -27,6 +39,7 @@ import ch.jonathanlemaine.giftmanager.ui.onboarding.ProfileSetupScreen
 import ch.jonathanlemaine.giftmanager.ui.onboarding.ProfileSetupViewModel
 import ch.jonathanlemaine.giftmanager.ui.root.RootDestination
 import ch.jonathanlemaine.giftmanager.ui.root.RootViewModel
+import ch.jonathanlemaine.giftmanager.ui.theme.GiftTheme
 
 /** Routage racine selon la phase de la session : chargement, onboarding + connexion, profil, famille, app. */
 @Composable
@@ -43,6 +56,7 @@ fun AppNavHost(viewModelFactory: ViewModelProvider.Factory) {
     }
 }
 
+/** Chargement de la session : le paquet qui flotte, au centre du fond crème (même fond que la fenêtre native). */
 @Composable
 private fun FullScreenLoading() {
     Box(contentAlignment = Alignment.Center, modifier = Modifier.fcScreenBackground().fillMaxSize()) {
@@ -50,14 +64,41 @@ private fun FullScreenLoading() {
     }
 }
 
+/**
+ * Données de départ impossibles à charger : loutre pensive, cause et remède, « Réessayer » en CTA, et une
+ * sortie (« Se déconnecter ») pour ne jamais rester bloqué. Centré verticalement, défilable.
+ */
 @Composable
 private fun LoadFailedScreen(onRetry: () -> Unit, onSignOut: () -> Unit) {
-    ScreenColumn {
-        BodyText(stringResource(R.string.load_failed_message))
-        PrimaryButton(stringResource(R.string.load_failed_retry), onRetry)
-        TextLinkButton(stringResource(R.string.sign_out), onSignOut)
+    BoxWithConstraints(modifier = Modifier.fcScreenBackground().windowInsetsPadding(WindowInsets.safeDrawing)) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight)
+                .fillMaxWidth()
+                .padding(bottom = GiftTheme.spacing.xl),
+        ) {
+            EmptyStateView(
+                illustration = Illustration.MASCOT_THINKING,
+                title = stringResource(R.string.load_failed_title),
+                message = stringResource(R.string.load_failed_message),
+                actionLabel = stringResource(R.string.load_failed_retry),
+                onAction = onRetry,
+            )
+            TextLinkButton(stringResource(R.string.sign_out), onSignOut)
+        }
     }
 }
+
+@GiftPreviews
+@Composable
+private fun LoadFailedPreview() = ScreenPreviewFrame { LoadFailedScreen(onRetry = {}, onSignOut = {}) }
+
+@GiftPreviews
+@Composable
+private fun FullScreenLoadingPreview() = ScreenPreviewFrame { FullScreenLoading() }
 
 @Composable
 private fun OnboardingRoute(viewModelFactory: ViewModelProvider.Factory) {
