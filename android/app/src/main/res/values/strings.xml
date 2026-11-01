@@ -541,10 +541,12 @@
     <string name="thanks_privacy_notice">Ton message arrivera chez la personne qui a offert ce cadeau. Tu ne sauras pas qui c\'est, sauf si elle choisit de se faire connaître.</string>
     <string name="thanks_message_label">Ton message</string>
     <string name="thanks_counter">%1$d / %2$d</string>
+    <string name="thanks_counter_spoken">%1$d caractères sur %2$d</string>
     <string name="thanks_photo_label">Photo (facultatif)</string>
     <string name="thanks_photo_add">Ajouter une photo</string>
     <string name="thanks_photo_attached">Photo jointe</string>
     <string name="thanks_photo_remove">Retirer la photo</string>
+    <string name="thanks_photo_description">Photo jointe au remerciement</string>
     <string name="thanks_send">Envoyer le merci</string>
     <string name="thanks_sent_title">Merci envoyé !</string>
     <string name="thanks_sent_message">Il arrivera chez la personne qui a offert « %1$s », sans révéler qui c\'est.</string>
@@ -562,6 +564,8 @@
     <string name="thanks_banner_one">Un remerciement reçu</string>
     <string name="thanks_banner_many">%1$d remerciements reçus</string>
     <string name="thanks_open_inbox">Remerciements reçus</string>
+    <string name="thanks_open_inbox_count">%1$s, %2$d</string>
+    <string name="thanks_banner_message">Lis les messages des parents</string>
 
     <!-- Mode enfant (#75) -->
     <string name="child_mode_entry_title">Mode enfant</string>

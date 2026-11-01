@@ -335,7 +335,12 @@ fun ThanksInboxDestination(viewModelFactory: ViewModelProvider.Factory, onBack: 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     ThanksInboxScreen(
         state = state,
-        actions = ThanksInboxActions(onBack = onBack, onSetRevealed = viewModel::setRevealed, onDismissError = viewModel::dismissError),
+        actions = ThanksInboxActions(
+            onBack = onBack,
+            onSetRevealed = viewModel::setRevealed,
+            onDismissError = viewModel::dismissError,
+            onRefresh = viewModel::refresh,
+        ),
     )
 }
 

@@ -4,6 +4,10 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.border
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,7 +36,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -175,23 +178,11 @@ fun PurchasesScreen(state: PurchasesUiState, budgets: BudgetsUiState, actions: P
             item(key = "title") {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = column) {
                     ScreenTitle(stringResource(R.string.tab_purchases), modifier = Modifier.weight(1f))
-                    // Câblage minimal (#75) : l'entrée de la boîte de remerciements, reprise par le ui-designer.
-                    IconButton(onClick = actions.onOpenThanks) {
-                        Icon(GiftIcons.Mail, contentDescription = stringResource(R.string.thanks_open_inbox), tint = colors.primary)
-                    }
+                    ThanksInboxButton(state.thanksCount, actions.onOpenThanks, Modifier.bleed(end = spacing.m))
                 }
             }
             if (state.thanksCount > 0) {
-                item(key = "thanks-banner") {
-                    val label = if (state.thanksCount > 1) stringResource(R.string.thanks_banner_many, state.thanksCount)
-                    else stringResource(R.string.thanks_banner_one)
-                    Text(
-                        label,
-                        style = GiftTheme.type.headline,
-                        color = colors.textPrimary,
-                        modifier = column.fcCard().fcClickable(onClick = actions.onOpenThanks, shape = GiftTheme.radius.cardShape),
-                    )
-                }
+                item(key = "thanks-banner") { ThanksBanner(state.thanksCount, actions.onOpenThanks, column) }
             }
             when {
                 !state.hasLoaded -> item(key = "loading") {
@@ -254,6 +245,82 @@ fun PurchasesScreen(state: PurchasesUiState, budgets: BudgetsUiState, actions: P
     }
     GiftErrorDialog(state.error ?: budgets.error, actions.onDismissError)
 }
+
+// region Remerciements
+
+/**
+ * Enveloppe de la barre (iOS : `envelope` en barre d'outils) : ouvre la boîte des remerciements. Pastille du nombre
+ * reçu (`primary` / `onPrimary`, cerclée du fond) dès qu'il y en a ; TalkBack « Remerciements reçus, 2 ».
+ */
+@Composable
+private fun ThanksInboxButton(count: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = GiftTheme.colors
+    val label = stringResource(R.string.thanks_open_inbox)
+    val spoken = if (count > 0) stringResource(R.string.thanks_open_inbox_count, label, count) else label
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .size(HitTarget.minimum)
+            .fcClickable(onClick = onClick, shape = CircleShape, pressedScale = 0.9f)
+            .clearAndSetSemantics { contentDescription = spoken },
+    ) {
+        Icon(GiftIcons.Mail, contentDescription = null, tint = colors.primary)
+        if (count > 0) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 6.dp, end = 4.dp)
+                    .border(1.5.dp, colors.background, CapsuleShape)
+                    .padding(1.5.dp)
+                    .heightIn(min = 18.dp)
+                    .widthIn(min = 18.dp)
+                    .background(colors.primary, CapsuleShape)
+                    .padding(horizontal = 4.dp),
+            ) {
+                Text(
+                    if (count > 99) "99+" else count.toString(),
+                    style = GiftTheme.type.captionBold.tabular(),
+                    color = colors.onPrimary,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Bannière « 2 remerciements reçus · Lis les messages des parents » (iOS : `thanksBanner`) : loutre amoureuse,
+ * chevron ; toute la carte ouvre la boîte. Un seul bouton TalkBack.
+ */
+@Composable
+private fun ThanksBanner(count: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = GiftTheme.colors
+    val type = GiftTheme.type
+    val spacing = GiftTheme.spacing
+    val title = if (count > 1) stringResource(R.string.thanks_banner_many, count) else stringResource(R.string.thanks_banner_one)
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(spacing.m),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fcClickable(onClick = onClick, shape = GiftTheme.radius.cardShape)
+            .fcCard(padding = spacing.m)
+            .semantics(mergeDescendants = true) { },
+    ) {
+        Image(
+            painterResource(Illustration.MASCOT_LOVE.res),
+            contentDescription = null,
+            modifier = Modifier.size(52.dp.scaledByFont(1.3f)),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+            Text(title, style = type.headline, color = colors.textPrimary)
+            Text(stringResource(R.string.thanks_banner_message), style = type.caption, color = colors.textSecondary)
+        }
+        Icon(GiftIcons.ChevronRight, contentDescription = null, tint = colors.textSecondary)
+    }
+}
+
+// endregion
 
 // region Résumé
 
@@ -724,7 +791,7 @@ private fun PotCardPreview() = PreviewFrame {
 @Composable
 private fun PurchasesScreenPreview() = ScreenPreviewFrame(height = 1500.dp) {
     PurchasesScreen(
-        state = PurchasesPreviewData.state,
+        state = PurchasesPreviewData.state.copy(thanksCount = 2),
         budgets = BudgetsUiState(rows = BudgetPreviewData.all, hasLoaded = true),
         actions = previewActions,
     )
