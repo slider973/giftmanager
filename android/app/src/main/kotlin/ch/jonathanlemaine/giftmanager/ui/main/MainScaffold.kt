@@ -56,7 +56,11 @@ import ch.jonathanlemaine.giftmanager.ui.debug.DebugEntryPoints
 import ch.jonathanlemaine.giftmanager.ui.family.FamilyHomeActions
 import ch.jonathanlemaine.giftmanager.ui.family.FamilyHomeScreen
 import ch.jonathanlemaine.giftmanager.ui.family.FamilyHomeViewModel
+import ch.jonathanlemaine.giftmanager.ui.navigation.ChildEditorRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.ChildGiftsRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.DebugGallery
+import ch.jonathanlemaine.giftmanager.ui.navigation.EventDetailRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.EventEditorRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.FamilyHome
 import ch.jonathanlemaine.giftmanager.ui.navigation.HomeGraph
 import ch.jonathanlemaine.giftmanager.ui.navigation.ProfileTab
@@ -67,6 +71,7 @@ import ch.jonathanlemaine.giftmanager.ui.profile.ProfileScreen
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileViewModel
 import ch.jonathanlemaine.giftmanager.ui.theme.GiftTheme
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 /**
  * Écran principal (iOS : `MainTabView`) : barre d'onglets Accueil · Recherche · « + » · Mes achats · Profil
@@ -103,7 +108,33 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
         ) {
             navigation<HomeGraph>(startDestination = FamilyHome) {
-                composable<FamilyHome> { FamilyHomeRoute(viewModelFactory) }
+                composable<FamilyHome> {
+                    FamilyHomeRoute(
+                        viewModelFactory,
+                        onOpenEvent = { navController.navigate(EventDetailRoute(it.toString())) },
+                        onNewEvent = { navController.navigate(EventEditorRoute()) },
+                        onEditEvent = { navController.navigate(EventEditorRoute(it.toString())) },
+                        onOpenChild = { childId, eventId ->
+                            navController.navigate(ChildGiftsRoute(childId.toString(), eventId?.toString(), readOnly = false))
+                        },
+                        onEditChild = { navController.navigate(ChildEditorRoute(childId = it.toString())) },
+                        onAddChild = { navController.navigate(ChildEditorRoute()) },
+                        onAddAdult = { navController.navigate(ChildEditorRoute(adult = true)) },
+                    )
+                }
+                composable<EventDetailRoute> {
+                    EventDetailDestination(
+                        viewModelFactory,
+                        onBack = { navController.popBackStack() },
+                        onEdit = { navController.navigate(EventEditorRoute(it.toString())) },
+                        onOpenChild = { childId, eventId, readOnly ->
+                            navController.navigate(ChildGiftsRoute(childId.toString(), eventId.toString(), readOnly))
+                        },
+                    )
+                }
+                composable<ChildEditorRoute> { ChildEditorDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
+                composable<EventEditorRoute> { EventEditorDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
+                composable<ChildGiftsRoute> { ChildGiftsDestination(viewModelFactory, onBack = { navController.popBackStack() }) }
             }
             composable<Search> {
                 ComingSoonScreen(Illustration.MASCOT_THINKING, stringResource(R.string.tab_search), stringResource(R.string.search_coming_soon))
@@ -225,7 +256,16 @@ private fun AddGiftSheetContent(onClose: () -> Unit) {
 }
 
 @Composable
-private fun FamilyHomeRoute(viewModelFactory: ViewModelProvider.Factory) {
+private fun FamilyHomeRoute(
+    viewModelFactory: ViewModelProvider.Factory,
+    onOpenEvent: (UUID) -> Unit,
+    onNewEvent: () -> Unit,
+    onEditEvent: (UUID) -> Unit,
+    onOpenChild: (childId: UUID, eventId: UUID?) -> Unit,
+    onEditChild: (UUID) -> Unit,
+    onAddChild: () -> Unit,
+    onAddAdult: () -> Unit,
+) {
     val viewModel: FamilyHomeViewModel = viewModel(factory = viewModelFactory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -246,6 +286,14 @@ private fun FamilyHomeRoute(viewModelFactory: ViewModelProvider.Factory) {
             onJoin = viewModel::joinOtherGroup,
             onDismissError = viewModel::dismissError,
             onRefresh = viewModel::refresh,
+            onOpenEvent = onOpenEvent,
+            onNewEvent = onNewEvent,
+            onEditEvent = onEditEvent,
+            // Une liste s'ouvre dans le contexte de l'événement courant (prochain Noël, sinon prochain événement).
+            onOpenChild = { childId -> onOpenChild(childId, state.currentEventId) },
+            onEditChild = onEditChild,
+            onAddChild = onAddChild,
+            onAddAdult = onAddAdult,
         ),
     )
 }

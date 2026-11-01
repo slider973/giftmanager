@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardActions
@@ -60,6 +61,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.jonathanlemaine.giftmanager.R
+import ch.jonathanlemaine.giftmanager.core.format.Formatting
+import ch.jonathanlemaine.giftmanager.core.model.Child
 import ch.jonathanlemaine.giftmanager.core.model.FamilyGroup
 import ch.jonathanlemaine.giftmanager.core.model.Household
 import ch.jonathanlemaine.giftmanager.ui.common.GiftAlertDialog
@@ -69,6 +72,8 @@ import ch.jonathanlemaine.giftmanager.ui.common.ScreenPreviewFrame
 import ch.jonathanlemaine.giftmanager.ui.common.ScreenTitle
 import ch.jonathanlemaine.giftmanager.ui.common.spelledOut
 import ch.jonathanlemaine.giftmanager.ui.components.AvatarStack
+import ch.jonathanlemaine.giftmanager.ui.components.ChildAvatar
+import ch.jonathanlemaine.giftmanager.ui.components.EventRow
 import ch.jonathanlemaine.giftmanager.ui.components.CountryFlag
 import ch.jonathanlemaine.giftmanager.ui.components.EmptyStateView
 import ch.jonathanlemaine.giftmanager.ui.components.FCPillLabel
@@ -104,6 +109,14 @@ data class FamilyHomeActions(
     val onDismissError: () -> Unit,
     /** Tirer pour actualiser (iOS : `.refreshable`). */
     val onRefresh: () -> Unit = {},
+    val onOpenEvent: (UUID) -> Unit = {},
+    val onNewEvent: () -> Unit = {},
+    val onEditEvent: (UUID) -> Unit = {},
+    /** Ouvre la liste d'un enfant (dans le contexte de l'événement courant). */
+    val onOpenChild: (UUID) -> Unit = {},
+    val onEditChild: (UUID) -> Unit = {},
+    val onAddChild: () -> Unit = {},
+    val onAddAdult: () -> Unit = {},
 )
 
 private const val TAB_EVENTS = 0
@@ -114,7 +127,7 @@ private const val TAB_MEMBERS = 1
  * avatars empilés + « N membres · M foyers », onglets Événements / Membres / Paramètres. Tirer vers le bas
  * recharge la famille.
  *
- * Les événements arrivent avec #72 (état vide provisoire), comme les enfants dans les cartes des foyers.
+ * Câblage minimal des événements et des enfants (#72), à remplacer par l'écran de l'`ui-designer`.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -162,7 +175,7 @@ fun FamilyHomeScreen(state: FamilyHomeUiState, actions: FamilyHomeActions, modif
                     ),
                 )
                 when (state.tab) {
-                    TAB_EVENTS -> EventsTab()
+                    TAB_EVENTS -> EventsTab(state, actions)
                     TAB_MEMBERS -> MembersTab(state.households, actions)
                     else -> SettingsTab(state, actions)
                 }
@@ -193,15 +206,48 @@ private fun Header(state: FamilyHomeUiState) {
 
 // region Événements
 
-/** Provisoire jusqu'à #72 : titre de section d'iOS et loutre endormie. */
+/** Événements à venir puis passés ; « + » ouvre l'éditeur, une ligne ouvre la fiche (câblage provisoire). */
 @Composable
-private fun EventsTab() {
-    SectionHeader(title = stringResource(R.string.family_events_upcoming))
-    EmptyStateView(
-        illustration = Illustration.MASCOT_SLEEPING,
-        title = stringResource(R.string.family_events_soon_title),
-        message = stringResource(R.string.family_events_placeholder),
+private fun EventsTab(state: FamilyHomeUiState, actions: FamilyHomeActions) {
+    SectionHeader(
+        title = stringResource(R.string.family_events_upcoming),
+        actionIcon = GiftIcons.Add,
+        onAction = actions.onNewEvent,
+        actionLabel = stringResource(R.string.family_events_add),
     )
+    if (state.upcomingEvents.isEmpty()) {
+        EmptyStateView(
+            illustration = Illustration.MASCOT_SLEEPING,
+            title = stringResource(R.string.family_events_empty_title),
+            message = stringResource(R.string.family_events_empty_message),
+            actionLabel = stringResource(R.string.family_events_add),
+            onAction = actions.onNewEvent,
+        )
+    }
+    state.upcomingEvents.forEach { EventItemRow(it, actions) }
+    if (state.pastEvents.isNotEmpty()) {
+        SectionHeader(title = stringResource(R.string.family_events_past))
+        state.pastEvents.forEach { EventItemRow(it, actions) }
+    }
+}
+
+@Composable
+private fun EventItemRow(item: EventItem, actions: FamilyHomeActions) {
+    val event = item.event
+    // « Dans 12 jours · 8 ans » ; rien de relatif pour un événement passé.
+    val subtitle = listOfNotNull(
+        if (item.isPast) null else Formatting.countdownText(item.daysRemaining),
+        Formatting.ageText(item.age),
+    ).joinToString(" · ").ifEmpty { null }
+    EventRow(
+        title = event.title,
+        dateText = Formatting.dateText(event.eventDate),
+        subtitle = subtitle,
+        kind = event.kind,
+        avatarNames = item.avatarNames,
+        onClick = { actions.onOpenEvent(event.id) },
+    )
+    if (item.canEdit) TextLinkButton(text = stringResource(R.string.family_event_edit), onClick = { actions.onEditEvent(event.id) })
 }
 
 // endregion
@@ -218,12 +264,13 @@ private fun MembersTab(households: List<HouseholdItem>, actions: FamilyHomeActio
         )
         return
     }
-    households.forEach { item -> HouseholdCard(item, onShareText = actions.onShareText) }
+    households.forEach { item -> HouseholdCard(item, actions) }
 }
 
 /** Carte d'un foyer : drapeau, nom (titre TalkBack), badge « Mon foyer », parents ; code à partager si c'est le mien. */
 @Composable
-private fun HouseholdCard(item: HouseholdItem, onShareText: (String) -> Unit) {
+private fun HouseholdCard(item: HouseholdItem, actions: FamilyHomeActions) {
+    val onShareText = actions.onShareText
     val colors = GiftTheme.colors
     val type = GiftTheme.type
     val spacing = GiftTheme.spacing
@@ -242,10 +289,46 @@ private fun HouseholdCard(item: HouseholdItem, onShareText: (String) -> Unit) {
         if (item.parentNames.isNotEmpty()) {
             Text(text = item.parentNames.joinToString(" & "), style = type.caption, color = colors.textSecondary)
         }
+        item.children.forEach { child -> ChildLine(child, canEdit = item.isMine, actions = actions) }
+        if (item.isMine) {
+            TextLinkButton(text = stringResource(R.string.family_add_child), onClick = actions.onAddChild)
+            TextLinkButton(text = stringResource(R.string.family_add_adult), onClick = actions.onAddAdult)
+        }
         val code = household.inviteCode
         if (item.isMine && code != null) {
             HorizontalDivider(thickness = 1.dp, color = colors.separator)
             HouseholdCodeRow(household, code, onShareText)
+        }
+    }
+}
+
+/** Un enfant du foyer : la ligne ouvre sa liste, le crayon (mon foyer seulement) son éditeur (câblage provisoire). */
+@Composable
+private fun ChildLine(child: Child, canEdit: Boolean, actions: FamilyHomeActions) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(GiftTheme.spacing.s)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(GiftTheme.spacing.m),
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = HitTarget.minimum)
+                .fcClickable(onClick = { actions.onOpenChild(child.id) }, shape = GiftTheme.radius.fieldShape, pressedScale = 0.98f),
+        ) {
+            ChildAvatar(name = child.firstName, emoji = child.avatarEmoji, colorName = child.avatarColor, photoUrl = child.avatarUrl)
+            Text(child.firstName, style = GiftTheme.type.callout, color = GiftTheme.colors.textPrimary, modifier = Modifier.weight(1f))
+            Icon(GiftIcons.ChevronRight, contentDescription = null, tint = GiftTheme.colors.textSecondary)
+        }
+        if (canEdit) {
+            val label = stringResource(R.string.family_child_edit, child.firstName)
+            Icon(
+                GiftIcons.Edit,
+                contentDescription = label,
+                tint = GiftTheme.colors.primary,
+                modifier = Modifier
+                    .size(HitTarget.minimum)
+                    .fcClickable(onClick = { actions.onEditChild(child.id) }, shape = CircleShape)
+                    .padding(GiftTheme.spacing.m),
+            )
         }
     }
 }
