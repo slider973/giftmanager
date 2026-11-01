@@ -77,8 +77,6 @@ import ch.jonathanlemaine.giftmanager.ui.components.CountryFlag
 import ch.jonathanlemaine.giftmanager.ui.components.EmptyStateView
 import ch.jonathanlemaine.giftmanager.ui.components.FCPillLabel
 import ch.jonathanlemaine.giftmanager.ui.components.FCTextField
-import ch.jonathanlemaine.giftmanager.ui.components.FCNotice
-import ch.jonathanlemaine.giftmanager.ui.components.FCNoticeTone
 import ch.jonathanlemaine.giftmanager.ui.components.GiftIcons
 import ch.jonathanlemaine.giftmanager.ui.components.GiftPreviews
 import ch.jonathanlemaine.giftmanager.ui.components.Illustration
@@ -231,15 +229,35 @@ private fun Header(state: FamilyHomeUiState) {
     }
 }
 
-/** Bandeau « N idées attendent ton avis » : mène aux idées proposées pour mes enfants (#57). */
+/**
+ * Bandeau « N idées attendent ton avis » (#57) : carte `surface` qui mène aux idées proposées pour mes enfants.
+ * Ampoule `potFg` sur disque `potBg`, compte au pluriel en `headline`, précision en légende, chevron. Toute la
+ * carte est la cible, lue d'un bloc (« 2 idées attendent ton avis, … , bouton »).
+ */
 @Composable
 private fun PendingIdeasBanner(count: Int, onClick: () -> Unit) {
-    FCNotice(
-        icon = GiftIcons.Gift,
-        text = pluralStringResource(R.plurals.family_pending_ideas, count, count),
-        tone = FCNoticeTone.WARNING,
-        modifier = Modifier.fcClickable(onClick = onClick, shape = GiftTheme.radius.fieldShape, pressedScale = 1f),
-    )
+    val colors = GiftTheme.colors
+    val type = GiftTheme.type
+    val spacing = GiftTheme.spacing
+    val disk = 40.dp.scaledByFont(1.3f)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(spacing.m),
+        modifier = Modifier
+            .fillMaxWidth()
+            .fcClickable(onClick = onClick, shape = GiftTheme.radius.cardShape, pressedScale = 0.98f)
+            .fcCard(padding = spacing.m)
+            .semantics(mergeDescendants = true) { },
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(disk).background(colors.potBg, CircleShape)) {
+            Icon(GiftIcons.Lightbulb, contentDescription = null, tint = colors.potFg, modifier = Modifier.size(disk * 0.55f))
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+            Text(pluralStringResource(R.plurals.family_pending_ideas, count, count), style = type.headline, color = colors.textPrimary)
+            Text(stringResource(R.string.family_pending_ideas_hint), style = type.caption, color = colors.textSecondary)
+        }
+        Icon(GiftIcons.ChevronRight, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(type.callout.glyphSize(1.3f)))
+    }
 }
 
 // region Événements
@@ -754,7 +772,7 @@ private val previewActions = FamilyHomeActions({}, {}, {}, {}, {}, {}, {}, {}, {
 
 @GiftPreviews
 @Composable
-private fun FamilyHomeEventsPreview() = ScreenPreviewFrame(height = 1100.dp) { FamilyHomeScreen(previewState, previewActions) }
+private fun FamilyHomeEventsPreview() = ScreenPreviewFrame(height = 1200.dp) { FamilyHomeScreen(previewState.copy(pendingIdeasCount = 2), previewActions) }
 
 @GiftPreviews
 @Composable

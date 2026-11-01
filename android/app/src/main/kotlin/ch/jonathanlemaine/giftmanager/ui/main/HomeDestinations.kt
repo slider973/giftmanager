@@ -5,8 +5,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.CreationExtras
@@ -14,6 +16,7 @@ import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import ch.jonathanlemaine.giftmanager.GiftManagerApp
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorActions
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorScreen
 import ch.jonathanlemaine.giftmanager.ui.children.ChildEditorViewModel
@@ -40,6 +43,7 @@ import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasActions
 import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasScreen
 import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasViewModel
 import java.util.UUID
+import kotlinx.coroutines.launch
 
 // Raccord entre les routes plein écran du graphe Accueil (#72) et leurs ViewModel. Les ViewModel lisent leur
 // argument dans la route (voir `AppContainer.viewModelFactory`) ; ces composables n'ont donc que des rappels.
@@ -182,6 +186,7 @@ fun GiftDetailDestination(
             },
             onLeavePot = viewModel::leavePot,
             onDismissError = viewModel::dismissError,
+            onToggleFavorite = viewModel::toggleFavorite,
         ),
     )
     val itemId = state.item?.id
@@ -251,6 +256,9 @@ fun AddGiftDestination(viewModelFactory: ViewModelProvider.Factory, onClose: () 
     val viewModel: AddGiftViewModel = viewModel(factory = viewModelFactory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state.finished) { if (state.finished) onClose() }
+    // Photo choisie : redimensionnée en JPEG hors du fil principal (AndroidImageResizer), puis confiée au ViewModel.
+    val resizer = (LocalContext.current.applicationContext as GiftManagerApp).container.imageResizer
+    val scope = rememberCoroutineScope()
     AddGiftScreen(
         state = state,
         actions = AddGiftActions(
@@ -266,6 +274,11 @@ fun AddGiftDestination(viewModelFactory: ViewModelProvider.Factory, onClose: () 
             onConfirmDuplicate = viewModel::save,
             onDismissDuplicate = viewModel::dismissDuplicate,
             onDismissError = viewModel::dismissError,
+            onCurrencyChange = viewModel::onCurrencyChange,
+            onEventChange = viewModel::onEventChange,
+            onPhotoPicked = { uri -> scope.launch { resizer.resizedJpeg(uri)?.let(viewModel::onImagePicked) } },
+            onAddLink = viewModel::addLink,
+            onRemoveLink = viewModel::removeLink,
         ),
     )
 }
