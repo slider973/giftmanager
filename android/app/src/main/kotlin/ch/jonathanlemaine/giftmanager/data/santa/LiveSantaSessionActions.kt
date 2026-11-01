@@ -18,6 +18,8 @@ class LiveSantaSessionActions(
     private val session: AppSession,
 ) : SantaSessionActions {
     override suspend fun createGiftIdea(childId: UUID, title: String, link: String?) {
+        // Pas de repli sur l'enfant : une idée n'est jamais attribuée à quelqu'un d'autre que l'utilisateur connecté.
+        val userId = session.state.value.userId ?: error("NOT_AUTHENTICATED")
         // `reviewStatus` reste à sa valeur par défaut : une suggestion retenue par le parent est déjà validée.
         val item = NewItem(
             childId = childId,
@@ -28,7 +30,7 @@ class LiveSantaSessionActions(
             imageUrl = null,
             priority = 0,
             owned = false,
-            createdBy = session.state.value.userId ?: childId,
+            createdBy = userId,
         )
         val links = listOfNotNull(
             link?.let {
