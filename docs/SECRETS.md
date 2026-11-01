@@ -16,6 +16,7 @@ Tous les secrets du projet sont stockés dans **1Password**, coffre **`giftmanag
 | `google-oauth` | `web_client_id`, `web_client_secret`, `android_client_id_debug`, `android_client_id_release`, `sha1_debug`, `sha1_release` | Connexion Google de l'app Android (`web_client_id`), provider Google dans Supabase (`web_client_id` + `web_client_secret`) |
 | `android-upload` | `keystore` (fichier `.jks`), `keystore_password`, `key_alias`, `key_password`, `sha1` | Signature de l'AAB Android (clé d'**upload** Play), CI `android-release.yml` |
 | `google-play` | `service_account_json`, `package_name` | Envoi sur la piste de test interne Google Play (CI) |
+| `fcm` | `service_account` (JSON du compte de service Firebase), `project_id`, `api_key`, `app_id`, `sender_id` | Notifications push Android : `service_account` est poussé par `scripts/secrets/sync-supabase.sh` (secret `FCM_SERVICE_ACCOUNT`) ; les autres champs viennent de `google-services.json` |
 | `cron` | `password` (généré) | Tâches planifiées (rappels d'anniversaires, suivi des prix) : secret `CRON_SECRET` des fonctions Edge + secret Vault `cron_secret` lu par pg_cron |
 
 Les valeurs pas encore connues valent `A_RENSEIGNER`.
@@ -39,7 +40,7 @@ op signin                                   # une fois par session
 scripts/secrets/setup-1password.sh          # crée le coffre et les items manquants (idempotent)
 scripts/secrets/inject.sh                   # génère ios/Config/Secrets.xcconfig et android/app/secrets.properties
 scripts/secrets/sync-github.sh              # pousse les secrets CI vers GitHub Actions
-scripts/secrets/sync-supabase.sh            # pousse la clé APNs vers les secrets de la fonction Edge
+scripts/secrets/sync-supabase.sh            # pousse la clé APNs, CRON_SECRET et le compte de service FCM vers les secrets des fonctions Edge
 op run --env-file=.env.op -- <commande>     # lance une commande avec les secrets en variables d'env
 ```
 
@@ -150,6 +151,23 @@ Secrets GitHub créés par `scripts/secrets/sync-github.sh` : `ANDROID_KEYSTORE_
 10. **Synchroniser et publier** : `scripts/secrets/sync-github.sh`, puis `scripts/release.sh X.Y.Z`.
 
 Le workflow envoie la version en `status: draft` : à valider dans la Play Console (Test interne > Versions) pour la rendre disponible aux testeurs. Une fois la première version publiée par ce chemin sans accroc, passer `status` à `completed` dans `android-release.yml` pour une mise à disposition automatique.
+
+## Notifications push Android
+
+Les appareils Android reçoivent leurs notifications via Firebase Cloud Messaging (API HTTP v1). Les fonctions Edge envoient des messages « data-only » avec un compte de service Google ; sans le secret `FCM_SERVICE_ACCOUNT`, seuls les appareils iOS (APNs) sont servis, et inversement.
+
+1. Dans la console Firebase, créer le projet Firebase **dans le même projet Google Cloud** que la connexion Google (voir ci-dessus), pour ne gérer qu'un seul projet.
+2. Y enregistrer l'app Android `ch.jonathanlemaine.giftmanager` et télécharger `google-services.json` (ne pas le commiter).
+3. Dans Google Cloud, créer un compte de service avec le rôle **Firebase Cloud Messaging API Admin**, puis générer une clé JSON. Vérifier que l'**API Firebase Cloud Messaging (V1)** est activée.
+4. Stocker les valeurs dans 1Password (`scripts/secrets/setup-1password.sh` crée l'item `fcm` avec `A_RENSEIGNER`) :
+
+   ```bash
+   op item edit fcm --vault giftmanager "service_account[concealed]=$(cat ~/Downloads/<cle>.json)"
+   op item edit fcm --vault giftmanager "project_id[text]=..." "app_id[text]=..." "sender_id[text]=..."
+   rm ~/Downloads/<cle>.json                  # le fichier ne doit pas traîner sur le disque
+   ```
+
+5. Pousser le secret vers Supabase : `scripts/secrets/sync-supabase.sh` (JSON compacté, jamais affiché).
 
 ## Tâches planifiées (pg_cron)
 

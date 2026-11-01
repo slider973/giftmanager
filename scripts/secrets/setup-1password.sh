@@ -47,6 +47,10 @@ create google-oauth --category "API Credential" \
 create cron --category Password --generate-password='letters,digits,40' \
   "notesPlain=Secret partagé pg_cron -> fonctions Edge planifiées (CRON_SECRET et secret Vault cron_secret)."
 
+create fcm --category "API Credential" \
+  "service_account[concealed]=$P" "project_id[text]=$P" "api_key[concealed]=$P" "app_id[text]=$P" "sender_id[text]=$P" \
+  "notesPlain=Firebase Cloud Messaging (notifications push Android). service_account = JSON complet du compte de service (rôle Firebase Cloud Messaging API Admin), poussé vers Supabase (FCM_SERVICE_ACCOUNT) par sync-supabase.sh. project_id, api_key, app_id, sender_id viennent de google-services.json."
+
 create github --category "API Credential" \
   "project_token[concealed]=$P" \
   "notesPlain=PAT classique scopes repo + project, utilisé par la GitHub Action project-sync."
