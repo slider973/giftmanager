@@ -93,7 +93,12 @@ import ch.jonathanlemaine.giftmanager.ui.theme.GiftManagerTheme
 import ch.jonathanlemaine.giftmanager.ui.theme.GiftTheme
 import ch.jonathanlemaine.giftmanager.ui.theme.HitTarget
 import ch.jonathanlemaine.giftmanager.ui.theme.ThemeTokens
+import ch.jonathanlemaine.giftmanager.core.prices.PriceTrend
+import ch.jonathanlemaine.giftmanager.ui.gifts.PriceHistorySection
 import java.math.BigDecimal
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.util.UUID
 import kotlin.math.roundToInt
 
 /**
@@ -211,6 +216,7 @@ private fun GalleryContent() {
         BudgetsSection()
         EventsSection()
         StoreLinksSection()
+        PriceTrackingSection()
         ButtonsSection()
         ControlsSection()
         AvatarsSection()
@@ -344,6 +350,20 @@ private fun StoreLinksSection() = GallerySection(stringResource(R.string.gallery
     StoreLinkRow("Amazon.fr (FR)", "FR", "€ 199,99", onClick = {}, approxPriceText = "≈ 185 CHF")
     StoreLinkRow("Boutique inconnue", null, null, onClick = {})
     IndicativeRateNote(rateDateText = "2 octobre")
+}
+
+/** La section porte son propre titre « Suivi du prix » : baisse, hausse, rupture de stock. */
+@Composable
+private fun PriceTrackingSection() {
+    val now = Instant.now()
+    fun point(days: Long, price: Int) = PriceTrend.Point(now.minus(days, ChronoUnit.DAYS), BigDecimal(price))
+    PriceHistorySection(
+        listOf(
+            PriceTrend(UUID.randomUUID(), "https://www.galaxus.ch/x", listOf(point(6, 199), point(3, 189), point(0, 169)), "CHF", true, now),
+            PriceTrend(UUID.randomUUID(), "https://www.fnac.com/x", listOf(point(9, 59), point(1, 64)), "EUR", true, now),
+            PriceTrend(UUID.randomUUID(), "https://www.amazon.fr/x", listOf(point(6, 200)), "EUR", false, now),
+        ),
+    )
 }
 
 @Composable
