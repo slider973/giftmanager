@@ -79,6 +79,7 @@ import ch.jonathanlemaine.giftmanager.ui.components.GiftIcons
 import ch.jonathanlemaine.giftmanager.ui.components.GiftLoadingView
 import ch.jonathanlemaine.giftmanager.ui.components.GiftPreviews
 import ch.jonathanlemaine.giftmanager.ui.components.Illustration
+import ch.jonathanlemaine.giftmanager.ui.components.IndicativeRateNote
 import ch.jonathanlemaine.giftmanager.ui.components.SegmentedTabs
 import ch.jonathanlemaine.giftmanager.ui.components.fcClickable
 import ch.jonathanlemaine.giftmanager.ui.components.fcPressable
@@ -204,6 +205,10 @@ fun ChildGiftsScreen(state: ChildGiftsUiState, actions: ChildGiftsActions, modif
                             placementSpec = if (GiftTheme.reduceMotion) null else androidx.compose.animation.core.spring(stiffness = 500f),
                         ),
                     )
+                }
+                // Un prix converti est affiché (« ≈ 214 € ») : sa mention, une fois sous la liste (#74, cf. fiche cadeau).
+                if (state.hasLoaded && visible.isNotEmpty() && state.hasConversion) {
+                    item(key = "rate-note") { IndicativeRateNote(state.rateDateText, modifier = column.padding(top = spacing.s)) }
                 }
             }
         }
