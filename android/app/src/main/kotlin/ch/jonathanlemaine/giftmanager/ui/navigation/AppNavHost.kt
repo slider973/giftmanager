@@ -111,6 +111,7 @@ private fun OnboardingRoute(viewModelFactory: ViewModelProvider.Factory) {
         onSignIn = { viewModel.signIn(context) },
         onDismissSignInError = viewModel::dismissMessage,
         onDemoError = viewModel::showError,
+        onSignInWithApple = viewModel::signInWithApple,
     )
 }
 

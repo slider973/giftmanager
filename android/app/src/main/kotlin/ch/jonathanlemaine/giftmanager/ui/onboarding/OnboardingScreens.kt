@@ -79,7 +79,8 @@ fun OnboardingScreen(
     onDismissSignInError: () -> Unit,
     modifier: Modifier = Modifier,
     onDemoError: (String?) -> Unit = {},
-) = OnboardingContent(signInState, onSignIn, onDismissSignInError, modifier, onDemoError = onDemoError)
+    onSignInWithApple: () -> Unit = {},
+) = OnboardingContent(signInState, onSignIn, onDismissSignInError, modifier, onDemoError = onDemoError, onSignInWithApple = onSignInWithApple)
 
 @Composable
 private fun OnboardingContent(
@@ -89,6 +90,7 @@ private fun OnboardingContent(
     modifier: Modifier = Modifier,
     initialPage: Int = 0,
     onDemoError: (String?) -> Unit = {},
+    onSignInWithApple: () -> Unit = {},
 ) {
     val pages = OnboardingPages.all
     val pagerState = rememberPagerState(initialPage = initialPage) { pages.size }
@@ -147,7 +149,7 @@ private fun OnboardingContent(
                 .padding(start = spacing.xl, end = spacing.xl, bottom = spacing.l),
         ) { isLast ->
             if (isLast) {
-                SignInActions(state = signInState, onSignIn = onSignIn, onDemoError = onDemoError)
+                SignInActions(state = signInState, onSignIn = onSignIn, onDemoError = onDemoError, onSignInWithApple = onSignInWithApple)
             } else {
                 PrimaryButton(
                     text = stringResource(R.string.onboarding_continue),

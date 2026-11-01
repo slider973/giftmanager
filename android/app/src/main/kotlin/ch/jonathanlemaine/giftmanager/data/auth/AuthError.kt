@@ -14,6 +14,9 @@ sealed class AuthError(message: String, cause: Throwable? = null) : Exception(me
     /** ID client Google absent de cette version de l'app. */
     class NotConfigured : AuthError("Connexion Google non configurée")
 
+    /** Connexion Apple (web) pas encore activée : Services ID absent côté Apple ou Supabase. */
+    class AppleNotConfigured : AuthError("Connexion Apple non configurée")
+
     class Network(cause: Throwable? = null) : AuthError("Réseau indisponible", cause)
 
     class Failed(cause: Throwable? = null) : AuthError("Connexion échouée", cause)

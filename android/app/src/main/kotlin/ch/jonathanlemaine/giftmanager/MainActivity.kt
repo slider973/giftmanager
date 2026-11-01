@@ -10,6 +10,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import ch.jonathanlemaine.giftmanager.core.session.DeepLinkRoute
 import ch.jonathanlemaine.giftmanager.core.session.ShareIntent
 import ch.jonathanlemaine.giftmanager.push.NotificationRouter
 import ch.jonathanlemaine.giftmanager.ui.navigation.AppNavHost
@@ -69,7 +70,12 @@ class MainActivity : FragmentActivity() {
     private fun handleIntent(intent: Intent?) {
         // Relance depuis les tâches récentes : l'intent d'origine (invitation, partage) a déjà été traité.
         if (intent == null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
-        container.session.handleDeepLink(intent.dataString)
+        // Retour de la connexion Apple (navigateur) ou invitation : deux schémas distincts.
+        when (DeepLinkRoute.parse(intent.dataString)) {
+            DeepLinkRoute.AuthCallback -> container.authRepository.handleCallback(intent)
+            is DeepLinkRoute.Invite -> container.session.handleDeepLink(intent.dataString)
+            DeepLinkRoute.None -> Unit
+        }
         handleShare(intent)
         handleNotification(intent)
     }

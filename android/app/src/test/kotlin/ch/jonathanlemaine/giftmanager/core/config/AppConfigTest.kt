@@ -22,6 +22,11 @@ class AppConfigTest {
         assertFalse(config("A_RENSEIGNER").isGoogleConfigured)
     }
 
+    @Test fun appleSignInIsOffByDefaultAndOptIn() {
+        assertFalse(AppConfig("https://x.supabase.co", "k").appleSignInEnabled)
+        assertTrue(AppConfig("https://x.supabase.co", "k", appleSignInEnabled = true).appleSignInEnabled)
+    }
+
     @Test fun defaultIsNotConfigured() {
         assertFalse(AppConfig("https://x.supabase.co", "k").isGoogleConfigured)
     }

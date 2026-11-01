@@ -11,6 +11,8 @@ data class AppConfig(
     val supabasePublishableKey: String,
     /** ID client OAuth « Web » Google (serverClientId de Credential Manager). */
     val googleWebClientId: String = "",
+    /** Flux web Apple (#83) : vrai une fois le Services ID créé côté Apple et renseigné dans Supabase. */
+    val appleSignInEnabled: Boolean = false,
 ) {
     /** Faux tant que l'ID client Google est vide ou factice (build local sans secrets, CI). */
     val isGoogleConfigured: Boolean
@@ -25,6 +27,7 @@ data class AppConfig(
             supabaseUrl = BuildConfig.SUPABASE_URL,
             supabasePublishableKey = BuildConfig.SUPABASE_PUBLISHABLE_KEY,
             googleWebClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID,
+            appleSignInEnabled = BuildConfig.APPLE_SIGN_IN_ENABLED,
         )
     }
 }

@@ -15,6 +15,13 @@ class SignInViewModel(private val auth: AuthRepository) : ViewModel() {
     private val _uiState = MutableStateFlow<SignInUiState>(SignInUiState.Idle)
     val uiState: StateFlow<SignInUiState> = _uiState.asStateFlow()
 
+    init {
+        // Retour du navigateur en échec (connexion Apple) : le flux n'est plus lié à un appel en cours.
+        viewModelScope.launch {
+            auth.callbackFailures.collect { _uiState.value = SignInUiState.Error(it.toKind(apple = true)) }
+        }
+    }
+
     /**
      * Lance la connexion Google. [activityContext] (l'Activity) ne sert qu'à afficher le sélecteur
      * de compte et n'est pas conservé. Ignoré si une connexion est déjà en cours.
@@ -39,6 +46,30 @@ class SignInViewModel(private val auth: AuthRepository) : ViewModel() {
         }
     }
 
+    /**
+     * Lance la connexion Apple par le web. Le navigateur s'ouvre et l'état revient à `Idle` : la session
+     * arrive au retour du lien `giftmanager://login-callback` et fait basculer l'état racine.
+     * Les échecs du retour (code refusé, réseau) s'affichent comme les autres.
+     */
+    fun signInWithApple() {
+        if (_uiState.value is SignInUiState.InProgress) return
+        _uiState.value = SignInUiState.InProgress
+        viewModelScope.launch {
+            _uiState.value = try {
+                auth.signInWithApple()
+                SignInUiState.Idle
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: AuthError.Cancelled) {
+                SignInUiState.Idle
+            } catch (e: AuthError) {
+                SignInUiState.Error(e.toKind(apple = true))
+            } catch (_: Exception) {
+                SignInUiState.Error(SignInUiState.Kind.AppleFailed)
+            }
+        }
+    }
+
     /** Affiche l'échec d'une connexion hors Google (comptes de démo en debug) : [detail] ou le message générique. */
     fun showError(detail: String?) {
         _uiState.value = SignInUiState.Error(SignInUiState.Kind.Generic, detail)
@@ -50,10 +81,17 @@ class SignInViewModel(private val auth: AuthRepository) : ViewModel() {
     }
 }
 
-private fun AuthError.toKind(): SignInUiState.Kind = when (this) {
+private fun AuthError.toKind(apple: Boolean = false): SignInUiState.Kind = when (this) {
+    is AuthError.AppleNotConfigured -> SignInUiState.Kind.AppleNotConfigured
+    is AuthError.Failed, is AuthError.Cancelled -> if (apple) SignInUiState.Kind.AppleFailed else SignInUiState.Kind.Generic
+    else -> toGoogleKind()
+}
+
+private fun AuthError.toGoogleKind(): SignInUiState.Kind = when (this) {
     is AuthError.NoGoogleAccount -> SignInUiState.Kind.NoGoogleAccount
     is AuthError.Network -> SignInUiState.Kind.Network
     is AuthError.NotConfigured -> SignInUiState.Kind.NotConfigured
     is AuthError.GoogleUnavailable -> SignInUiState.Kind.GoogleUnavailable
+    is AuthError.AppleNotConfigured -> SignInUiState.Kind.AppleNotConfigured
     is AuthError.Cancelled, is AuthError.Failed -> SignInUiState.Kind.Generic
 }

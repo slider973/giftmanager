@@ -44,6 +44,11 @@ create google-oauth --category "API Credential" \
   "sha1_debug[text]=$P" "sha1_release[text]=$P" \
   "notesPlain=Connexion Google (Android). Client Web : web_client_id = serverClientId de l'app et client_id du provider Supabase, web_client_secret = secret du provider (serveur uniquement, jamais dans l'app). Clients Android debug/release : package ch.jonathanlemaine.giftmanager + empreinte SHA-1 correspondante (procédure dans docs/SECRETS.md)."
 
+create apple-signin-web --category "API Credential" \
+  "services_id[text]=$P" "client_id[text]=$P" "key_id[text]=$P" "team_id[text]=$P" \
+  "private_key[concealed]=$P" "client_secret[concealed]=$P" "enabled[text]=$P" \
+  "notesPlain=Connexion Apple par le web (Android, #83). services_id = Services ID Apple (ex. ch.jonathanlemaine.giftmanager.web). client_id = valeur du champ Client IDs de Supabase : bundle iOS,Services ID. key_id/team_id/private_key = clé Sign in with Apple (.p8). client_secret = JWT généré depuis cette clé (6 mois max, à renouveler). enabled = true pour activer le bouton dans l'app Android (APPLE_SIGN_IN_ENABLED). Procédure dans docs/SECRETS.md."
+
 create cron --category Password --generate-password='letters,digits,40' \
   "notesPlain=Secret partagé pg_cron -> fonctions Edge planifiées (CRON_SECRET et secret Vault cron_secret)."
 

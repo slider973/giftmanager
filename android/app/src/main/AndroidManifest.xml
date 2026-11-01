@@ -26,6 +26,13 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="famillecadeaux" android:host="join" />
             </intent-filter>
+            <!-- Retour de la connexion Apple par le web (#83) : giftmanager://login-callback?code=… -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="giftmanager" android:host="login-callback" />
+            </intent-filter>
             <!-- Partage d'un lien depuis une autre app (navigateur, app marchande) : ajout de cadeau pré-rempli. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

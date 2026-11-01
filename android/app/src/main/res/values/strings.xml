@@ -55,6 +55,9 @@
     <string name="sign_in_error_not_configured">La connexion Google n\'est pas encore configurée dans cette version de l\'app.</string>
     <string name="sign_in_error_unavailable">Les services Google ne sont pas disponibles sur cet appareil.</string>
     <string name="sign_in_error_generic">La connexion avec Google a échoué. Réessaie.</string>
+    <string name="sign_in_with_apple">Se connecter avec Apple</string>
+    <string name="sign_in_error_apple_not_configured">La connexion Apple n\'est pas encore configurée dans cette version de l\'app.</string>
+    <string name="sign_in_error_apple_failed">La connexion avec Apple a échoué. Réessaie.</string>
     <string name="sign_in_error_title">Oups</string>
     <string name="sign_in_error_ok">OK</string>
     <string name="sign_in_in_progress">Connexion en cours</string>

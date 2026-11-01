@@ -27,6 +27,7 @@ SECRETS=(
   "ANDROID_KEY_ALIAS=op://giftmanager/android-upload/key_alias"
   "ANDROID_KEY_PASSWORD=op://giftmanager/android-upload/key_password"
   "PLAY_SERVICE_ACCOUNT_JSON=op://giftmanager/google-play/service_account_json"
+  "APPLE_SIGN_IN_ENABLED=op://giftmanager/apple-signin-web/enabled"
   "FIREBASE_API_KEY=op://giftmanager/fcm/api_key"
   "FIREBASE_APP_ID=op://giftmanager/fcm/app_id"
   "FIREBASE_PROJECT_ID=op://giftmanager/fcm/project_id"
