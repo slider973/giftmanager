@@ -11,7 +11,7 @@
     <string name="sign_out">Se déconnecter</string>
 
     <!-- Connexion Google -->
-    <string name="sign_in_title">Bienvenue sur Gift Manager</string>
+    <string name="sign_in_title">La surprise\nest garantie</string>
     <string name="sign_in_message">Les autres voient « déjà pris » sans savoir par qui. Les parents ne voient rien.</string>
     <string name="sign_in_with_google">Se connecter avec Google</string>
     <string name="sign_in_error_no_account">Aucun compte Google sur cet appareil. Ajoute-en un dans les réglages Android, puis réessaie.</string>
@@ -19,7 +19,8 @@
     <string name="sign_in_error_not_configured">La connexion Google n\'est pas encore configurée dans cette version de l\'app.</string>
     <string name="sign_in_error_unavailable">Les services Google ne sont pas disponibles sur cet appareil.</string>
     <string name="sign_in_error_generic">La connexion avec Google a échoué. Réessaie.</string>
-    <string name="sign_in_error_dismiss">Fermer</string>
+    <string name="sign_in_error_title">Oups</string>
+    <string name="sign_in_error_ok">OK</string>
     <string name="sign_in_in_progress">Connexion en cours</string>
 
     <!-- Statuts d'un cadeau (StatusBadge) -->
