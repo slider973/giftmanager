@@ -49,6 +49,12 @@ import ch.jonathanlemaine.giftmanager.ui.gifts.JoinPotViewModel
 import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasActions
 import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasScreen
 import ch.jonathanlemaine.giftmanager.ui.gifts.PendingIdeasViewModel
+import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksComposerActions
+import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksComposerScreen
+import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksComposerViewModel
+import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksInboxActions
+import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksInboxScreen
+import ch.jonathanlemaine.giftmanager.ui.gifts.ThanksInboxViewModel
 import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesActions
 import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesScreen
 import ch.jonathanlemaine.giftmanager.ui.purchases.PurchasesViewModel
@@ -170,6 +176,8 @@ fun GiftDetailDestination(
     onBack: () -> Unit,
     /** Ouvre le formulaire de modification : enfant, type, événement, cadeau. */
     onEdit: (childId: UUID, kind: WishKind, eventId: UUID?, itemId: UUID) -> Unit,
+    /** Ouvre la rédaction d'un merci pour ce cadeau (#75). */
+    onThank: (itemId: UUID) -> Unit,
 ) {
     val viewModel: GiftDetailViewModel = viewModel(factory = viewModelFactory)
     // Chaque ouverture de la feuille a son ViewModel (clé distincte) : une feuille fermée ne revient pas « terminée ».
@@ -179,6 +187,13 @@ fun GiftDetailDestination(
     LaunchedEffect(state.isClosed) { if (state.isClosed) onBack() }
     // La célébration (« Réservé ! ») est consommée dès qu'elle est affichée.
     LaunchedEffect(state.celebration) { if (state.celebration != null) viewModel.consumeCelebration() }
+    // « Reçu ! » vient de réussir : l'écran de remerciement s'ouvre, une seule fois.
+    LaunchedEffect(state.thanksRequested) {
+        if (state.thanksRequested) {
+            viewModel.consumeThanksRequest()
+            state.item?.let { onThank(it.id) }
+        }
+    }
     GiftDetailScreen(
         state = state,
         actions = GiftDetailActions(
@@ -197,6 +212,7 @@ fun GiftDetailDestination(
             onLeavePot = viewModel::leavePot,
             onDismissError = viewModel::dismissError,
             onToggleFavorite = viewModel::toggleFavorite,
+            onThank = { state.item?.let { onThank(it.id) } },
         ),
     )
     val itemId = state.item?.id
@@ -239,6 +255,38 @@ private fun JoinPotDestination(
             onSave = viewModel::save,
             onDismissError = viewModel::dismissError,
         ),
+    )
+}
+
+/** Rédaction d'un merci ; la photo choisie est redimensionnée en JPEG hors du fil principal, puis confiée au ViewModel. */
+@Composable
+fun ThanksComposerDestination(viewModelFactory: ViewModelProvider.Factory, onClose: () -> Unit) {
+    val viewModel: ThanksComposerViewModel = viewModel(factory = viewModelFactory)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(state.isClosed) { if (state.isClosed) onClose() }
+    val resizer = (LocalContext.current.applicationContext as GiftManagerApp).container.imageResizer
+    val scope = rememberCoroutineScope()
+    ThanksComposerScreen(
+        state = state,
+        actions = ThanksComposerActions(
+            onClose = onClose,
+            onMessageChange = viewModel::onMessageChange,
+            onPhotoPicked = { uri -> scope.launch { resizer.resizedJpeg(uri)?.let(viewModel::onPhotoPicked) } },
+            onPhotoRemoved = viewModel::onPhotoRemoved,
+            onSend = viewModel::send,
+            onDismissError = viewModel::dismissError,
+        ),
+    )
+}
+
+/** Remerciements reçus pour mes cadeaux (#75). */
+@Composable
+fun ThanksInboxDestination(viewModelFactory: ViewModelProvider.Factory, onBack: () -> Unit) {
+    val viewModel: ThanksInboxViewModel = viewModel(factory = viewModelFactory)
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    ThanksInboxScreen(
+        state = state,
+        actions = ThanksInboxActions(onBack = onBack, onSetRevealed = viewModel::setRevealed, onDismissError = viewModel::dismissError),
     )
 }
 
@@ -303,6 +351,7 @@ fun PurchasesDestination(
     onOpenItem: (UUID) -> Unit,
     onNewBudget: () -> Unit,
     onEditBudget: (Budget) -> Unit,
+    onOpenThanks: () -> Unit,
 ) {
     val purchases: PurchasesViewModel = viewModel(factory = viewModelFactory)
     val budgets: BudgetsViewModel = viewModel(factory = viewModelFactory)
@@ -324,6 +373,7 @@ fun PurchasesDestination(
             onCancelLeave = purchases::cancelLeave,
             onNewBudget = onNewBudget,
             onEditBudget = onEditBudget,
+            onOpenThanks = onOpenThanks,
             onDismissError = {
                 purchases.dismissError()
                 budgets.dismissError()

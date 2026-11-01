@@ -32,6 +32,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -119,6 +120,8 @@ data class PurchasesActions(
     val onNewBudget: () -> Unit,
     val onEditBudget: (Budget) -> Unit,
     val onDismissError: () -> Unit,
+    /** Ouvre la boîte des remerciements reçus (#75). */
+    val onOpenThanks: () -> Unit = {},
     /** Tirer pour actualiser : achats et budgets. */
     val onRefresh: () -> Unit = {},
 )
@@ -169,7 +172,27 @@ fun PurchasesScreen(state: PurchasesUiState, budgets: BudgetsUiState, actions: P
             contentPadding = PaddingValues(start = spacing.xl, end = spacing.xl, top = spacing.l, bottom = spacing.xxl + bottomInset),
             modifier = Modifier.fillMaxSize(),
         ) {
-            item(key = "title") { ScreenTitle(stringResource(R.string.tab_purchases), modifier = column) }
+            item(key = "title") {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = column) {
+                    ScreenTitle(stringResource(R.string.tab_purchases), modifier = Modifier.weight(1f))
+                    // Câblage minimal (#75) : l'entrée de la boîte de remerciements, reprise par le ui-designer.
+                    IconButton(onClick = actions.onOpenThanks) {
+                        Icon(GiftIcons.Mail, contentDescription = stringResource(R.string.thanks_open_inbox), tint = colors.primary)
+                    }
+                }
+            }
+            if (state.thanksCount > 0) {
+                item(key = "thanks-banner") {
+                    val label = if (state.thanksCount > 1) stringResource(R.string.thanks_banner_many, state.thanksCount)
+                    else stringResource(R.string.thanks_banner_one)
+                    Text(
+                        label,
+                        style = GiftTheme.type.headline,
+                        color = colors.textPrimary,
+                        modifier = column.fcCard().fcClickable(onClick = actions.onOpenThanks, shape = GiftTheme.radius.cardShape),
+                    )
+                }
+            }
             when {
                 !state.hasLoaded -> item(key = "loading") {
                     GiftLoadingView(size = 72.dp, label = stringResource(R.string.purchases_loading), modifier = column.padding(vertical = spacing.xxl))

@@ -531,4 +531,36 @@
     <string name="budget_delete_title">Supprimer ce budget ?</string>
     <string name="budget_delete_message">Tes réservations ne changent pas.</string>
     <string name="budget_delete_confirm">Supprimer</string>
+
+    <!-- Remerciements (#75) -->
+    <string name="gift_detail_say_thanks">Dire merci</string>
+    <string name="gift_detail_donors">Offert par %1$s</string>
+    <string name="gift_detail_thanks_anonymous">Ton message sera transmis à la personne qui l\'a offert, sans révéler qui c\'est.</string>
+    <string name="gift_detail_thanks_donors">Ton message sera transmis à toutes les personnes qui l\'ont offert.</string>
+    <string name="thanks_composer_title">Dire merci</string>
+    <string name="thanks_received_by">Reçu par %1$s</string>
+    <string name="thanks_privacy_notice">Ton message arrivera chez la personne qui a offert ce cadeau. Tu ne sauras pas qui c\'est, sauf si elle choisit de se faire connaître.</string>
+    <string name="thanks_message_label">Ton message</string>
+    <string name="thanks_counter">%1$d / %2$d</string>
+    <string name="thanks_photo_label">Photo (facultatif)</string>
+    <string name="thanks_photo_add">Ajouter une photo</string>
+    <string name="thanks_photo_attached">Photo jointe</string>
+    <string name="thanks_photo_remove">Retirer la photo</string>
+    <string name="thanks_send">Envoyer le merci</string>
+    <string name="thanks_sent_title">Merci envoyé !</string>
+    <string name="thanks_sent_message">Il arrivera chez la personne qui a offert « %1$s », sans révéler qui c\'est.</string>
+    <string name="thanks_done">Terminer</string>
+    <string name="thanks_inbox_title">Remerciements</string>
+    <string name="thanks_inbox_loading">Chargement des remerciements…</string>
+    <string name="thanks_inbox_empty_title">Aucun merci pour l\'instant</string>
+    <string name="thanks_inbox_empty_message">Après la fête, les parents peuvent remercier pour un cadeau : leur message arrivera ici.</string>
+    <string name="thanks_from">De %1$s</string>
+    <string name="thanks_from_parents">Des parents de %1$s</string>
+    <string name="thanks_for_gift">Pour « %1$s »</string>
+    <string name="thanks_reveal">Me faire connaître</string>
+    <string name="thanks_reveal_on">Les parents de %1$s savent que c\'est toi.</string>
+    <string name="thanks_reveal_off">Les parents ne savent pas que c\'est toi.</string>
+    <string name="thanks_banner_one">Un remerciement reçu</string>
+    <string name="thanks_banner_many">%1$d remerciements reçus</string>
+    <string name="thanks_open_inbox">Remerciements reçus</string>
 </resources>

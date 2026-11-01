@@ -81,6 +81,8 @@ import ch.jonathanlemaine.giftmanager.ui.navigation.PurchaseGiftRoute
 import ch.jonathanlemaine.giftmanager.ui.navigation.Purchases
 import ch.jonathanlemaine.giftmanager.ui.navigation.PurchasesGraph
 import ch.jonathanlemaine.giftmanager.ui.navigation.Search
+import ch.jonathanlemaine.giftmanager.ui.navigation.ThanksComposerRoute
+import ch.jonathanlemaine.giftmanager.ui.navigation.ThanksInboxRoute
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileActions
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileScreen
 import ch.jonathanlemaine.giftmanager.ui.profile.ProfileViewModel
@@ -182,6 +184,7 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
                         onEdit = { childId, kind, eventId, itemId ->
                             navController.navigate(AddGiftRoute(childId.toString(), kind.routeValue(), eventId?.toString(), false, itemId.toString()))
                         },
+                        onThank = { navController.navigate(ThanksComposerRoute(it.toString())) },
                     )
                 }
                 composable<AddGiftRoute> { AddGiftDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
@@ -195,6 +198,7 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
                         viewModelFactory,
                         onOpenItem = { navController.navigate(PurchaseGiftRoute(it.toString())) },
                         onNewBudget = { navController.navigate(BudgetEditorRoute()) },
+                        onOpenThanks = { navController.navigate(ThanksInboxRoute) },
                         onEditBudget = { budget ->
                             navController.navigate(
                                 BudgetEditorRoute(
@@ -215,10 +219,14 @@ fun MainScaffold(viewModelFactory: ViewModelProvider.Factory) {
                         onEdit = { childId, kind, eventId, itemId ->
                             navController.navigate(AddGiftRoute(childId.toString(), kind.routeValue(), eventId?.toString(), false, itemId.toString()))
                         },
+                        onThank = { navController.navigate(ThanksComposerRoute(it.toString())) },
                     )
                 }
                 composable<BudgetEditorRoute> { BudgetEditorDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
             }
+            // Remerciements (#75) : racine du NavHost, hors des graphes d'onglets, ouverts depuis plusieurs onglets.
+            composable<ThanksComposerRoute> { ThanksComposerDestination(viewModelFactory, onClose = { navController.popBackStack() }) }
+            composable<ThanksInboxRoute> { ThanksInboxDestination(viewModelFactory, onBack = { navController.popBackStack() }) }
             composable<ProfileTab> {
                 ProfileRoute(
                     viewModelFactory,
@@ -285,7 +293,7 @@ private val MainTab.route: Any
 private fun NavDestination.mainTab(): MainTab? = when {
     hierarchy.any { it.hasRoute(HomeGraph::class) } -> MainTab.Home
     hierarchy.any { it.hasRoute(Search::class) } -> MainTab.Search
-    hierarchy.any { it.hasRoute(PurchasesGraph::class) } -> MainTab.Purchases
+    hierarchy.any { it.hasRoute(PurchasesGraph::class) || it.hasRoute(ThanksInboxRoute::class) } -> MainTab.Purchases
     hierarchy.any { it.hasRoute(ProfileTab::class) || it.hasRoute(DebugGallery::class) } -> MainTab.Profile
     else -> null
 }
@@ -293,7 +301,7 @@ private fun NavDestination.mainTab(): MainTab? = when {
 /** Formulaire plein écran (création / modification) : la barre d'onglets s'efface (Material : full-screen dialog). */
 private fun NavDestination.isFullScreenForm(): Boolean =
     hasRoute(ChildEditorRoute::class) || hasRoute(EventEditorRoute::class) || hasRoute(AddGiftRoute::class) ||
-        hasRoute(BudgetEditorRoute::class)
+        hasRoute(BudgetEditorRoute::class) || hasRoute(ThanksComposerRoute::class)
 
 private fun WishKind.routeValue(): String = if (this == WishKind.IDEA) AddGiftRoute.KIND_IDEA else AddGiftRoute.KIND_WISH
 

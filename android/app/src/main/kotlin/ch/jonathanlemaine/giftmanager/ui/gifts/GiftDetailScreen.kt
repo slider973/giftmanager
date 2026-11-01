@@ -109,6 +109,8 @@ data class GiftDetailActions(
     val onDismissError: () -> Unit,
     /** Cœur « très envie » de la fiche : parents seulement ([GiftDetailUiState.canToggleFavorite]). */
     val onToggleFavorite: () -> Unit = {},
+    /** « Dire merci » (#75) : ouvre la rédaction d'un merci. */
+    val onThank: () -> Unit = {},
 )
 
 /**
@@ -369,9 +371,20 @@ private fun ParentActions(state: GiftDetailUiState, reservation: ReservationActi
     }
 }
 
-/** « Reçu ! » (#42) : un parent, après la fête. */
+/** « Reçu ! » (#42) : un parent, après la fête ; puis « Dire merci » (#75) une fois le cadeau reçu. */
 @Composable
 private fun ReceiptActions(state: GiftDetailUiState, actions: GiftDetailActions) {
+    if (state.canSendThanks) {
+        if (state.donors.isNotEmpty()) {
+            Text(stringResource(R.string.gift_detail_donors, state.donorNames), style = GiftTheme.type.headline, color = GiftTheme.colors.textPrimary)
+        }
+        PrimaryButton(stringResource(R.string.gift_detail_say_thanks), actions.onThank, leadingIcon = GiftIcons.Mail)
+        Text(
+            stringResource(if (state.donors.isEmpty()) R.string.gift_detail_thanks_anonymous else R.string.gift_detail_thanks_donors),
+            style = GiftTheme.type.caption,
+            color = GiftTheme.colors.textSecondary,
+        )
+    }
     if (!state.canMarkReceived) return
     SecondaryButton(
         text = stringResource(R.string.gift_detail_received),
