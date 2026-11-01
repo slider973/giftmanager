@@ -12,6 +12,12 @@ interface SantaVoicePlayer {
     val audioUnavailable: Boolean
 
     /**
+     * Appelé quand [isPlaying] ou [audioUnavailable] change sans que la réplique finisse (pause par perte de focus
+     * audio, par exemple) ; « Passer » et « Réécouter » restent utilisables.
+     */
+    var onStateChanged: (() -> Unit)?
+
+    /**
      * Joue la réplique [assetPath] (« audio/accueil.mp3 »). [onFinish] est appelé une fois à la fin, ou tout de suite
      * si l'audio est introuvable ou illisible — la session ne doit jamais rester bloquée. Il n'est pas appelé si la
      * lecture est interrompue par [stop].

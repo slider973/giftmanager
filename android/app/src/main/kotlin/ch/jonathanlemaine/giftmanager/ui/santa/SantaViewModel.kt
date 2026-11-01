@@ -73,6 +73,8 @@ class SantaViewModel(
             householdCountry = child?.let { state.household(of = it)?.country },
             childModeActive = lock.active.value,
         )
+        // Pause du lecteur sans fin de réplique (perte de focus audio) : l'état affiché suit.
+        player.onStateChanged = ::publish
         santa.start()
         publish()
         playIfSpeaking()
@@ -139,8 +141,12 @@ class SantaViewModel(
         }
     }
 
-    /** L'écran quitte le premier plan : la voix s'arrête. */
-    fun onScreenStopped() {
+    /**
+     * L'écran quitte le premier plan : la voix s'arrête. Pendant un changement de configuration (rotation) l'activité
+     * est recréée mais le ViewModel survit : la voix continue, sans coupure ni reprise.
+     */
+    fun onScreenStopped(changingConfigurations: Boolean = false) {
+        if (changingConfigurations) return
         player.stop()
         playingLine = null
         publish()
@@ -215,6 +221,7 @@ class SantaViewModel(
     fun dismissError() = _uiState.update { it.copy(error = null) }
 
     override fun onCleared() {
+        player.onStateChanged = null
         player.stop()
         player.release()
     }

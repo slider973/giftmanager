@@ -1,5 +1,6 @@
 package ch.jonathanlemaine.giftmanager.ui.santa
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.Lifecycle
@@ -16,7 +17,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun SantaDestination(viewModelFactory: ViewModelProvider.Factory, onClose: () -> Unit) {
     val viewModel: SantaViewModel = viewModel(factory = viewModelFactory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.onScreenStopped() }
+    // Rotation : l'activité est recréée (ON_STOP) mais le ViewModel et la voix continuent.
+    val activity = LocalActivity.current
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        viewModel.onScreenStopped(changingConfigurations = activity?.isChangingConfigurations == true)
+    }
     LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.onScreenStarted() }
     SantaScreen(
         state = state,

@@ -42,6 +42,7 @@ class SantaViewModelTest {
         private var callback: (() -> Unit)? = null
         override var isPlaying = false
         override var audioUnavailable = false
+        override var onStateChanged: (() -> Unit)? = null
 
         override fun play(assetPath: String, onFinish: () -> Unit) {
             played += assetPath
@@ -210,6 +211,33 @@ class SantaViewModelTest {
 
         s.vm.onScreenStarted()
         assertEquals(listOf("audio/accueil.mp3", "audio/accueil.mp3"), s.player.played)
+    }
+
+    @Test fun rotationNeitherStopsNorRestartsTheVoice() = runTest {
+        val s = setup()
+        val stopsBefore = s.player.stops
+        s.vm.onScreenStopped(changingConfigurations = true)
+        s.vm.onScreenStarted()
+        assertEquals(stopsBefore, s.player.stops)
+        assertTrue(s.player.isPlaying)
+        assertEquals(listOf("audio/accueil.mp3"), s.player.played)
+
+        // La réplique en cours se termine normalement après la rotation.
+        s.player.finish()
+        assertEquals(Stage.Speaking(1), s.state.stage)
+    }
+
+    @Test fun pausedPlayerIsReflectedAndTheLineCanStillBeSkipped() = runTest {
+        val s = setup()
+        assertTrue(s.state.isPlaying)
+        // Perte de focus audio : le lecteur se met en pause sans finir la réplique.
+        s.player.isPlaying = false
+        s.player.onStateChanged?.invoke()
+        assertFalse(s.state.isPlaying)
+        assertEquals(Stage.Speaking(0), s.state.stage)
+
+        s.vm.skipSpeaking()
+        assertEquals(Stage.Speaking(1), s.state.stage)
     }
 
     @Test fun startingAgainWhileStillPlayingDoesNotRestartTheLine() = runTest {

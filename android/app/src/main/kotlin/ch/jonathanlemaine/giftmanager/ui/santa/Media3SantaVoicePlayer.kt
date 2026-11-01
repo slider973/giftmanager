@@ -24,7 +24,14 @@ class Media3SantaVoicePlayer(context: Context) : SantaVoicePlayer {
     override var audioUnavailable: Boolean = false
         private set
 
+    override var onStateChanged: (() -> Unit)? = null
+
     private val listener = object : Player.Listener {
+        // Perte de focus audio (appel, autre app) : pause sans erreur ni fin de lecture.
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) = syncPlaying()
+
+        override fun onPlaybackSuppressionReasonChanged(playbackSuppressionReason: Int) = syncPlaying()
+
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (playbackState == Player.STATE_ENDED) finish(failed = false)
         }
@@ -71,6 +78,7 @@ class Media3SantaVoicePlayer(context: Context) : SantaVoicePlayer {
 
     override fun release() {
         onFinish = null
+        onStateChanged = null
         isPlaying = false
         player?.removeListener(listener)
         player?.release()
@@ -86,6 +94,16 @@ class Media3SantaVoicePlayer(context: Context) : SantaVoicePlayer {
             )
             it.addListener(listener)
         }
+
+    /** [isPlaying] suit la pause du lecteur tant qu'une réplique est en cours. */
+    private fun syncPlaying() {
+        val exo = player ?: return
+        if (onFinish == null) return
+        val playing = exo.playWhenReady && exo.playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_NONE
+        if (playing == isPlaying) return
+        isPlaying = playing
+        onStateChanged?.invoke()
+    }
 
     private fun finish(failed: Boolean) {
         val callback = onFinish ?: return
