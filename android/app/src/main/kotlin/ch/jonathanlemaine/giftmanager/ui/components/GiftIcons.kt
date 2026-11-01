@@ -1,14 +1,17 @@
 package ch.jonathanlemaine.giftmanager.ui.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -47,6 +50,9 @@ object GiftIcons {
     val Checkmark: ImageVector get() = Icons.Filled.Check
     /** Flèche « valider et continuer » (`arrow.right`), inversée en droite-à-gauche. */
     val ArrowForward: ImageVector get() = Icons.AutoMirrored.Filled.ArrowForward
+    val Back: ImageVector get() = Icons.AutoMirrored.Filled.ArrowBack
+    val Close: ImageVector get() = Icons.Filled.Close
+    val AddCircle: ImageVector get() = Icons.Filled.AddCircle
     val DropDown: ImageVector get() = Icons.Filled.ArrowDropDown
     val Home: ImageVector get() = Icons.Filled.Home
     val Person: ImageVector get() = Icons.Filled.Person
@@ -76,4 +82,5 @@ object GiftIcons {
     val Key: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_key)
     val Code: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_tag)
     val Money: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_payments)
+    val Hourglass: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_hourglass)
 }

@@ -16,11 +16,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
@@ -127,3 +133,22 @@ internal fun androidx.compose.ui.text.TextStyle.glyphSize(factor: Float = 1.15f)
 @androidx.compose.runtime.Composable
 internal fun Dp.scaledByFont(maxFactor: Float = 1.5f): Dp =
     this * androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceIn(1f, maxFactor)
+
+/**
+ * Désature le rendu de l'élément (`.grayscale(0.7)` d'iOS) : archives, événements passés. Le texte reste à
+ * pleine opacité — une opacité réduite casserait le contraste AA. [saturation] 0 = gris, 1 = intact.
+ * Dessine dans un calque, ombre de carte comprise ; toutes versions d'Android.
+ */
+fun Modifier.fcDesaturated(saturation: Float = 0.3f): Modifier = drawWithCache {
+    val paint = Paint().apply { colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(saturation) }) }
+    // Le calque déborde un peu pour garder l'ombre portée de `fcCard`.
+    val bleed = 12.dp.toPx()
+    val bounds = Rect(-bleed, -bleed, size.width + bleed, size.height + bleed)
+    onDrawWithContent {
+        drawIntoCanvas { canvas ->
+            canvas.saveLayer(bounds, paint)
+            drawContent()
+            canvas.restore()
+        }
+    }
+}
