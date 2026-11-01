@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -164,9 +165,9 @@ private fun changeTexts(trend: PriceTrend): ChangeTexts {
 
 private val frenchLocale: Locale = Locale.Builder().setLanguage("fr").setRegion("FR").build()
 
-/** « 26 oct. » dans le fuseau du téléphone. */
+/** « 26 oct. » dans le fuseau du téléphone, insécable : le jour ne se sépare pas du mois en grande police. */
 private fun dayText(date: Instant): String =
-    DateTimeFormatter.ofPattern("d MMM", frenchLocale).withZone(ZoneId.systemDefault()).format(date)
+    DateTimeFormatter.ofPattern("d MMM", frenchLocale).withZone(ZoneId.systemDefault()).format(date).replace(' ', '\u00A0')
 
 /**
  * Mini-courbe à paliers (`.interpolationMethod(.stepEnd)` d'iOS) : chaque prix tient jusqu'au relevé suivant. Ni axes
@@ -225,15 +226,21 @@ private fun OutOfStockPill() {
     )
 }
 
-/** Icône + texte (`Label` d'iOS) : l'icône suit la taille du texte. */
+/**
+ * Icône + texte (`Label` d'iOS) : l'icône suit la taille du texte et reste centrée sur la première ligne quand le
+ * texte passe à la ligne (grande police).
+ */
 @Composable
 private fun IconLabel(icon: ImageVector, text: String, style: TextStyle, color: Color, modifier: Modifier = Modifier) {
+    val firstLine = with(LocalDensity.current) { style.lineHeight.toDp() }
     Row(
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(GiftTheme.spacing.xs + 2.dp),
         modifier = modifier,
     ) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(style.glyphSize()))
+        Box(Modifier.height(firstLine), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(style.glyphSize()))
+        }
         Text(text, style = style, color = color)
     }
 }
