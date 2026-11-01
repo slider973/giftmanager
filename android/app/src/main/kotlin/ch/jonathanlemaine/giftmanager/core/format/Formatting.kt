@@ -22,40 +22,6 @@ object Formatting {
         }
 }
 
-/** Pays proposés dans les sélecteurs (Suisse et France en tête). */
-object Countries {
-    data class Country(val code: String, val name: String) {
-        val id: String get() = code
-
-        /** Drapeau en emoji : deux indicateurs régionaux. */
-        val flag: String
-            get() = code.map { String(Character.toChars(REGIONAL_INDICATOR_OFFSET + it.code)) }.joinToString("")
-    }
-
-    private const val REGIONAL_INDICATOR_OFFSET = 127_397
-
-    val all: List<Country> = listOf(
-        Country("CH", "Suisse"),
-        Country("FR", "France"),
-        Country("BE", "Belgique"),
-        Country("LU", "Luxembourg"),
-        Country("DE", "Allemagne"),
-        Country("AT", "Autriche"),
-        Country("IT", "Italie"),
-        Country("ES", "Espagne"),
-        Country("PT", "Portugal"),
-        Country("NL", "Pays-Bas"),
-        Country("GB", "Royaume-Uni"),
-        Country("IE", "Irlande"),
-        Country("US", "États-Unis"),
-        Country("CA", "Canada"),
-    )
-
-    val currencies: List<String> = listOf("CHF", "EUR", "GBP", "USD", "CAD")
-
-    fun name(code: String?): String = all.firstOrNull { it.code == code }?.name ?: (code ?: "—")
-}
-
 /** Couleurs d'avatar proposées pour les enfants (noms des tokens pastel du design system). */
 object AvatarPalette {
     val colors: List<String> = listOf("pastelPink", "pastelMint", "pastelBlue", "pastelPeach", "pastelLavender")
