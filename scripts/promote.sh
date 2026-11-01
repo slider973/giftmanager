@@ -7,7 +7,7 @@
 #
 # GitLab Flow : `main` est la ligne de développement, `production` suit ce qui tourne
 # réellement chez les utilisateurs. On ne promeut qu'une version déjà publiée sur
-# TestFlight **et** validée à l'usage — c'est elle qui sert de point de retour si une
+# TestFlight (iOS) et Google Play (Android, test interne) **et** validée à l'usage — c'est elle qui sert de point de retour si une
 # version suivante casse quelque chose.
 set -euo pipefail
 

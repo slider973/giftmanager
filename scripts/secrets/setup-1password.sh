@@ -50,3 +50,13 @@ create cron --category Password --generate-password='letters,digits,40' \
 create github --category "API Credential" \
   "project_token[concealed]=$P" \
   "notesPlain=PAT classique scopes repo + project, utilisé par la GitHub Action project-sync."
+
+# Le fichier keystore ne peut pas être créé ici (il n'existe pas encore) : l'attacher avec
+#   op item edit android-upload --vault giftmanager "keystore[file]=/chemin/upload.jks"
+create android-upload --category "API Credential" \
+  "keystore_password[concealed]=$P" "key_alias[text]=$P" "key_password[concealed]=$P" "sha1[text]=$P" \
+  "notesPlain=Clé d'UPLOAD Google Play (distincte de la clé de signature, gérée par Google avec Play App Signing). Fichier keystore (.jks) à attacher au champ keystore (docs/SECRETS.md). sha1 = empreinte de la clé d'upload. Perte de la clé : réinitialisation possible via le support Play."
+
+create google-play --category "API Credential" \
+  "service_account_json[concealed]=$P" "package_name[text]=ch.jonathanlemaine.giftmanager" \
+  "notesPlain=Compte de service Google Cloud autorisé dans la Play Console (publication sur la piste de test interne). service_account_json = contenu du fichier JSON de clé du compte de service."
