@@ -1,12 +1,16 @@
 package ch.jonathanlemaine.giftmanager.ui.family
 
+import ch.jonathanlemaine.giftmanager.core.Fixtures
 import ch.jonathanlemaine.giftmanager.core.error.GiftError
+import ch.jonathanlemaine.giftmanager.core.model.GiftEventKind
 import ch.jonathanlemaine.giftmanager.core.model.HouseholdMember
 import ch.jonathanlemaine.giftmanager.core.session.SessionFixture
 import ch.jonathanlemaine.giftmanager.core.session.SessionPhase
 import ch.jonathanlemaine.giftmanager.core.session.group
 import ch.jonathanlemaine.giftmanager.core.session.household
 import ch.jonathanlemaine.giftmanager.core.session.profile
+import ch.jonathanlemaine.giftmanager.core.session.testChild
+import ch.jonathanlemaine.giftmanager.core.session.testEvent
 import ch.jonathanlemaine.giftmanager.core.session.uuid
 import ch.jonathanlemaine.giftmanager.data.auth.AuthState
 import java.io.IOException
@@ -162,4 +166,49 @@ class FamilyHomeViewModelTest {
         assertFalse(vm.uiState.value.isRefreshing)
         assertEquals(GiftError.Network, vm.uiState.value.error)
     }
+
+    // region Enfants et événements (#72)
+
+    @Test fun householdsCarryTheirChildrenThenAdults() = runTest {
+        val f = fixture {
+            seedReady(1)
+            childRepo.all += listOf(testChild(1, name = "Moi", adult = true), testChild(2, name = "Léa"), testChild(3, householdN = 2))
+        }
+        val items = FamilyHomeViewModel(f.session, Fixtures.clock).uiState.value.households
+        assertEquals(listOf("Léa", "Moi"), items.single { it.isMine }.children.map { it.firstName })
+    }
+
+    @Test fun eventsAreSplitIntoUpcomingAndPast() = runTest {
+        val f = fixture {
+            seedReady(1)
+            eventRepo.all += listOf(testEvent(1, "2026-12-25", kind = GiftEventKind.CHRISTMAS), testEvent(2, "2026-10-01"), testEvent(3, "2026-11-01"))
+        }
+        val s = FamilyHomeViewModel(f.session, Fixtures.clock).uiState.value
+        assertEquals(listOf("Événement 3", "Événement 1"), s.upcomingEvents.map { it.event.title })
+        assertEquals(listOf("Événement 2"), s.pastEvents.map { it.event.title })
+        assertEquals(uuid(501), s.currentEventId)
+    }
+
+    @Test fun eventRowCarriesCountdownAgeAndEditRight() = runTest {
+        val zoe = testChild(1, householdN = 2, name = "Zoé", birthdate = "2018-11-10")
+        val f = fixture {
+            seedReady(1)
+            childRepo.all += zoe
+            eventRepo.all += listOf(
+                testEvent(1, "2026-11-10", kind = GiftEventKind.BIRTHDAY, childId = zoe.id),
+                testEvent(2, "2026-11-20"),
+            )
+        }
+        val s = FamilyHomeViewModel(f.session, Fixtures.clock).uiState.value
+        val birthday = s.upcomingEvents.first { it.event.kind == GiftEventKind.BIRTHDAY }
+        assertEquals(8, birthday.age)
+        assertEquals(26, birthday.daysRemaining)
+        assertEquals(listOf("Zoé"), birthday.avatarNames)
+        assertFalse(birthday.canEdit)
+        val other = s.upcomingEvents.first { it.event.kind == GiftEventKind.OTHER }
+        assertTrue(other.canEdit)
+        assertNull(other.age)
+    }
+
+    // endregion
 }

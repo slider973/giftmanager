@@ -1,6 +1,8 @@
 package ch.jonathanlemaine.giftmanager.core.session
 
+import ch.jonathanlemaine.giftmanager.core.model.Child
 import ch.jonathanlemaine.giftmanager.core.model.FamilyGroup
+import ch.jonathanlemaine.giftmanager.core.model.GiftEvent
 import ch.jonathanlemaine.giftmanager.core.model.Household
 import ch.jonathanlemaine.giftmanager.core.model.HouseholdGroup
 import ch.jonathanlemaine.giftmanager.core.model.HouseholdMember
@@ -11,8 +13,8 @@ import java.util.UUID
 enum class SessionPhase { Launching, SignedOut, NeedsProfile, NeedsGroup, Ready }
 
 /**
- * Données de référence de l'utilisateur connecté : profil, familles et foyers.
- * #72 y ajoutera les enfants et les événements ; les dérivés ci-dessous n'en dépendent pas.
+ * Données de référence de l'utilisateur connecté : profil, familles, foyers, enfants et événements.
+ * Les lectures dérivées des enfants et des événements sont dans `SessionSelectors.kt`.
  */
 data class SessionState(
     val phase: SessionPhase = SessionPhase.Launching,
@@ -26,6 +28,10 @@ data class SessionState(
     val householdGroups: List<HouseholdGroup> = emptyList(),
     /** Membres de la famille courante. */
     val members: List<Profile> = emptyList(),
+    /** Enfants et listes d'adultes visibles dans la famille courante, sans doublon. */
+    val children: List<Child> = emptyList(),
+    /** Événements visibles (Noël, anniversaires, fêtes de la famille), triés par date. */
+    val events: List<GiftEvent> = emptyList(),
     /** Le chargement initial a échoué alors qu'une session existe : [phase] reste `SignedOut`, on peut réessayer. */
     val loadFailed: Boolean = false,
 ) {

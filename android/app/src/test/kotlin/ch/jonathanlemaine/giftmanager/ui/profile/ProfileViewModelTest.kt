@@ -139,7 +139,7 @@ class ProfileViewModelTest {
             }
         }
         val session = ch.jonathanlemaine.giftmanager.core.session.AppSession(
-            s.f.authRepo, slow, s.f.families, s.f.households, s.f.store, backgroundScope,
+            s.f.authRepo, slow, s.f.families, s.f.households, s.f.childRepo, s.f.eventRepo, s.f.store, backgroundScope,
         )
         session.start()
         runCurrent()

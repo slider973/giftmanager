@@ -286,7 +286,8 @@ class AppSessionTest {
     @Test fun birthdayHookFailureDoesNotBlock() = runTest {
         val f = SessionFixture(backgroundScope, AuthState.SignedIn(me))
         f.seedReady()
-        val s = AppSession(f.authRepo, f.profiles, f.families, f.households, f.store, backgroundScope) { error("boom") }
+        f.eventRepo.ensureFailure = IOException("boom")
+        val s = f.session
         s.start()
         runCurrent()
         assertEquals(SessionPhase.Ready, s.state.value.phase)
@@ -309,4 +310,77 @@ class AppSessionTest {
         assertNotNull(f.session.state.value.userId)
         assertNull(f.session.pendingInviteCode.value)
     }
+
+    // region Enfants et événements (#72)
+
+    @Test fun loadsChildrenAndEventsOfTheGroup() = runTest {
+        val f = started {
+            seedReady()
+            childRepo.all += listOf(testChild(1), testChild(2, householdN = 2))
+            eventRepo.all += testEvent(1, "2026-12-25")
+        }
+        val s = f.session.state.value
+        assertEquals(listOf(testChild(1), testChild(2, householdN = 2)), s.children)
+        assertEquals(listOf(testEvent(1, "2026-12-25")), s.events)
+    }
+
+    @Test fun duplicateChildrenFromSeveralSharesAreMerged() = runTest {
+        val f = started { seedReady(); childRepo.all += listOf(testChild(1), testChild(1), testChild(2)) }
+        assertEquals(listOf(uuid(401), uuid(402)), f.session.state.value.children.map { it.id })
+    }
+
+    @Test fun birthdayEventsAreEnsuredBeforeEachGroupLoad() = runTest {
+        val f = started()
+        assertEquals(1, f.eventRepo.ensureCalls)
+        f.session.refreshGroupData()
+        assertEquals(2, f.eventRepo.ensureCalls)
+        f.session.reloadGroup()
+        assertEquals(3, f.eventRepo.ensureCalls)
+    }
+
+    @Test fun ensureBirthdayEventsFailureIsIgnored() = runTest {
+        val f = started { seedReady(); eventRepo.ensureFailure = IOException("boom"); childRepo.all += testChild(1) }
+        assertEquals(SessionPhase.Ready, f.session.state.value.phase)
+        assertEquals(1, f.session.state.value.children.size)
+    }
+
+    @Test fun reloadGroupPicksUpChangesWithoutReloadingTheProfile() = runTest {
+        val f = started()
+        val profileCalls = f.profiles.myProfileCalls
+        f.childRepo.all += testChild(3)
+        f.eventRepo.all += testEvent(2, "2026-11-11")
+        assertTrue(f.session.reloadGroup().isSuccess)
+        assertEquals(1, f.session.state.value.children.size)
+        assertEquals(1, f.session.state.value.events.size)
+        assertEquals(profileCalls, f.profiles.myProfileCalls)
+    }
+
+    @Test fun childrenLoadFailureFailsTheGroupReload() = runTest {
+        val f = started()
+        f.childRepo.failure = IOException("réseau")
+        assertTrue(f.session.reloadGroup().isFailure)
+    }
+
+    @Test fun signOutClearsChildrenAndEvents() = runTest {
+        val f = started { seedReady(); childRepo.all += testChild(1); eventRepo.all += testEvent(1, "2026-12-25") }
+        f.session.signOut()
+        assertTrue(f.session.state.value.children.isEmpty())
+        assertTrue(f.session.state.value.events.isEmpty())
+    }
+
+    @Test fun switchingGroupReplacesChildren() = runTest {
+        val f = started { seedReady(1, 2) }
+        f.childRepo.all += testChild(7)
+        f.session.selectGroup(group(2))
+        assertEquals(listOf(testChild(7)), f.session.state.value.children)
+    }
+
+    @Test fun itemsChangedBumpsTheRevision() = runTest {
+        val f = started()
+        val before = f.session.itemsRevision.value
+        f.session.itemsChanged()
+        assertEquals(before + 1, f.session.itemsRevision.value)
+    }
+
+    // endregion
 }
