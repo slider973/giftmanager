@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -52,6 +53,8 @@ private const val DURATION = 2.2f
 private const val REDUCED_MILLIS = 800L
 /** Instant montré figé avec animations réduites : cadeau posé, encore fermé. */
 private const val RESTING_TIME = 0.45f
+/** Instant montré dans l'aperçu Android Studio : couvercle envolé, confettis en l'air. */
+private const val PREVIEW_TIME = 1.5f
 
 private const val APPEAR_END = 0.45f
 private const val WIGGLE_END = 0.95f
@@ -72,11 +75,22 @@ private const val LIFT_END = 1.35f
 @Composable
 fun GiftOpeningSplash(onFinished: () -> Unit, modifier: Modifier = Modifier, size: Dp = 150.dp) {
     val reduceMotion = GiftTheme.reduceMotion
+    // Aperçu Android Studio : image figée, cadeau ouvert (à t = 0, rien n'est encore visible).
+    val inPreview = LocalInspectionMode.current
     val finish by rememberUpdatedState(onFinished)
-    val elapsed = remember { mutableFloatStateOf(if (reduceMotion) RESTING_TIME else 0f) }
+    val elapsed = remember {
+        mutableFloatStateOf(
+            when {
+                inPreview -> PREVIEW_TIME
+                reduceMotion -> RESTING_TIME
+                else -> 0f
+            },
+        )
+    }
     val appName = stringResource(R.string.app_name)
 
     LaunchedEffect(Unit) {
+        if (inPreview) return@LaunchedEffect
         if (reduceMotion) {
             delay(REDUCED_MILLIS)
         } else {
