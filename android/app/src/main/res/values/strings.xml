@@ -191,6 +191,10 @@
     <string name="family_invite_code_a11y">Code d\'invitation %1$s</string>
     <string name="family_rename">Renommer</string>
     <string name="family_my_groups">Mes familles</string>
+    <string name="family_leave">Quitter « %1$s »</string>
+    <string name="family_leave_title">Quitter « %1$s » ?</string>
+    <string name="family_leave_message">Elle disparaîtra de tes familles et ne verra plus tes enfants ni leurs listes. Ton foyer et tes réservations sont conservés. Pour revenir, il faudra de nouveau son code.</string>
+    <string name="family_leave_confirm">Quitter</string>
     <string name="family_join_other">Rejoindre une autre famille avec un code</string>
     <string name="family_join_dialog_code">Code</string>
 

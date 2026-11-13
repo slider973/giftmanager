@@ -471,6 +471,9 @@ private fun FamilyHomeRoute(
             onRenameChange = viewModel::onRenameChange,
             onRename = viewModel::rename,
             onSelectGroup = viewModel::selectGroup,
+            onRequestLeave = viewModel::requestLeave,
+            onConfirmLeave = viewModel::confirmLeave,
+            onCancelLeave = viewModel::cancelLeave,
             onShareText = { text ->
                 val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
                 context.startActivity(Intent.createChooser(send, null))

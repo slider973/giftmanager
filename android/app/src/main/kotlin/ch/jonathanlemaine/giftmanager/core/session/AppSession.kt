@@ -284,6 +284,18 @@ class AppSession(
         refreshAll().getOrThrow()
     }
 
+    /**
+     * Quitte une famille (#121) : mon foyer n'y est plus partagé (ses enfants n'y apparaissent plus), puis je
+     * n'en suis plus membre. Si c'était la famille affichée, le rechargement bascule sur la première restante.
+     */
+    suspend fun leaveGroup(group: FamilyGroup): Result<Unit> = runCatchingCancellable {
+        val userId = _state.value.userId ?: error("Non connecté")
+        // Foyer absent ou déjà retiré de cette famille : rien à retirer, on quitte quand même.
+        runCatchingCancellable { householdRepo.unshareHousehold(group.id) }
+        familyRepo.leaveGroup(group.id, userId)
+        refreshAll().getOrThrow()
+    }
+
     suspend fun unshareHousehold(group: FamilyGroup): Result<Unit> = runCatchingCancellable {
         householdRepo.unshareHousehold(group.id)
         refreshAll().getOrThrow()

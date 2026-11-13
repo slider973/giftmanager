@@ -132,6 +132,12 @@ class FakeFamilyRepository : FamilyRepository {
         return g.id
     }
 
+    override suspend fun leaveGroup(groupId: UUID, userId: UUID) {
+        failure?.let { throw it }
+        members[groupId]?.remove(userId)
+        if (userId == me) groups.removeAll { it.id == groupId }
+    }
+
     override suspend fun renameGroup(groupId: UUID, name: String) {
         failure?.let { throw it }
         renamed = groupId to name

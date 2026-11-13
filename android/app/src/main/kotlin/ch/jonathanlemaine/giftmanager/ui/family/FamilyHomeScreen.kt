@@ -141,6 +141,10 @@ data class FamilyHomeActions(
     val onAddAdult: () -> Unit = {},
     /** Ouvre les idées en attente de mon verdict (bandeau « N idées attendent ton avis »). */
     val onOpenPendingIdeas: () -> Unit = {},
+    /** « Quitter cette famille » (#121) : demande, confirmation, annulation. */
+    val onRequestLeave: () -> Unit = {},
+    val onConfirmLeave: () -> Unit = {},
+    val onCancelLeave: () -> Unit = {},
 )
 
 private const val TAB_EVENTS = 0
@@ -209,6 +213,17 @@ fun FamilyHomeScreen(state: FamilyHomeUiState, actions: FamilyHomeActions, modif
     }
 
     if (state.showJoinDialog) JoinOtherGroupDialog(state, actions)
+    state.leaving?.let { group ->
+        GiftAlertDialog(
+            title = stringResource(R.string.family_leave_title, group.name),
+            message = stringResource(R.string.family_leave_message),
+            confirmLabel = stringResource(R.string.family_leave_confirm),
+            onConfirm = actions.onConfirmLeave,
+            onDismiss = actions.onCancelLeave,
+            dismissLabel = stringResource(R.string.cancel),
+            destructive = true,
+        )
+    }
     GiftErrorDialog(state.error, actions.onDismissError)
 }
 
@@ -564,6 +579,9 @@ private fun SettingsTab(state: FamilyHomeUiState, actions: FamilyHomeActions) {
         state.rename?.let { RenameCard(it, isBusy = state.isBusy, actions = actions) }
     }
     if (state.groups.size > 1) MyGroupsCard(state.groups, currentId = group?.id, onSelect = actions.onSelectGroup)
+    if (group != null && state.canLeave) {
+        LeaveGroupButton(group.name, enabled = !state.isBusy, onClick = actions.onRequestLeave)
+    }
     TextLinkButton(
         text = stringResource(R.string.family_join_other),
         onClick = actions.onShowJoinDialog,
@@ -629,6 +647,24 @@ private fun RenameCard(rename: RenameGroupState, isBusy: Boolean, actions: Famil
                 isLoading = isBusy,
             )
         }
+    }
+}
+
+/** « Quitter « … » » (#121) : lien texte `takenFg` (destructif), cible 48 dp ; confirmation avant d'agir. */
+@Composable
+private fun LeaveGroupButton(name: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .fcClickable(onClick = onClick, enabled = enabled, shape = GiftTheme.radius.fieldShape, pressedScale = 1f)
+            .heightIn(min = HitTarget.minimum),
+    ) {
+        Text(
+            text = stringResource(R.string.family_leave, name),
+            style = GiftTheme.type.callout.copy(fontWeight = FontWeight.Medium),
+            color = GiftTheme.colors.takenFg,
+        )
     }
 }
 
