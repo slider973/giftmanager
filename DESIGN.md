@@ -226,6 +226,7 @@ Un fichier par composant dans `ui/components/`, chacun avec `modifier: Modifier 
 | `FCTextField(title:text:systemImage:prompt:isTitleHidden:)` | `FCTextField(label, value, onValueChange, leadingIcon, placeholder, isLabelHidden, keyboardOptions)` | Libellé dans la décoration du champ (lu avec la valeur) |
 | `ApproxPriceText(text:)` / `IndicativeRateNote(rateDateText:)` | idem | |
 | `GiftLoadingView(size:label:)` | `GiftLoadingView(size, label)` | Port fidèle : une seule `rememberInfiniteTransition`, valeurs lues au dessin ; figée (paquet droit, étincelles visibles) si animations réduites ; région live « Chargement en cours » |
+| `GiftOpeningSplash(size:onFinished:)` | `GiftOpeningSplash(onFinished, modifier, size)` | Port fidèle : une seule horloge `withFrameNanos`, scène dessinée dans un `Canvas` (aucune recomposition par image) ; posé par `AppNavHost` au-dessus de la destination, fondu de sortie 350 ms, joué une fois (`rememberSaveable`, survit à la rotation). Titre = `app_name`. Animations réduites : cadeau fermé immobile 0,8 s |
 
 **Icônes** : `GiftIcons` — `material-icons-core` (cœur, plus, chevron, retour, fermer, recherche, cadenas, partage, alerte) et vector drawables Material (`res/drawable/ic_*.xml` : cadeau, sac, globe, lien externe, groupe, œil barré, archive, lien, erreur, bouclier, effacer, sablier). Pas d'`icons-extended`.
 
