@@ -39,11 +39,30 @@ fun SessionState.child(id: UUID?): Child? = id?.let { wanted -> children.firstOr
 
 fun SessionState.event(id: UUID?): GiftEvent? = id?.let { wanted -> events.firstOrNull { it.id == wanted } }
 
+/**
+ * Événements de la famille courante. [SessionState.events] contient tout ce que le compte peut voir, toutes
+ * familles confondues (la base ne filtre que par droit de lecture, #60) : Noël est global, un anniversaire
+ * suit son enfant, une fête de famille appartient à sa famille. Sans ce tri, changer de famille ne changeait
+ * pas la liste (#115). Sans famille courante, rien n'est écarté.
+ */
+val SessionState.groupEvents: List<GiftEvent>
+    get() {
+        val group = currentGroup ?: return events
+        val childIds = children.mapTo(HashSet()) { it.id }
+        return events.filter { event ->
+            when (event.kind) {
+                GiftEventKind.CHRISTMAS -> true
+                GiftEventKind.BIRTHDAY -> event.childId in childIds
+                GiftEventKind.OTHER -> event.groupId == group.id
+            }
+        }
+    }
+
 fun SessionState.upcomingEvents(clock: Clock = Clock.systemDefaultZone()): List<GiftEvent> =
-    events.filter { !it.isPast(clock) }.sortedBy { it.eventDate }
+    groupEvents.filter { !it.isPast(clock) }.sortedBy { it.eventDate }
 
 fun SessionState.pastEvents(clock: Clock = Clock.systemDefaultZone()): List<GiftEvent> =
-    events.filter { it.isPast(clock) }.sortedByDescending { it.eventDate }
+    groupEvents.filter { it.isPast(clock) }.sortedByDescending { it.eventDate }
 
 /** Événement « courant » : le prochain Noël, sinon le prochain événement. */
 fun SessionState.currentEvent(clock: Clock = Clock.systemDefaultZone()): GiftEvent? {

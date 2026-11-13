@@ -76,6 +76,25 @@ class SessionSelectorsTest {
         assertEquals(listOf(past, older), withEvents.pastEvents(clock))
     }
 
+    // #115 : la session voit les événements de toutes mes familles ; seuls ceux de la famille courante s'affichent.
+    @Test fun eventsFollowTheCurrentGroup() {
+        val party1 = testEvent(6, "2026-11-10", groupId = group(1).id)
+        val party2 = testEvent(7, "2026-11-11", groupId = group(2).id)
+        val leaBirthday = testEvent(8, "2026-11-12", kind = GiftEventKind.BIRTHDAY, childId = lea.id)
+        val strangerBirthday = testEvent(9, "2026-11-13", kind = GiftEventKind.BIRTHDAY, childId = uuid(999))
+        val oldParty2 = testEvent(10, "2026-09-01", groupId = group(2).id)
+        val all = state.copy(events = listOf(party1, party2, leaBirthday, strangerBirthday, christmas, oldParty2))
+
+        val inGroup1 = all.copy(currentGroup = group(1))
+        assertEquals(listOf(party1, leaBirthday, christmas), inGroup1.upcomingEvents(clock))
+        assertTrue(inGroup1.pastEvents(clock).isEmpty())
+
+        // Autre famille, autres listes : la fête et l'anniversaire de la première disparaissent.
+        val inGroup2 = all.copy(currentGroup = group(2), children = listOf(zoe))
+        assertEquals(listOf(party2, christmas), inGroup2.upcomingEvents(clock))
+        assertEquals(listOf(oldParty2), inGroup2.pastEvents(clock))
+    }
+
     @Test fun currentEventIsNextChristmasElseNextEvent() {
         assertEquals(christmas, withEvents.currentEvent(clock))
         assertEquals(today, withEvents.copy(events = listOf(soon, today)).currentEvent(clock))

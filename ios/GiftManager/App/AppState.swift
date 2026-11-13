@@ -401,12 +401,19 @@ final class AppState {
         return members.filter { !$0.isAdult } + members.filter(\.isAdult)
     }
 
+    /// Événements de la famille courante. `events` contient tout ce que le compte peut voir, toutes
+    /// familles confondues (la base ne filtre que par droit de lecture, #60). Sans ce tri, changer de
+    /// famille ne changeait pas la liste (#115).
+    var groupEvents: [GiftEvent] {
+        GiftEvent.scoped(events, toGroup: currentGroup?.id, children: children)
+    }
+
     var upcomingEvents: [GiftEvent] {
-        events.filter { !$0.isPast }.sorted { $0.eventDate < $1.eventDate }
+        groupEvents.filter { !$0.isPast }.sorted { $0.eventDate < $1.eventDate }
     }
 
     var pastEvents: [GiftEvent] {
-        events.filter(\.isPast).sorted { $0.eventDate > $1.eventDate }
+        groupEvents.filter(\.isPast).sorted { $0.eventDate > $1.eventDate }
     }
 
     /// Événement « courant » : le prochain Noël, sinon le prochain événement.
