@@ -2,6 +2,8 @@
 #
 # Déclenchement (GitLab Flow), le même tag que iOS :
 #   - automatique sur tag `v*` (posé par scripts/release.sh), en parallèle de ios-release.yml ;
+#   - automatique quand une fusion modifie `android/VERSION` sur main (#113) : Android seul, publié
+#     avec ce versionName — le chemin utilisable depuis une session qui ne peut que fusionner une PR ;
 #   - manuel (gh workflow run android-release.yml -f publish=false) pour rejouer un build :
 #     sans `publish=true`, l'AAB est construit et gardé en artefact mais rien n'est envoyé à Play.
 #
@@ -13,6 +15,8 @@ name: Android release (Google Play)
 on:
   push:
     tags: ["v*"]
+    branches: [main]
+    paths: ["android/VERSION"]
   workflow_dispatch:
     inputs:
       publish:
@@ -54,7 +58,8 @@ jobs:
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
           echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
 
-      # Tag `v1.1.0` → 1.1.0 ; lancement manuel → input `version`, sinon 0.0.0-<sha court>.
+      # Tag `v1.1.0` → 1.1.0 ; push sur main → android/VERSION ; lancement manuel → input `version`,
+      # sinon 0.0.0-<sha court>.
       - name: Version
         id: version
         env:
@@ -62,6 +67,10 @@ jobs:
         run: |
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             name="${GITHUB_REF#refs/tags/v}"
+          elif [ "${GITHUB_EVENT_NAME}" = push ]; then
+            name="$(tr -d '[:space:]' < android/VERSION)"
+            [[ "$name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+              || { echo "::error::android/VERSION invalide : « $name » (attendu X.Y.Z)"; exit 1; }
           elif [ -n "$INPUT_VERSION" ]; then
             name="$INPUT_VERSION"
           else
@@ -101,7 +110,7 @@ jobs:
       # première version de test interne publiée, passer `status` à `completed` pour que chaque
       # tag soit directement disponible aux testeurs.
       - name: Envoi sur la piste de test interne
-        if: startsWith(github.ref, 'refs/tags/v') || inputs.publish == true
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || inputs.publish == true
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
@@ -114,4 +123,4 @@ jobs:
         env:
           VERSION_NAME: ${{ steps.version.outputs.name }}
           VERSION_CODE: ${{ steps.version.outputs.code }}
-        run: echo "AAB $VERSION_NAME (versionCode $VERSION_CODE), publication Play = ${{ startsWith(github.ref, 'refs/tags/v') || inputs.publish == true }}" >> "$GITHUB_STEP_SUMMARY"
+        run: echo "AAB $VERSION_NAME (versionCode $VERSION_CODE), publication Play = ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || inputs.publish == true }}" >> "$GITHUB_STEP_SUMMARY"
