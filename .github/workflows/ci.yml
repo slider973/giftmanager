@@ -57,6 +57,11 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: latest
+      # Les ports du projet (55420-55429, supabase/config.toml) tombent dans la plage éphémère de
+      # Linux (32768-60999) : une connexion sortante (téléchargements Docker) peut en prendre un juste
+      # avant que la base ne s'y lie — « address already in use » (#110). On borne la plage en dessous.
+      - name: Ports Supabase hors de la plage éphémère
+        run: sudo sysctl -w net.ipv4.ip_local_port_range="32768 54999"
       - run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit
       - run: supabase db lint --fail-on error
       - run: supabase test db

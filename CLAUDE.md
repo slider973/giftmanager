@@ -68,6 +68,23 @@ Rejouer un build sans créer de version : `gh workflow run ios-release.yml` (iOS
 - Les changements de statut passent **uniquement** par `scripts/ticket-status.sh <N> "<Statut>"`.
 - Le design UI passe par l'agent `ui-designer`, qui utilise les skills `impeccable` et `ui-ux-pro-max`.
 
+## Mémoire partagée (people-knowledge)
+
+La mémoire de Jonathan vit dans le dépôt privé `slider973/people-knowledge` ; Gift Manager y a son
+tableau de bord `projets/giftmanager/giftmanager.md`. **Elle se met à jour au moment du travail, pas
+en fin de session** — dans le même mouvement que :
+
+- une PR ouverte, fusionnée ou fermée ;
+- une étiquette de version (`release.sh`) ou une promotion (`promote.sh`) ;
+- une décision prise, ou une affirmation de la fiche qui se révèle fausse.
+
+Procédure : lire puis suivre `skills/people-knowledge/SKILL.md` de ce dépôt (versions et numéros de PR
+exacts, ligne datée dans l'historique du tableau de bord, entrée dans `log.md`, `check.py` → `OK`,
+commit puis `git pull --rebase && git push` sur sa branche `main`). Tableau de bord < 60 lignes.
+
+Si le dépôt n'est pas dans la session, l'ajouter (`add_repo` dans le cloud, sinon `git clone`) ; si
+c'est impossible, le dire à Jonathan à la fin de la tâche, avec ce qu'il faudrait écrire.
+
 ## Secrets
 
 - Tous les identifiants sont dans 1Password, coffre `giftmanager` (voir `docs/SECRETS.md`).

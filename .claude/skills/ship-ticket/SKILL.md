@@ -29,9 +29,15 @@ Donne-lui le ticket et les rapports d'implémentation.
 ## 5. PR — `pr-manager`
 Uniquement après `APPROVE`. Il pousse, crée la PR avec `Closes #N`, puis passe le ticket en **Done**.
 
+## 6. Mémoire — people-knowledge
+Dès la PR ouverte (et de nouveau à sa fusion ou fermeture), mets à jour `projets/giftmanager/giftmanager.md`
+dans `slider973/people-knowledge` en suivant son `skills/people-knowledge/SKILL.md` : voir la section
+« Mémoire partagée » de `CLAUDE.md`. Ne délègue pas cette étape : elle demande le contexte de tout le ticket.
+
 ## Rapport final à l'utilisateur
 - Ticket et statut sur le board
 - URL de la PR
 - Résumé des changements (logique + design)
 - Résultat de la review et des tests
+- Mémoire people-knowledge : commit poussé, ou pourquoi elle n'a pas pu être mise à jour
 - Tout ce qui a échoué ou a été sauté
