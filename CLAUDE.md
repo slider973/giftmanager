@@ -59,6 +59,10 @@ Rejouer un build sans créer de version : `gh workflow run ios-release.yml` (iOS
 `gh workflow run android-release.yml -f publish=false` (Android : construit l'AAB sans l'envoyer ;
 `-f publish=true` l'envoie sur la piste de test interne). Suivi : `gh run list --workflow=android-release.yml --limit 1`.
 
+APK Android à installer directement, sans Google Play (testeurs comme Marina) : `android-apk.yml`
+construit un APK release signé à chaque PR ou push sur `main` qui touche `android/`, gardé 14 jours en
+artefact (`gh run download -n giftmanager-<version>.apk`). Ce n'est pas une version : rien n'est publié.
+
 ## Conventions
 
 - Branches : `<type>/<N>-<slug>` (`feat`, `fix`, `chore`, `docs`, `design`), toujours depuis `main`.
