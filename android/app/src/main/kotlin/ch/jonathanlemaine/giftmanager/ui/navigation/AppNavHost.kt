@@ -1,5 +1,9 @@
 package ch.jonathanlemaine.giftmanager.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -14,6 +18,10 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -26,6 +34,7 @@ import ch.jonathanlemaine.giftmanager.ui.auth.SignInViewModel
 import ch.jonathanlemaine.giftmanager.ui.common.ScreenPreviewFrame
 import ch.jonathanlemaine.giftmanager.ui.components.EmptyStateView
 import ch.jonathanlemaine.giftmanager.ui.components.GiftLoadingView
+import ch.jonathanlemaine.giftmanager.ui.components.GiftOpeningSplash
 import ch.jonathanlemaine.giftmanager.ui.components.GiftPreviews
 import ch.jonathanlemaine.giftmanager.ui.components.Illustration
 import ch.jonathanlemaine.giftmanager.ui.components.TextLinkButton
@@ -46,13 +55,20 @@ import ch.jonathanlemaine.giftmanager.ui.theme.GiftTheme
 fun AppNavHost(viewModelFactory: ViewModelProvider.Factory) {
     val root: RootViewModel = viewModel(factory = viewModelFactory)
     val destination = root.destination.collectAsStateWithLifecycle()
-    when (destination.value) {
-        RootDestination.Loading -> FullScreenLoading()
-        RootDestination.Onboarding -> OnboardingRoute(viewModelFactory)
-        RootDestination.LoadFailed -> LoadFailedScreen(onRetry = root::retry, onSignOut = root::signOut)
-        RootDestination.ProfileSetup -> ProfileSetupRoute(viewModelFactory)
-        RootDestination.GroupSetup -> GroupSetupRoute(viewModelFactory)
-        RootDestination.Main -> MainScaffold(viewModelFactory)
+    // Cadeau qui s'ouvre, joué une fois au démarrage par-dessus le premier écran (survit à une rotation).
+    var showSplash by rememberSaveable { mutableStateOf(true) }
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (destination.value) {
+            RootDestination.Loading -> FullScreenLoading()
+            RootDestination.Onboarding -> OnboardingRoute(viewModelFactory)
+            RootDestination.LoadFailed -> LoadFailedScreen(onRetry = root::retry, onSignOut = root::signOut)
+            RootDestination.ProfileSetup -> ProfileSetupRoute(viewModelFactory)
+            RootDestination.GroupSetup -> GroupSetupRoute(viewModelFactory)
+            RootDestination.Main -> MainScaffold(viewModelFactory)
+        }
+        AnimatedVisibility(visible = showSplash, enter = EnterTransition.None, exit = fadeOut(tween(350))) {
+            GiftOpeningSplash(onFinished = { showSplash = false })
+        }
     }
 }
 
