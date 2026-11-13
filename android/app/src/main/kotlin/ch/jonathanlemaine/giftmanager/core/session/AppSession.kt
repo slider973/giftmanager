@@ -169,6 +169,7 @@ class AppSession(
             val householdMembers = async { householdRepo.householdMembers(group.id) }
             val groupMembers = async { familyRepo.groupMembers(group.id) }
             val householdGroups = async { runCatchingCancellable { householdRepo.myHouseholdGroups() } }
+            val own = async { runCatchingCancellable { userId?.let { householdRepo.ownHousehold(it) } } }
             val loadedHouseholds = households.await()
             val loadedHouseholdMembers = householdMembers.await()
             val members = profileRepo.profiles(groupMembers.await().map { it.userId })
@@ -176,11 +177,13 @@ class AppSession(
             // Un enfant peut remonter plusieurs fois s'il est visible via plusieurs partages (#60).
             val loadedChildren = children.await().distinctBy { it.id }
             val loadedEvents = events.await()
+            val ownHousehold = own.await().getOrNull()
             updateFor(userId) {
                 it.copy(
                     households = loadedHouseholds,
                     householdMembers = loadedHouseholdMembers,
                     householdGroups = sharing,
+                    ownHousehold = ownHousehold,
                     members = members,
                     children = loadedChildren,
                     events = loadedEvents,

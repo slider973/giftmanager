@@ -24,6 +24,9 @@ final class AppState {
     private(set) var householdMembers: [HouseholdMember] = []
     /// Familles avec lesquelles mon foyer est partagé (#60).
     private(set) var householdGroups: [HouseholdGroup] = []
+    /// Mon foyer, qu'il soit partagé ou non avec la famille courante (#119). `myHousehold` ne le voit
+    /// que dans une famille où il est partagé : sans ceci, l'écran de foyer proposait d'en créer un second.
+    private(set) var ownHousehold: Household?
     /// Idées proposées pour mes enfants, en attente de mon verdict (#57).
     private(set) var pendingIdeasCount = 0
     private(set) var members: [Profile] = []
@@ -93,6 +96,7 @@ final class AppState {
         households = []
         householdMembers = []
         householdGroups = []
+        ownHousehold = nil
         members = []
         children = []
         events = []
@@ -159,6 +163,7 @@ final class AppState {
         }
         self.events = try await events
         self.householdGroups = (try? await householdGroups) ?? []
+        if let userId { ownHousehold = (try? await repository.ownHousehold(userId: userId)) ?? myHousehold }
         pendingIdeasCount = (try? await repository.pendingIdeas().count) ?? 0
         members = try await repository.profiles(ids: try await groupMembers.map(\.userId))
         lastGroupRefresh = .now
@@ -368,7 +373,7 @@ final class AppState {
 
     /// Mon foyer existe mais n'est pas encore partagé avec la famille affichée.
     var canShareHouseholdWithCurrentGroup: Bool {
-        guard let householdId = myHousehold?.id, let group = currentGroup else { return false }
+        guard let householdId = (ownHousehold ?? myHousehold)?.id, let group = currentGroup else { return false }
         return !householdGroups.contains { $0.householdId == householdId && $0.groupId == group.id }
     }
 

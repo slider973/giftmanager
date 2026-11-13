@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ch.jonathanlemaine.giftmanager.R
 import ch.jonathanlemaine.giftmanager.core.error.GiftError
+import ch.jonathanlemaine.giftmanager.core.model.FamilyGroup
 import ch.jonathanlemaine.giftmanager.ui.common.BodyText
 import ch.jonathanlemaine.giftmanager.ui.common.GiftErrorDialog
 import ch.jonathanlemaine.giftmanager.ui.common.ScreenColumn
@@ -82,6 +83,7 @@ data class GroupSetupActions(
     val onShareHousehold: () -> Unit,
     val onSignOut: () -> Unit,
     val onDismissError: () -> Unit,
+    val onSelectGroup: (FamilyGroup) -> Unit = {},
 )
 
 /** Bouton à l'origine de l'action en cours : seul lui affiche l'indicateur (le ViewModel n'a qu'un `isBusy`). */
@@ -133,7 +135,12 @@ fun GroupSetupScreen(state: GroupSetupUiState, actions: GroupSetupActions, modif
                 }
             }
         }
-        OptionsMenu(onSignOut = actions.onSignOut, modifier = Modifier.align(Alignment.TopEnd).padding(end = GiftTheme.spacing.xs))
+        OptionsMenu(
+            otherGroups = state.otherGroups,
+            onSelectGroup = actions.onSelectGroup,
+            onSignOut = actions.onSignOut,
+            modifier = Modifier.align(Alignment.TopEnd).padding(end = GiftTheme.spacing.xs),
+        )
     }
     GiftErrorDialog(state.error, actions.onDismissError)
 }
@@ -146,9 +153,17 @@ private fun modeTransition(from: GroupSetupMode, to: GroupSetupMode, reduceMotio
     return (fadeIn(tween(220, delayMillis = 60)) + slideInHorizontally(tween(260), offset)) togetherWith fadeOut(tween(120))
 }
 
-/** Menu « Options » (iOS : `ellipsis.circle`) : « Se déconnecter ». Cible 48 dp. */
+/**
+ * Menu « Options » (iOS : `ellipsis.circle`) : mes autres familles, pour y revenir sans partager son foyer
+ * (#119), puis « Se déconnecter ». Cible 48 dp.
+ */
 @Composable
-private fun OptionsMenu(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
+private fun OptionsMenu(
+    otherGroups: List<FamilyGroup>,
+    onSelectGroup: (FamilyGroup) -> Unit,
+    onSignOut: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = GiftTheme.colors
     var expanded by rememberSaveable { mutableStateOf(false) }
     val label = stringResource(R.string.options)
@@ -168,6 +183,16 @@ private fun OptionsMenu(onSignOut: () -> Unit, modifier: Modifier = Modifier) {
             shape = GiftTheme.radius.fieldShape,
             containerColor = colors.surface,
         ) {
+            otherGroups.forEach { group ->
+                DropdownMenuItem(
+                    text = { Text(group.name, style = GiftTheme.type.callout, color = colors.textPrimary) },
+                    leadingIcon = { Icon(GiftIcons.Home, contentDescription = null, tint = colors.primary) },
+                    onClick = {
+                        expanded = false
+                        onSelectGroup(group)
+                    },
+                )
+            }
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.sign_out), style = GiftTheme.type.callout, color = colors.takenFg) },
                 leadingIcon = { Icon(GiftIcons.SignOut, contentDescription = null, tint = colors.takenFg) },

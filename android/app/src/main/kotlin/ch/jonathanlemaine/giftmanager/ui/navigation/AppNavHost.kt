@@ -166,6 +166,7 @@ private fun GroupSetupRoute(viewModelFactory: ViewModelProvider.Factory) {
             onShareHousehold = viewModel::shareHousehold,
             onSignOut = viewModel::signOut,
             onDismissError = viewModel::dismissError,
+            onSelectGroup = viewModel::selectGroup,
         ),
     )
 }
