@@ -64,6 +64,7 @@ Publier **l'Android seul** sur la piste de test interne sans étiquette : modifi
 (X.Y.Z) par une PR ; sa fusion sur `main` lance `android-release.yml` avec ce `versionName`. Utile depuis
 une session cloud, qui ne peut ni poser d'étiquette ni lancer de workflow. La version publiée n'a alors
 pas d'étiquette : la prochaine `release.sh` doit choisir un numéro supérieur.
+Même chose pour **l'iOS seul** avec `ios/VERSION` : sa fusion lance `ios-release.yml` (TestFlight).
 
 APK Android à installer directement, sans Google Play (testeurs comme Marina) : `android-apk.yml`
 construit un APK release signé à chaque PR ou push sur `main` qui touche `android/`, gardé 14 jours en

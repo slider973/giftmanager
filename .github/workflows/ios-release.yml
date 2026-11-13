@@ -3,6 +3,8 @@
 # Déclenchement (GitLab Flow) :
 #   - automatique sur tag `v*` (ex. `git tag -a v1.1.0 -m "..." && git push origin v1.1.0`),
 #     via scripts/release.sh qui vérifie l'état du dépôt avant de poser le tag ;
+#   - automatique quand une fusion modifie `ios/VERSION` sur main (#117) : iOS seul, avec cette
+#     version marketing — le chemin utilisable depuis une session qui ne peut que fusionner une PR ;
 #   - manuel (gh workflow run ios-release.yml) pour rejouer un build sans créer de version.
 #
 # La version marketing provient du tag : `v1.1.0` → MARKETING_VERSION 1.1.0. Elle est donc
@@ -12,6 +14,8 @@ name: iOS release (TestFlight)
 on:
   push:
     tags: ["v*"]
+    branches: [main]
+    paths: ["ios/VERSION"]
   workflow_dispatch:
 
 concurrency:
@@ -34,12 +38,18 @@ jobs:
       - name: Outils
         run: brew install xcodegen
 
-      # Un tag `v1.1.0` fixe la version marketing ; un lancement manuel garde celle de project.yml.
+      # Un tag `v1.1.0` fixe la version marketing ; un push sur main la lit dans ios/VERSION ;
+      # un lancement manuel garde celle de project.yml.
       - name: Version depuis le tag
         id: version
         run: |
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             echo "marketing=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          elif [ "${GITHUB_EVENT_NAME}" = push ]; then
+            name="$(tr -d '[:space:]' < ios/VERSION)"
+            [[ "$name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+              || { echo "::error::ios/VERSION invalide : « $name » (attendu X.Y.Z)"; exit 1; }
+            echo "marketing=$name" >> "$GITHUB_OUTPUT"
           else
             echo "marketing=" >> "$GITHUB_OUTPUT"
           fi
