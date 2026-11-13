@@ -53,7 +53,8 @@ croissant aussi et sous la limite de Google Play. Les deux workflows (`ios-relea
 `android-release.yml`) partent du même tag et sont indépendants.
 
 Numérotation : `PATCH` pour un correctif, `MINOR` pour une fonctionnalité, `MAJOR` pour une
-rupture. Un push sur `main` ne déclenche **aucun** build — seul un tag le fait.
+rupture. Un push sur `main` ne publie **rien** — seul un tag le fait (il construit au plus l'APK de test
+ci-dessous, jamais envoyé nulle part).
 
 Rejouer un build sans créer de version : `gh workflow run ios-release.yml` (iOS) ou
 `gh workflow run android-release.yml -f publish=false` (Android : construit l'AAB sans l'envoyer ;
