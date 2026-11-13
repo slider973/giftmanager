@@ -8,9 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -25,7 +23,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ch.jonathanlemaine.giftmanager.BuildConfig
@@ -51,9 +48,7 @@ import ch.jonathanlemaine.giftmanager.ui.components.GiftIcons
 import ch.jonathanlemaine.giftmanager.ui.components.GiftPreviews
 import ch.jonathanlemaine.giftmanager.ui.components.PreviewFrame
 import ch.jonathanlemaine.giftmanager.ui.components.PrimaryButton
-import ch.jonathanlemaine.giftmanager.ui.components.fcClickable
 import ch.jonathanlemaine.giftmanager.ui.theme.GiftTheme
-import ch.jonathanlemaine.giftmanager.ui.theme.HitTarget
 import java.util.UUID
 
 /** Actions de [ProfileScreen], reliées à [ProfileViewModel]. */
@@ -203,7 +198,7 @@ private fun IdentitySection(state: ProfileUiState, actions: ProfileActions) {
     }
 }
 
-/** #60 — « « Foyer » est visible dans » : une ligne par famille, « Retirer » s'il y en a plusieurs. */
+/** #60 — « « Foyer » est visible dans » : une ligne par famille. Pour en partir : Famille › Paramètres › « Quitter » (#121). */
 @Composable
 private fun HouseholdSection(state: ProfileUiState, actions: ProfileActions) {
     val household = state.householdName ?: return
@@ -216,29 +211,8 @@ private fun HouseholdSection(state: ProfileUiState, actions: ProfileActions) {
             if (index > 0) SettingsDivider()
             SettingsRow(icon = GiftIcons.Group) {
                 Text(text = group.name, style = GiftTheme.type.callout, color = colors.textPrimary, modifier = Modifier.weight(1f))
-                if (state.canUnshare) {
-                    UnshareButton(onClick = { actions.onRequestUnshare(group) })
-                }
             }
         }
-    }
-}
-
-@Composable
-private fun UnshareButton(onClick: () -> Unit) {
-    // Lien texte `takenFg` (destructif) : même cible de 48 dp que TextLinkButton, colorée à la main.
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .fcClickable(onClick = onClick, shape = GiftTheme.radius.fieldShape, pressedScale = 1f)
-            .heightIn(min = HitTarget.minimum)
-            .padding(horizontal = GiftTheme.spacing.s),
-    ) {
-        Text(
-            text = stringResource(R.string.profile_unshare),
-            style = GiftTheme.type.callout.copy(fontWeight = FontWeight.Medium),
-            color = GiftTheme.colors.takenFg,
-        )
     }
 }
 

@@ -266,6 +266,25 @@ class AppSessionTest {
         assertEquals(listOf("Jonathan", "Marie"), s.parents(household(1)).map { it.displayName })
     }
 
+    // #121 : quitter la famille affichée retire mon foyer de cette famille, puis bascule sur une autre.
+    @Test fun leaveGroupUnsharesAndSwitchesToRemainingFamily() = runTest {
+        val f = started { seedReady(1, 2) }
+        f.session.selectGroup(group(2))
+        assertTrue(f.session.leaveGroup(group(2)).isSuccess)
+        val s = f.session.state.value
+        assertEquals(listOf(group(1)), s.groups)
+        assertEquals(group(1), s.currentGroup)
+        assertEquals(SessionPhase.Ready, s.phase)
+        assertEquals(listOf(group(1)), s.familiesSharingMyHousehold)
+    }
+
+    // Foyer déjà retiré de la famille (cas de Jonathan, 13.11) : on peut quand même la quitter.
+    @Test fun leaveGroupWhereMyHouseholdIsNotShared() = runTest {
+        val f = started { seedReady(1); families.groups += group(2); families.members[group(2).id] = mutableListOf(me) }
+        assertTrue(f.session.leaveGroup(group(2)).isSuccess)
+        assertEquals(listOf(group(1)), f.session.state.value.groups)
+    }
+
     @Test fun renameGroupReloads() = runTest {
         val f = started()
         assertTrue(f.session.renameGroup(group(1).id, "Les Dupont").isSuccess)

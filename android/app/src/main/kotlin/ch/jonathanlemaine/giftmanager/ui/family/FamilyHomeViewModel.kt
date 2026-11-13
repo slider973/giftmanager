@@ -90,7 +90,11 @@ data class FamilyHomeUiState(
     val isRefreshing: Boolean = false,
     val isBusy: Boolean = false,
     val error: GiftError? = null,
+    /** Famille dont on confirme le départ (#121), `null` sinon. */
+    val leaving: FamilyGroup? = null,
 ) {
+    /** Quitter n'est proposé qu'avec une autre famille où revenir (#121). */
+    val canLeave: Boolean get() = groups.size > 1
     val canJoin: Boolean get() = joinCode.trim().length >= GroupSetupUiState.GROUP_CODE_LENGTH && !isBusy
 }
 
@@ -109,6 +113,7 @@ class FamilyHomeViewModel(
         val isRefreshing: Boolean = false,
         val isBusy: Boolean = false,
         val error: GiftError? = null,
+        val leaving: FamilyGroup? = null,
     )
 
     private val local = MutableStateFlow(Local())
@@ -154,6 +159,7 @@ class FamilyHomeViewModel(
             isRefreshing = l.isRefreshing,
             isBusy = l.isBusy,
             error = l.error,
+            leaving = l.leaving,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, FamilyHomeUiState())
 
@@ -181,6 +187,19 @@ class FamilyHomeViewModel(
         val rename = state.rename ?: return
         if (!rename.canRename || state.isBusy) return
         perform { session.renameGroup(group.id, rename.name.trim()) }
+    }
+
+    fun requestLeave() {
+        val group = uiState.value.group ?: return
+        if (uiState.value.canLeave) local.update { it.copy(leaving = group) }
+    }
+
+    fun cancelLeave() = local.update { it.copy(leaving = null) }
+
+    fun confirmLeave() {
+        val group = local.value.leaving ?: return
+        local.update { it.copy(leaving = null) }
+        perform { session.leaveGroup(group) }
     }
 
     fun selectGroup(group: FamilyGroup) {

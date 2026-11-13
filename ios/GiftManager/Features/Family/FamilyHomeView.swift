@@ -322,6 +322,7 @@ private struct GroupSettingsSection: View {
     @Environment(AppState.self) private var appState
     @State private var showJoin = false
     @State private var showCreate = false
+    @State private var leaving: FamilyGroup?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.l) {
@@ -388,11 +389,31 @@ private struct GroupSettingsSection: View {
                 .fcCard()
             }
 
+            // #121 : seulement s'il reste une autre famille où revenir.
+            if appState.groups.count > 1, let group = appState.currentGroup {
+                Button("Quitter « \(group.name) »", role: .destructive) { leaving = group }
+                    .font(Font.Theme.callout.weight(.medium))
+                    .foregroundStyle(Color.Theme.takenFg)
+                    .frame(maxWidth: .infinity, minHeight: HitTarget.minimum)
+                    .buttonStyle(.plain)
+            }
+
             TextLinkButton(title: "Rejoindre une autre famille avec un code") { showJoin = true }
                 .frame(maxWidth: .infinity)
         }
         .alert("Rejoindre une famille", isPresented: $showJoin) {
             JoinOtherGroupAlert()
+        }
+        .confirmationDialog("Quitter « \(leaving?.name ?? "") » ?",
+                            isPresented: Binding(get: { leaving != nil }, set: { if !$0 { leaving = nil } }),
+                            titleVisibility: .visible) {
+            Button("Quitter", role: .destructive) {
+                if let group = leaving { Task { _ = await appState.leaveGroup(group) } }
+                leaving = nil
+            }
+            Button("Annuler", role: .cancel) { leaving = nil }
+        } message: {
+            Text("Elle disparaîtra de tes familles et ne verra plus tes enfants ni leurs listes. Ton foyer et tes réservations sont conservés. Pour revenir, il faudra de nouveau son code.")
         }
     }
 }

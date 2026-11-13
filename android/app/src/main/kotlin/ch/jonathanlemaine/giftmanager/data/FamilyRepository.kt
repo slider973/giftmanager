@@ -25,6 +25,9 @@ interface FamilyRepository {
 
     suspend fun renameGroup(groupId: UUID, name: String)
 
+    /** Quitte la famille (RLS « quitter un groupe » : seulement sa propre adhésion). */
+    suspend fun leaveGroup(groupId: UUID, userId: UUID)
+
     suspend fun groupMembers(groupId: UUID): List<GroupMember>
 }
 
@@ -50,6 +53,15 @@ class SupabaseFamilyRepository(private val client: SupabaseClient) : FamilyRepos
 
     override suspend fun renameGroup(groupId: UUID, name: String) {
         client.from("groups").update(GroupNamePatch(name)) { filter { eq("id", groupId.toString()) } }
+    }
+
+    override suspend fun leaveGroup(groupId: UUID, userId: UUID) {
+        client.from("group_members").delete {
+            filter {
+                eq("group_id", groupId.toString())
+                eq("user_id", userId.toString())
+            }
+        }
     }
 
     override suspend fun groupMembers(groupId: UUID): List<GroupMember> =

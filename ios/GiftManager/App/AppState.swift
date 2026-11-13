@@ -345,6 +345,23 @@ final class AppState {
         }
     }
 
+    /// Quitte une famille (#121) : mon foyer n'y est plus partagé (ses enfants n'y apparaissent plus),
+    /// puis je n'en suis plus membre. Si c'était la famille affichée, `refreshAll` bascule sur la
+    /// première restante.
+    func leaveGroup(_ group: FamilyGroup) async -> Bool {
+        guard let userId else { return false }
+        do {
+            // Foyer absent ou déjà retiré de cette famille : rien à retirer, on quitte quand même.
+            try? await repository.unshareHousehold(fromGroup: group.id)
+            try await repository.leaveGroup(group.id, userId: userId)
+            await refreshAll()
+            return true
+        } catch {
+            report(error)
+            return false
+        }
+    }
+
     func unshareHousehold(from group: FamilyGroup) async -> Bool {
         do {
             try await repository.unshareHousehold(fromGroup: group.id)
