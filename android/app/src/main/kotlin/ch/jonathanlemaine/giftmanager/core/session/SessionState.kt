@@ -26,6 +26,11 @@ data class SessionState(
     val householdMembers: List<HouseholdMember> = emptyList(),
     /** Familles avec lesquelles mon foyer est partagé (#60). */
     val householdGroups: List<HouseholdGroup> = emptyList(),
+    /**
+     * Mon foyer, qu'il soit partagé ou non avec la famille courante (#119). [myHousehold] ne le voit que
+     * dans une famille où il est partagé : sans ceci, l'écran de foyer proposait d'en créer un second.
+     */
+    val ownHousehold: Household? = null,
     /** Membres de la famille courante. */
     val members: List<Profile> = emptyList(),
     /** Enfants et listes d'adultes visibles dans la famille courante, sans doublon. */
@@ -53,7 +58,7 @@ data class SessionState(
     /** Mon foyer existe mais n'est pas encore partagé avec la famille affichée. */
     val canShareHouseholdWithCurrentGroup: Boolean
         get() {
-            val householdId = myHousehold?.id ?: return false
+            val householdId = (ownHousehold ?: myHousehold)?.id ?: return false
             val group = currentGroup ?: return false
             return householdGroups.none { it.householdId == householdId && it.groupId == group.id }
         }

@@ -167,6 +167,11 @@ class FakeHouseholdRepository : HouseholdRepository {
         return memberships.filter { it.householdId in ids }
     }
 
+    override suspend fun ownHousehold(userId: UUID): Household? {
+        val membership = memberships.firstOrNull { it.userId == userId } ?: return null
+        return all.firstOrNull { it.id == membership.householdId }
+    }
+
     override suspend fun myHouseholdGroups(): List<HouseholdGroup> {
         groupsFailure?.let { throw it }
         val mine = memberships.filter { it.userId == me }.map { it.householdId }.toSet()

@@ -22,6 +22,9 @@ interface HouseholdRepository {
     /** Familles avec lesquelles mon foyer est partagé. */
     suspend fun myHouseholdGroups(): List<HouseholdGroup>
 
+    /** Le foyer de [userId], même s'il n'est pas partagé avec la famille affichée (#119) ; `null` s'il n'en a pas. */
+    suspend fun ownHousehold(userId: UUID): Household?
+
     suspend fun createHousehold(groupId: UUID, name: String, country: String): UUID
 
     suspend fun joinHousehold(code: String): UUID
@@ -47,6 +50,13 @@ class SupabaseHouseholdRepository(private val client: SupabaseClient) : Househol
     override suspend fun myHouseholdGroups(): List<HouseholdGroup> =
         client.from("household_groups").select(Columns.raw("household_id, group_id")).decodeTolerantList()
 
+    override suspend fun ownHousehold(userId: UUID): Household? {
+        val rows: List<Household> = client.from("households").select(Columns.raw(OWN_COLUMNS)) {
+            filter { eq("household_members.user_id", userId.toString()) }
+        }.decodeTolerantList()
+        return rows.firstOrNull()
+    }
+
     override suspend fun createHousehold(groupId: UUID, name: String, country: String): UUID =
         client.postgrest.rpc(
             Rpc.CREATE_HOUSEHOLD,
@@ -71,5 +81,6 @@ class SupabaseHouseholdRepository(private val client: SupabaseClient) : Househol
         // Les jointures `!inner` filtrent sur la famille ; leurs clés ne sont pas lues (voir decodeTolerantList).
         const val HOUSEHOLDS_COLUMNS = "id, name, country, invite_code, household_groups!inner(group_id)"
         const val MEMBERS_COLUMNS = "household_id, user_id, households!inner(household_groups!inner(group_id))"
+        const val OWN_COLUMNS = "id, name, country, invite_code, household_members!inner(user_id)"
     }
 }

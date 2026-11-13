@@ -3,6 +3,7 @@ package ch.jonathanlemaine.giftmanager.ui.family
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.jonathanlemaine.giftmanager.core.error.GiftError
+import ch.jonathanlemaine.giftmanager.core.model.FamilyGroup
 import ch.jonathanlemaine.giftmanager.core.session.AppSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +34,8 @@ data class GroupSetupUiState(
     val currentGroupName: String = "",
     /** Foyer existant proposé au partage (#60), `null` si rien à partager. */
     val shareableHouseholdName: String? = null,
+    /** Mes autres familles : le menu « Options » permet d'y revenir sans partager son foyer (#119). */
+    val otherGroups: List<FamilyGroup> = emptyList(),
     val isBusy: Boolean = false,
     val error: GiftError? = null,
 ) {
@@ -72,7 +75,8 @@ class GroupSetupViewModel(private val session: AppSession) : ViewModel() {
             householdCode = edit.householdCode,
             currentGroupName = s.currentGroup?.name.orEmpty(),
             // Le foyer existe déjà ailleurs ? Le partager plutôt que d'en créer un second.
-            shareableHouseholdName = s.myHousehold?.name?.takeIf { s.canShareHouseholdWithCurrentGroup },
+            shareableHouseholdName = (s.ownHousehold ?: s.myHousehold)?.name?.takeIf { s.canShareHouseholdWithCurrentGroup },
+            otherGroups = s.groups.filter { it.id != s.currentGroup?.id },
             isBusy = edit.isBusy,
             error = edit.error,
         )
@@ -135,6 +139,11 @@ class GroupSetupViewModel(private val session: AppSession) : ViewModel() {
 
     fun signOut() {
         viewModelScope.launch { session.signOut() }
+    }
+
+    fun selectGroup(group: FamilyGroup) {
+        if (uiState.value.isBusy) return
+        launchAction { session.selectGroup(group) }
     }
 
     private fun launchAction(action: suspend () -> Result<Unit>) {

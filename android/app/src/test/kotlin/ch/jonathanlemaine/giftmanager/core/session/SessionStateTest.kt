@@ -38,6 +38,17 @@ class SessionStateTest {
         assertFalse(base.copy(householdMembers = emptyList()).canShareHouseholdWithCurrentGroup)
     }
 
+    // #119 : dans une famille où mon foyer n'est pas partagé, il n'apparaît ni dans `households` ni dans
+    // `householdMembers` ; seul `ownHousehold` permet de proposer le partage plutôt qu'une création.
+    @Test fun canShareMyHouseholdEvenWhereItIsNotVisible() {
+        val elsewhere = base.copy(currentGroup = group(2), households = emptyList(), householdMembers = emptyList())
+        assertNull(elsewhere.myHousehold)
+        assertFalse(elsewhere.canShareHouseholdWithCurrentGroup)
+        assertTrue(elsewhere.copy(ownHousehold = household(1)).canShareHouseholdWithCurrentGroup)
+        // Déjà partagé avec la famille affichée : rien à proposer.
+        assertFalse(base.copy(ownHousehold = household(1)).canShareHouseholdWithCurrentGroup)
+    }
+
     @Test fun parentsAreMembersOfTheHousehold() {
         val s = base.copy(members = listOf(profile(me, "Jo"), profile(uuid(2), "Marie"), profile(uuid(3), "Paul")))
         assertEquals(listOf("Jo"), s.parents(household(1)).map { it.displayName })

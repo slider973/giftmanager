@@ -104,6 +104,15 @@ struct GiftRepository: Sendable {
             .execute().value
     }
 
+    /// Le foyer de l'utilisateur, même s'il n'est pas partagé avec la famille affichée (#119).
+    func ownHousehold(userId: UUID) async throws -> Household? {
+        let rows: [Household] = try await db.from("households")
+            .select("id, name, country, invite_code, household_members!inner(user_id)")
+            .eq("household_members.user_id", value: userId)
+            .execute().value
+        return rows.first
+    }
+
     /// Familles avec lesquelles mon foyer est partagé.
     func myHouseholdGroups() async throws -> [HouseholdGroup] {
         try await db.from("household_groups").select("household_id, group_id").execute().value

@@ -24,6 +24,10 @@ struct GroupSetupView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        // #119 : revenir à une autre famille sans avoir à partager son foyer ici.
+                        ForEach(appState.groups.filter { $0.id != appState.currentGroup?.id }) { group in
+                            Button(group.name, systemImage: "house") { Task { await appState.selectGroup(group) } }
+                        }
                         Button("Se déconnecter", role: .destructive) { Task { await appState.signOut() } }
                     } label: {
                         Image(systemName: "ellipsis.circle").accessibilityLabel("Options")
@@ -155,7 +159,7 @@ private struct HouseholdSetupView: View {
                     .foregroundStyle(Color.Theme.textSecondary)
 
                 // #60 : le foyer suit son parent d'une famille à l'autre — rien à ressaisir.
-                if appState.canShareHouseholdWithCurrentGroup, let mine = appState.myHousehold {
+                if appState.canShareHouseholdWithCurrentGroup, let mine = appState.ownHousehold ?? appState.myHousehold {
                     VStack(alignment: .leading, spacing: Spacing.m) {
                         Text("Partager mon foyer")
                             .font(Font.Theme.headline)
