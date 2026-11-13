@@ -261,6 +261,21 @@ struct GiftEvent: Codable, Identifiable, Equatable, Hashable, Sendable {
     var daysRemaining: Int {
         Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: .now), to: eventDate.localDate).day ?? 0
     }
+
+    /// Événements d'une famille parmi tous ceux que le compte peut voir : Noël est global, un
+    /// anniversaire suit son enfant, une fête de famille appartient à sa famille (#60, #115).
+    /// Sans famille (`groupId == nil`), rien n'est écarté.
+    static func scoped(_ events: [GiftEvent], toGroup groupId: UUID?, children: [Child]) -> [GiftEvent] {
+        guard let groupId else { return events }
+        let childIds = Set(children.map(\.id))
+        return events.filter { event in
+            switch event.kind {
+            case .christmas: true
+            case .birthday: event.childId.map(childIds.contains) ?? false
+            case .other: event.groupId == groupId
+            }
+        }
+    }
 }
 
 enum WishKind: String, Codable, Sendable {
