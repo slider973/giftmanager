@@ -1,6 +1,6 @@
-# Android — Famille Cadeaux
+# Android — Gift Manager
 
-Application Android (Kotlin, Jetpack Compose, Material 3) de Famille Cadeaux. Même backend Supabase que l'app iOS.
+Application Android (Kotlin, Jetpack Compose, Material 3) de Gift Manager. Même backend Supabase que l'app iOS.
 
 ## Prérequis
 
