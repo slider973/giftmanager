@@ -156,7 +156,7 @@ Secrets GitHub créés par `scripts/secrets/sync-github.sh` : `FIREBASE_API_KEY`
 ### Actions humaines (une fois)
 
 1. **Compte Play Console** : créer un compte développeur (frais uniques de 25 USD ; un compte personnel créé après nov. 2023 exige un test fermé de 12 testeurs pendant 14 jours avant la production, mais **pas** pour le test interne).
-2. **Créer l'application** : nom « Famille Cadeaux », langue par défaut, type Application, gratuite, nom de package `ch.jonathanlemaine.giftmanager` (définitif).
+2. **Créer l'application** : nom « Gift Manager » (comme sur iOS, #125), langue par défaut, type Application, gratuite, nom de package `ch.jonathanlemaine.giftmanager` (définitif).
 3. **Fiche et déclarations** (Tableau de bord > Configurer l'application) : description, icône 512 px, visuel de présentation, captures d'écran ; classification du contenu ; public cible (ne pas cibler les enfants : l'app est destinée aux adultes, le « mode enfant » n'est qu'un affichage) ; déclaration d'annonces (aucune) ; **sécurité des données** (Data safety) : e-mail, nom, contenus créés par l'utilisateur (idées, cadeaux, photos), identifiants ; données chiffrées en transit, suppression de compte possible.
 4. **Politique de confidentialité publique** : publier `docs/privacy` à une URL publique (GitHub Pages ou autre) et la renseigner dans la fiche (Contenu de l'application > Politique de confidentialité).
 5. **Clé d'upload** (hors du dépôt, dans un dossier temporaire) :

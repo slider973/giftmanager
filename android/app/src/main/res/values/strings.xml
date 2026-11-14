@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Famille Cadeaux</string>
+    <string name="app_name">Gift Manager</string>
     <string name="home_gallery_link">Galerie du design system</string>
     <!-- Widget d'écran d'accueil (#80) -->
     <string name="widget_name">Compte à rebours</string>
