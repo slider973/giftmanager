@@ -388,6 +388,13 @@ struct GiftRepository: Sendable {
         try? await client.functions.invoke("notify-new-items", options: FunctionInvokeOptions(body: Body(item_id: itemId)))
     }
 
+    /// Prévient les personnes qui ont offert le cadeau qu'un parent leur a dit merci (#90, comme Android #75).
+    /// Le serveur vérifie que l'appelant a envoyé ce merci il y a moins de 10 minutes.
+    func notifyThanks(itemId: UUID) async {
+        struct Body: Encodable { let type = "thanks"; let item_id: UUID }
+        try? await client.functions.invoke("notify-new-items", options: FunctionInvokeOptions(body: Body(item_id: itemId)))
+    }
+
     /// Informe l'auteur d'une idée du verdict de son parent (#57).
     func notifyIdeaReview(itemId: UUID, decision: IdeaReview) async {
         struct Body: Encodable { let type = "idea_review"; let item_id: UUID; let decision: String }

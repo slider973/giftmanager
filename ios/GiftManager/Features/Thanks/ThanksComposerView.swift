@@ -199,6 +199,10 @@ struct ThanksComposerView: View {
                 photoURL = try await appState.repository.uploadImage(imageData, userId: userId).absoluteString
             }
             try await appState.repository.sendThanks(itemId: item.id, message: trimmed, photoURL: photoURL)
+            // #90 : les donateurs reçoivent un push ; un échec de la notification ne défait pas le merci.
+            let repository = appState.repository
+            let itemId = item.id
+            Task.detached { await repository.notifyThanks(itemId: itemId) }
             withAnimation(.easeOut(duration: 0.25)) { sent = true }
         } catch {
             if error is CancellationError { return }
