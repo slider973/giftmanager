@@ -1,6 +1,8 @@
 import SwiftUI
 
-/// Création / modification d'un événement : anniversaire d'un enfant, Noël ou autre fête (#8).
+/// Création / modification d'un événement de la famille (#8). Seul le type « autre » est proposé (#89) :
+/// Noël est global et les anniversaires sont créés par le serveur (trigger `children_birthday`,
+/// `ensure_birthday_events`) ; la RLS refuse d'écrire les autres types. Même règle qu'Android.
 struct EventEditorView: View {
     enum Mode: Identifiable {
         case create
@@ -18,8 +20,6 @@ struct EventEditorView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
 
-    @State private var kind: GiftEventKind = .birthday
-    @State private var childId: UUID?
     @State private var title = ""
     @State private var date = Date.now
     @State private var isSaving = false
@@ -33,30 +33,6 @@ struct EventEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    Picker("Type", selection: $kind) {
-                        Text("Anniversaire").tag(GiftEventKind.birthday)
-                        Text("Noël").tag(GiftEventKind.christmas)
-                        Text("Autre").tag(GiftEventKind.other)
-                    }
-                    .pickerStyle(.segmented)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
-                }
-
-                if kind == .birthday {
-                    Section("Enfant") {
-                        Picker("Enfant", selection: $childId) {
-                            Text("Choisir…").tag(UUID?.none)
-                            ForEach(appState.children) { child in
-                                Text(child.firstName).tag(Optional(child.id))
-                            }
-                        }
-                        .frame(minHeight: HitTarget.minimum)
-                        .fcListRow()
-                    }
-                }
-
                 Section("Détails") {
                     LabeledContent("Titre") {
                         TextField("Titre", text: $title,
@@ -101,8 +77,6 @@ struct EventEditorView: View {
                     }
                 }
             }
-            .onChange(of: kind) { _, _ in suggest() }
-            .onChange(of: childId) { _, _ in suggest() }
             .confirmationDialog("Supprimer cet événement ?", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Supprimer", role: .destructive) { Task { await delete() } }
             }
@@ -116,52 +90,22 @@ struct EventEditorView: View {
     }
 
     private var isValid: Bool {
-        !title.trimmed.isEmpty && (kind != .birthday || childId != nil)
+        !title.trimmed.isEmpty
     }
 
     private func load() {
-        if let event = existing {
-            kind = event.kind
-            childId = event.childId
-            title = event.title
-            date = event.eventDate.localDate
-        } else {
-            childId = appState.myChildren.first?.id ?? appState.children.first?.id
-            suggest()
-        }
-    }
-
-    /// Titre et date proposés : prochain anniversaire de l'enfant, prochain Noël.
-    private func suggest() {
-        guard existing == nil else { return }
-        let calendar = Calendar.current
-        switch kind {
-        case .birthday:
-            guard let child = appState.child(childId) else { return }
-            title = "Anniversaire de \(child.firstName)"
-            if let birth = child.birthdate?.localDate {
-                var comps = calendar.dateComponents([.month, .day], from: birth)
-                comps.year = calendar.component(.year, from: .now)
-                if let thisYear = calendar.date(from: comps) {
-                    date = thisYear < calendar.startOfDay(for: .now) ? calendar.date(byAdding: .year, value: 1, to: thisYear)! : thisYear
-                }
-            }
-        case .christmas:
-            var comps = DateComponents(year: calendar.component(.year, from: .now), month: 12, day: 25)
-            if let christmas = calendar.date(from: comps), christmas < .now { comps.year! += 1 }
-            date = calendar.date(from: comps) ?? date
-            title = "Noël \(comps.year!)"
-        case .other:
-            if title.hasPrefix("Anniversaire") || title.hasPrefix("Noël") { title = "" }
-        }
+        guard let event = existing else { return }
+        title = event.title
+        date = event.eventDate.localDate
     }
 
     private func save() async {
         guard let group = appState.currentGroup else { return }
         isSaving = true
         defer { isSaving = false }
-        let event = GiftEvent(id: existing?.id ?? UUID(), groupId: group.id, kind: kind, title: title.trimmed,
-                              eventDate: DayDate(date), childId: kind == .birthday ? childId : nil,
+        // Une modification garde la famille d'origine de l'événement.
+        let event = GiftEvent(id: existing?.id ?? UUID(), groupId: existing?.groupId ?? group.id, kind: .other,
+                              title: title.trimmed, eventDate: DayDate(date), childId: existing?.childId,
                               createdBy: existing?.createdBy)
         do {
             try await appState.repository.saveEvent(event)

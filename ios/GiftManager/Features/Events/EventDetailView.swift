@@ -70,7 +70,7 @@ struct EventDetailView: View {
         .fcScreenBackground()
         .navigationTitle(event.title)
         .toolbar {
-            if !event.isPast {
+            if event.isEditable {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Modifier") { editing = .edit(event) }
                 }

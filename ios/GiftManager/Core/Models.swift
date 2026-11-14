@@ -258,6 +258,10 @@ struct GiftEvent: Codable, Identifiable, Equatable, Hashable, Sendable {
 
     var isPast: Bool { eventDate.localDate < Calendar.current.startOfDay(for: .now) }
 
+    /// Seul un événement « autre » à venir se modifie depuis l'app (#89, comme Android) : Noël est global
+    /// et les anniversaires sont créés par le serveur ; la RLS refuse d'écrire les autres.
+    var isEditable: Bool { kind == .other && !isPast }
+
     var daysRemaining: Int {
         Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: .now), to: eventDate.localDate).day ?? 0
     }

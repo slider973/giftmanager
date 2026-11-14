@@ -91,7 +91,9 @@ struct FamilyHomeView: View {
             NavigationLink(value: event) { eventRow(event) }
                 .buttonStyle(FCPressableStyle())
                 .contextMenu {
-                    Button("Modifier", systemImage: "pencil") { editingEvent = .edit(event) }
+                    if event.isEditable {
+                        Button("Modifier", systemImage: "pencil") { editingEvent = .edit(event) }
+                    }
                 }
         }
         if !appState.pastEvents.isEmpty {
